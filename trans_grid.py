@@ -9,18 +9,19 @@ class Grid2D():
      - mention the neighbours used for interpolation - used by point is covered by grid
     :ivar source: the grid source file which stores the shift values     
     """
-    def __init__(self, b_grid_file):
-        self.source = b_grid_file
+    GRID2D_SRC = r'ETRS89_KRASOVSCHI42_2DJ.GRD'
+    def __init__(self):
+        self.source = Grid2D.GRID2D_SRC
         try:
             # read grid header
-            with open(b_grid_file, 'rb') as f:
+            with open(self.source, 'rb') as f:
                 self.e_min, self.e_max = struct.unpack('<dd', f.read(16))
                 self.n_min, self.n_max = struct.unpack('<dd', f.read(16))
                 self.e_step, self.n_step = struct.unpack('<dd', f.read(16))
         except IOError:
-            raise IOError(f'Failed to open file: {b_grid_file}')
+            raise IOError(f'Failed to open file: {self.source}')
         except Exception:
-            raise Exception(f'Failed to read the content of binary grid file: {b_grid_file}')
+            raise Exception(f'Failed to read the content of binary grid file: {self.source}')
         self.c_count = round((self.e_max - self.e_min) 
                             / self.e_step) + 1   # grid columns count
         self.r_count = round((self.n_max - self.n_min) 
@@ -110,11 +111,11 @@ class Grid2D():
 
         :param idxs: indexes from which grid values will be returned.
             Indexes are 0 index based and start with the first set 
-            (header ignored) of shift values (shift N and shif E)
+            (header ignored) of shift values (shift E and shif N)
         :type idxs: set
 
         :return: Grid (shift) values for the input indexes
-        :rtype: dict (key = pos index, value = tuple of shift values for N and E)         
+        :rtype: dict (key = pos index, value = tuple of shift values for E and N)         
         """
         r = {}   # result dict
         with open(self.source, 'rb') as f:
@@ -160,6 +161,7 @@ class Grid2D():
         return (((n - self.n_min) % self.n_step) / self.n_step,
                 ((e - self.e_min) % self.e_step) / self.e_step)
 
+    # TODO: cache: cred ca aici e (o sa mai vad)
     def init_interp(self, values):
         bi = self.BiInterp(values)
         return bi
@@ -200,8 +202,8 @@ class Grid2D():
         sg_v_n_list = []
         sg_v_e_list = []
         for v in sg_v_dict.values():
-            sg_v_n_list.append(v[0])    
-            sg_v_e_list.append(v[1])
+            sg_v_n_list.append(v[1])    
+            sg_v_e_list.append(v[0])
         
         bi = self.init_interp(sg_v_n_list)
         shift_n = bi.interp(n_unity, e_unity)
@@ -316,7 +318,7 @@ class Grid2D():
             p={}
             for i in range(4):
                 for j in range(4):
-                    p[i * 4 + j] = math.pow(x, j) * math.pow(y, i)
+                    p[i * 4 + j] = math.pow(y, j) * math.pow(x, i)
             
             r = 0.0   # result value
             for k in range(16):
@@ -325,7 +327,7 @@ class Grid2D():
 
 # file_content = np.fromfile('ETRS89_KRASOVSCHI42_2DJ.GRD', np.float64)
 # print(file_content)
-my_grid = Grid2D('ETRS89_KRASOVSCHI42_2DJ.GRD')
+my_grid = Grid2D()
 #  print(my_grid)
 
 # test point in grid
@@ -357,11 +359,11 @@ my_grid = Grid2D('ETRS89_KRASOVSCHI42_2DJ.GRD')
 # print(my_grid.values_have_no_data(sg_values.values()))
 
 # test transformation
-n_in = 500000
-e_in = 500000
+# n_in = 500000
+# e_in = 500000
 
-n_out, e_out = my_grid.trans(n_in, e_in, 1)
-print(n_out, e_out)
+# n_out, e_out = my_grid.trans(n_in, e_in, 1)
+# print(n_out, e_out)
 
 
 
