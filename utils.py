@@ -19,23 +19,26 @@ def sexa_to_rad(s):
     s = float(values[2])
     return  sgn * DEG_TO_RAD_FACTOR * (s / 3600 + m / 60 + d)
 
-def rad_to_sexa(r):
+def rad_to_sexa(a):
     """[summary]
 
     :param r: angle in radians
     :type r: float
     """
-    sgn = '-' if r < 0 else ''
-    tmp_d = abs(r / DEG_TO_RAD_FACTOR)
+    sgn = '-' if a < 0 else ''
+    tmp_d = abs(a / DEG_TO_RAD_FACTOR)
     d = int(tmp_d)
     tmp_reminder = tmp_d - d
     m = int(tmp_reminder * 60)
     tmp_reminder = (tmp_reminder * 60) - m
     s = tmp_reminder * 60
     return f'{sgn}{str(d)} {str(m)} {str(s)}'
-    
 
+def rad_to_deg(a):
+    return math.degrees(a)
 
+def deg_to_rad(a):
+    return math.radians(a)
 
 def ppm_to_unity(ppm):
     """Converts a ppm value to its unity value equivalent
@@ -47,6 +50,3 @@ def ppm_to_unity(ppm):
     :rtype: float
     """
     return 1 + ppm * 1E-6
-
-
-
