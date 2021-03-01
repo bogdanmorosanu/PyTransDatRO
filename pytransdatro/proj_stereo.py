@@ -1,5 +1,5 @@
 import math
-from utils import sexa_to_rad
+from pytransdatro.utils import sexa_to_rad
 
 class StereoProj():
     """

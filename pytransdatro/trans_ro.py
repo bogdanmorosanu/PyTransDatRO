@@ -7,11 +7,11 @@ Functions list:
     - etrs89_to_st70: (Lat, Long) -> (N, E)
 """
 import math
-import trans_grid as t_gr
-import trans_helmert2d as t_h2d
-import proj_stereo as p_st
+import pytransdatro.trans_grid as t_gr
+import pytransdatro.trans_helmert2d as t_h2d
+import pytransdatro.proj_stereo as p_st
 
-import utils
+import pytransdatro.utils
 
 class TransRO():
     """Class which stores functions to transform coordinates between 
@@ -69,10 +69,10 @@ class TransRO():
             return (r_n, r_e, r_z)
         return (r_n, r_e)
         
-t = TransRO()
-n = 693771.731
-e = 310723.518
-z = 122.714
-lat, lon, h = t.st70_to_etrs89(n, e, z)
-print(utils.rad_to_sexa(lat), utils.rad_to_sexa(lon), h)
-print(t.etrs89_to_st70(lat, lon, h))
+# t = TransRO()
+# n = 693771.731
+# e = 310723.518
+# z = 122.714
+# lat, lon, h = t.st70_to_etrs89(n, e, z)
+# print(utils.rad_to_sexa(lat), utils.rad_to_sexa(lon), h)
+# print(t.etrs89_to_st70(lat, lon, h))

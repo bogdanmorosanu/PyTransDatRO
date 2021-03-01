@@ -1,7 +1,7 @@
 import struct
 import time
 import math
-import exceptions as ex_td  # Transdat exceptions
+import pytransdatro.exceptions as ex_td  # Transdat exceptions
 import abc
 
 class Grid(abc.ABC):

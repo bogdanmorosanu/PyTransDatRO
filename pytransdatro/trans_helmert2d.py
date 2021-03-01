@@ -1,6 +1,6 @@
 import math
-from utils import ppm_to_unity
-from utils import sexa_to_rad
+from pytransdatro.utils import ppm_to_unity
+from pytransdatro.utils import sexa_to_rad
 
 class Helmert2D():
     """
