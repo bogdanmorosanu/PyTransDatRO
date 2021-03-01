@@ -59,12 +59,12 @@ class StereoProj():
         b = (1 + sin_lat_c * sin_lat_c0 
              + cos_lat_c * cos_lat_c0 * math.cos(dlon))
         
-        return ((self._f_e + 2 * self.__conf_sphere.r 
-                               * self._s * cos_lat_c * math.sin(dlon) / b),
-                (self._f_n + 2 * self.__conf_sphere.r * self._s 
+        return ((self._f_n + 2 * self.__conf_sphere.r * self._s 
                                * (sin_lat_c * cos_lat_c0 
                                   - cos_lat_c * sin_lat_c0 * math.cos(dlon)) 
-                                / b))
+                                / b),
+                (self._f_e + 2 * self.__conf_sphere.r 
+                               * self._s * cos_lat_c * math.sin(dlon) / b))
 
     def to_geo(self, n, e):
         """
@@ -249,8 +249,8 @@ class StereoProj():
             sb = (1 - e * sin_lat) / (1 + e * sin_lat)
             w = self.c * math.pow((sa * math.pow(sb, e)), self.n)
 
-            return (self.n * (lat - self.orig_lon) + self.orig_lon,
-                    math.asin((w - 1) / (w + 1)))       
+            return (math.asin((w - 1) / (w + 1)),
+                    self.n * (lon - self.orig_lon) + self.orig_lon)       
 
 
 
