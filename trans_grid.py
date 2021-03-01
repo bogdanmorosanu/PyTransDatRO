@@ -2,16 +2,16 @@ import struct
 import time
 import math
 import exceptions as ex_td  # Transdat exceptions
+import abc
 
-class Grid2D():
+class Grid(abc.ABC):
+    """An abstract class to be used as parent class for Grid1D and Grid2D
+    concrete classes
     """
-    TODO: describe the grid, how is indexed (positions), step, min, max
-     - mention the neighbours used for interpolation - used by point is covered by grid
-    :ivar source: the grid source file which stores the shift values     
-    """
-    GRID2D_SRC = r'ETRS89_KRASOVSCHI42_2DJ.GRD'
     def __init__(self):
-        self.source = Grid2D.GRID2D_SRC
+        self.source = self._get_source
+        self.v_size = self._get_v_size
+        
         try:
             # read grid header
             with open(self.source, 'rb') as f:
@@ -27,8 +27,15 @@ class Grid2D():
         self.r_count = round((self.n_max - self.n_min) 
                             / self.n_step) + 1   # grid rows count
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
+        self.no_data = 999.0         
 
-        self.no_data = 999.0
+    @abc.abstractproperty
+    def _get_v_size(self):
+        pass
+
+    @abc.abstractproperty
+    def _get_source(self):
+        pass    
 
     def is_inside_grid(self, n, e):
         """
@@ -64,7 +71,7 @@ class Grid2D():
         return (n - n_sg_dist >= self.n_min 
                 and n + n_sg_dist <= self.n_max
                 and e - e_sg_dist >= self.e_min
-                and e + e_sg_dist <= self.e_max)
+                and e + e_sg_dist <= self.e_max)    
 
     def get_inter_sgrid_idxs(self, n, e):
         """
@@ -103,7 +110,7 @@ class Grid2D():
                 r[i * self.sg_size + j] = (r_idx + i) * self.c_count + c_idx + j
         return tuple(r)
 
-    def get_shifts_at_idxs(self, idxs):
+    def get_values_at_idxs(self, idxs):
         """
         Returns values from grid at specified indexes. Each index returns two
         values, i.e. values are stored in pairs of 2 (8 bits for each value),
@@ -118,13 +125,15 @@ class Grid2D():
         :rtype: dict (key = pos index, value = tuple of shift values for E and N)         
         """
         r = {}   # result dict
+        tmp_format = f'<{"d" * self.v_size}'
+        tmp_buffer = self.v_size * 8
         with open(self.source, 'rb') as f:
             # 0, 1, 2 indexes are used by the grid header
             # 48 = 8(bits) * 2(values) * 3(sets of values)
             start_bit = 48   
             for idx in (idxs):
-                f.seek(start_bit + idx * 16)
-                r[idx] = struct.unpack('<dd', f.read(16))
+                f.seek(start_bit + idx * tmp_buffer)
+                r[idx] = struct.unpack(tmp_format, f.read(tmp_buffer))
         return r
 
     def values_have_no_data(self, values):
@@ -166,7 +175,7 @@ class Grid2D():
         bi = self.BiInterp(values)
         return bi
 
-    def trans (self, n, e, corr_sgn):
+    def interp (self, n, e):
         """
         Transforms input (N,E) based on grid shift values 
         and bicubic interpolation
@@ -193,55 +202,46 @@ class Grid2D():
             raise  ex_td.OutOfGridErr(n, e, self)
 
         sg_idxs = self.get_inter_sgrid_idxs(n, e)
-        sg_v_dict = self.get_shifts_at_idxs(sg_idxs)    # todo: cache
+        sg_v_dict = self.get_values_at_idxs(sg_idxs)    # todo: cache
 
         if self.values_have_no_data(sg_v_dict.values()):
             raise ex_td.NoDataGridErr(n, e, self)
 
         n_unity, e_unity = self.reduce_to_unity(n, e)
-        sg_v_n_list = []
-        sg_v_e_list = []
-        for v in sg_v_dict.values():
-            sg_v_n_list.append(v[1])    
-            sg_v_e_list.append(v[0])
-        
-        bi = self.init_interp(sg_v_n_list)
-        shift_n = bi.interp(n_unity, e_unity)
 
-        bi = self.init_interp(sg_v_e_list)
-        shift_e = bi.interp(n_unity, e_unity)  
+        # Grid1D case
+        if self.v_size == 1:
+            sg_v_z_list = []
+            for v in sg_v_dict.values():
+                sg_v_z_list.append(v[0])   
+            bi = self.init_interp(sg_v_z_list)
+            interp_v_z = bi.interp(n_unity, e_unity)
+            return (interp_v_z, )        
 
-        return (n + corr_sgn * shift_n,
-                e + corr_sgn * shift_e)     
-
-        
-
-
-
-        
-
-        
+        # Grid2D case
+        if self.v_size == 2:
+            sg_v_n_list = []
+            sg_v_e_list = []
+            for v in sg_v_dict.values():
+                sg_v_n_list.append(v[1])    
+                sg_v_e_list.append(v[0])
             
+            bi = self.init_interp(sg_v_n_list)
+            shift_n = bi.interp(n_unity, e_unity)
 
+            bi = self.init_interp(sg_v_e_list)
+            shift_e = bi.interp(n_unity, e_unity)  
 
-    def __str__(self):
-        r = (
-            f"e_min={self.e_min}\n"
-            f"e_max={self.e_max}\n"
-            f"n_min={self.n_min}\n"
-            f"n_max={self.n_max}\n"
-            f"e_step={self.e_step}\n"
-            f"n_step={self.n_step}\n"
-            f"r_count={self.r_count}\n"
-            f"c_count={self.c_count}\n"
-            )
-        return r
-
+            # return (n + corr_sgn * shift_n,
+            #         e + corr_sgn * shift_e) 
+            return (shift_n, shift_e)             
+    @abc.abstractmethod
+    def transform(self):
+        pass
     class BiInterp():
         """
         Class which does a bicubic spline interpolation.
         Must be first initialized with grid values (values used for interpolation)
-    
         """
         def __init__(self, sg_values):
             """
@@ -323,11 +323,59 @@ class Grid2D():
             r = 0.0   # result value
             for k in range(16):
                 r += self.__a[k] * p[k]
-            return r        
+            return r  
+
+    def __str__(self):
+        r = (
+            f"e_min={self.e_min}\n"
+            f"e_max={self.e_max}\n"
+            f"n_min={self.n_min}\n"
+            f"n_max={self.n_max}\n"
+            f"e_step={self.e_step}\n"
+            f"n_step={self.n_step}\n"
+            f"r_count={self.r_count}\n"
+            f"c_count={self.c_count}\n"
+            )
+        return r    
+
+class Grid1D(Grid):
+    GRID_SRC = r'grids/EGG97_QGRJ.GRD'
+   
+    @property
+    def _get_source(self):
+        return Grid1D.GRID_SRC
+
+    @property
+    def _get_v_size(self):
+        return 1
+
+    def transform(self, n, e, z, corr_sgn):
+        corrs = self.interp(n, e)
+        return (z + corr_sgn * corrs[0],)          
+         
+class Grid2D(Grid):
+    """
+    TODO: describe the grid, how is indexed (positions), step, min, max
+     - mention the neighbours used for interpolation - used by point is covered by grid
+    :ivar source: the grid source file which stores the shift values     
+    """
+    GRID_SRC = r'grids/ETRS89_KRASOVSCHI42_2DJ.GRD'
+
+    @property
+    def _get_source(self):
+        return Grid2D.GRID_SRC   
+
+    @property
+    def _get_v_size(self):
+        return 2
+
+    def transform(self, n, e, corr_sgn):
+        corrs = self.interp(n, e)
+        return (n + corr_sgn * corrs[0], e + corr_sgn * corrs[1])         
 
 # file_content = np.fromfile('ETRS89_KRASOVSCHI42_2DJ.GRD', np.float64)
 # print(file_content)
-my_grid = Grid2D()
+# my_grid = Grid2D()
 #  print(my_grid)
 
 # test point in grid
@@ -365,11 +413,6 @@ my_grid = Grid2D()
 # n_out, e_out = my_grid.trans(n_in, e_in, 1)
 # print(n_out, e_out)
 
-
-
-
-
-
 # idxs = set(range(3800))
 # # print(idxs)
 # start_time = time.time()
@@ -378,4 +421,8 @@ my_grid = Grid2D()
 # print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 
-
+# g1d = Grid1D()
+# g2d = Grid2D()
+# print(g1d)
+# print(g2d)
+# print(isinstance(g2d, Grid2D))
