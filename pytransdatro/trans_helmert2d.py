@@ -1,51 +1,54 @@
 import math
-from pytransdatro.utils import ppm_to_unity
-from pytransdatro.utils import sexa_to_rad
+from pytransdatro import utils
 
 class Helmert2D():
     """
-    Class which defines a 2D Helmert transformation
+    Class which calculates the 2D Helmert transformation between Stereo70 and 
+    Stereo on GRS80
     """
 
     # constants to define the Stereo70 to Stereo on GRS80 Helmert transformation
-    T_N = -31.8051   # translation on North
-    T_E = -119.7358   # translation on East
-    PPM_SCALE = -0.11559991   # ppm scale factor
-    ROTATION = '0 0 0.22739706'   # latitude of natural origin
+    T_N = -31.8051
+    T_E = -119.7358
+    PPM = -0.11559991   # ppm value
+    ROTATION = '0 0 0.22739706'   # DMS value
     
-
-    def __init__(self, reversed):
+    def __init__(self):
+        """Constructor sets parameters for Stereo70 to StereoGRS80 transformation        
         """
-        :param reversed: initialize the reversed transformation
-        :type reversed: bool 
+        self.__tn = Helmert2D.T_N   # translation on North
+        self.__te = Helmert2D.T_E   # translation on East
+        self.__ppm = Helmert2D.PPM  # scale (ppm)
+        self.__r = utils.sexa_to_rad(Helmert2D.ROTATION)   # rotation (radians)
+        
+        # some precomputed values to optimize speed
+        self.__sinr = math.sin(self.__r)   # sin(r)
+        self.__cosr = math.cos(self.__r)   # cos(r)
+
+    def trans(self, n, e, sign):
         """
-        if reversed:
-            self.__t_e = -Helmert2D.T_E
-            self.__t_n = -Helmert2D.T_N
-            tmp_s = 2 - ppm_to_unity(Helmert2D.PPM_SCALE)
-            tmp_r = - sexa_to_rad(Helmert2D.ROTATION)
-        else:
-            self.__t_e = Helmert2D.T_E 
-            self.__t_n = Helmert2D.T_N 
-            tmp_s = ppm_to_unity(Helmert2D.PPM_SCALE)
-            tmp_r = sexa_to_rad(Helmert2D.ROTATION)
+        Transforms the values of n and e
+        (N,E) -> (N',E')
 
-        self.__sxsinr = tmp_s * math.sin(tmp_r)   # s * sin(r)
-        self.__sxcosr = tmp_s * math.cos(tmp_r)   # s * cos(r)
-    
-    def trans(self, n, e):
-        """
-        Calculates the new x', y' values of x and y input 
-        by using the transfomration's parameters
+        :param n: northing
+        :type n: float
 
-        :param x: x
-        :type x: float
+        :param e: easting
+        :type e: float 
 
-        :param y: Y
-        :type y: float 
+        :param sign: Value of 1 to transform using defined parameters or -1 for 
+            the inverse transformation (params x -1)
+        :type sign: int     
 
-        :return: transformed x' and y' values
+        :return: the new values of n and e (N',E')
         :rtype: tuple of floats                 
         """       
-        return (n * self.__sxcosr + e * self.__sxsinr + self.__t_n,
-                e * self.__sxcosr - n * self.__sxsinr + self.__t_e)
+        return (
+            (n * (1 + sign * self.__ppm * 1E-6) * self.__cosr 
+            + e * (1 + sign *  self.__ppm * 1E-6) * sign * self.__sinr 
+            + sign * self.__tn),
+            (e * (1 + sign * self.__ppm * 1E-6) * self.__cosr 
+            - n * (1 + sign * self.__ppm * 1E-6) * sign * self.__sinr
+            + sign * self.__te)
+        )
+
