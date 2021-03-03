@@ -1,17 +1,23 @@
 import struct
 import time
 import math
-import pytransdatro.exceptions as ex_td  # Transdat exceptions
 import abc
+import pathlib
+from pytransdatro import exceptions # Transdat exceptions
 
 class Grid(abc.ABC):
     """An abstract class to be used as parent class for Grid1D and Grid2D
     concrete classes
+    TODO: describe the grid, how is indexed (positions), step, min, max
+     - mention the neighbours used for interpolation - used by point is covered by grid
+    :ivar source: the grid's source file path
+    :ivar v_size: the grid's values count  
+    :ivar sg_size: interpolation subgrid size (size x size nodes)
     """
+    grid_dir = 'grids'   # grid file directory name
     def __init__(self):
-        self.source = self._get_source
+        self.source = pathlib.Path.cwd().joinpath(self.grid_dir, self.get_name)
         self.v_size = self._get_v_size
-        
         try:
             # read grid header
             with open(self.source, 'rb') as f:
@@ -19,9 +25,9 @@ class Grid(abc.ABC):
                 self.n_min, self.n_max = struct.unpack('<dd', f.read(16))
                 self.e_step, self.n_step = struct.unpack('<dd', f.read(16))
         except IOError:
-            raise IOError(f'Failed to open file: {self.source}')
+            raise IOError(f'Failed to open grid file: {self.source}')
         except Exception:
-            raise Exception(f'Failed to read the content of binary grid file: {self.source}')
+            raise Exception(f'Failed to read the grid file content: {self.source}')
         self.c_count = round((self.e_max - self.e_min) 
                             / self.e_step) + 1   # grid columns count
         self.r_count = round((self.n_max - self.n_min) 
@@ -34,7 +40,7 @@ class Grid(abc.ABC):
         pass
 
     @abc.abstractproperty
-    def _get_source(self):
+    def get_name(self):
         pass    
 
     def is_inside_grid(self, n, e):
@@ -199,13 +205,13 @@ class Grid(abc.ABC):
             No Data value(s)
         """
         if not self.is_inside_grid(n, e):
-            raise  ex_td.OutOfGridErr(n, e, self)
+            raise  exceptions.OutOfGridErr(n, e, self)
 
         sg_idxs = self.get_inter_sgrid_idxs(n, e)
         sg_v_dict = self.get_values_at_idxs(sg_idxs)    # todo: cache
 
         if self.values_have_no_data(sg_v_dict.values()):
-            raise ex_td.NoDataGridErr(n, e, self)
+            raise exceptions.NoDataGridErr(n, e, self)
 
         n_unity, e_unity = self.reduce_to_unity(n, e)
 
@@ -338,12 +344,10 @@ class Grid(abc.ABC):
             )
         return r    
 
-class Grid1D(Grid):
-    GRID_SRC = r'grids/EGG97_QGRJ.GRD'
-   
+class Grid1D(Grid):       
     @property
-    def _get_source(self):
-        return Grid1D.GRID_SRC
+    def get_name(self):
+        return 'EGG97_QGRJ.GRD' 
 
     @property
     def _get_v_size(self):
@@ -354,16 +358,9 @@ class Grid1D(Grid):
         return (z + corr_sgn * corrs[0],)          
          
 class Grid2D(Grid):
-    """
-    TODO: describe the grid, how is indexed (positions), step, min, max
-     - mention the neighbours used for interpolation - used by point is covered by grid
-    :ivar source: the grid source file which stores the shift values     
-    """
-    GRID_SRC = r'grids/ETRS89_KRASOVSCHI42_2DJ.GRD'
-
     @property
-    def _get_source(self):
-        return Grid2D.GRID_SRC   
+    def get_name(self):
+        return 'ETRS89_KRASOVSCHI42_2DJ.GRD'  
 
     @property
     def _get_v_size(self):
@@ -373,56 +370,3 @@ class Grid2D(Grid):
         corrs = self.interp(n, e)
         return (n + corr_sgn * corrs[0], e + corr_sgn * corrs[1])         
 
-# file_content = np.fromfile('ETRS89_KRASOVSCHI42_2DJ.GRD', np.float64)
-# print(file_content)
-# my_grid = Grid2D()
-#  print(my_grid)
-
-# test point in grid
-# n = 219135
-# e = 115173
-# print(my_grid.is_ne_covered_by_grid(n, e))
-
-
-
-# test point in grid
-# n = 239135
-# e = 128173
-# print(my_grid.get_inter_sgrid_idxs(n, e))
-
-
-# test get shifts
-# n = 757856
-# e = 556349
-# idxs = my_grid.get_inter_sgrid_idxs(n, e)
-# print(idxs)
-# print(my_grid.get_shifts_at_idxs(idxs))
-
-
-# test no data
-# n = 768856
-# e = 632349
-# idxs = my_grid.get_inter_sgrid_idxs(n, e)
-# sg_values = my_grid.get_shifts_at_idxs(idxs)
-# print(my_grid.values_have_no_data(sg_values.values()))
-
-# test transformation
-# n_in = 500000
-# e_in = 500000
-
-# n_out, e_out = my_grid.trans(n_in, e_in, 1)
-# print(n_out, e_out)
-
-# idxs = set(range(3800))
-# # print(idxs)
-# start_time = time.time()
-# values = my_grid.get_shifts_at_idxs(idxs)
-# print(len(values))
-# print("Process finished --- %s seconds ---" % (time.time() - start_time))
-
-
-# g1d = Grid1D()
-# g2d = Grid2D()
-# print(g1d)
-# print(g2d)
-# print(isinstance(g2d, Grid2D))
