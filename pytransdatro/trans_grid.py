@@ -3,6 +3,7 @@ import time
 import math
 import abc
 import pathlib
+import functools
 from pytransdatro import exceptions # Transdat exceptions
 
 class Grid(abc.ABC):
@@ -12,6 +13,7 @@ class Grid(abc.ABC):
      - mention the neighbours used for interpolation - used by point is covered by grid
     :ivar source: the grid's source file path
     :ivar v_size: the grid's values count  
+    :ivar cell_count: the grid's total number of cells 
     :ivar sg_size: interpolation subgrid size (size x size nodes)
     """
     grid_dir = 'grids'   # grid file directory name
@@ -32,6 +34,7 @@ class Grid(abc.ABC):
                             / self.e_step) + 1   # grid columns count
         self.r_count = round((self.n_max - self.n_min) 
                             / self.n_step) + 1   # grid rows count
+        self.cell_count =  (self.c_count - 1) * (self.r_count - 1)
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
         self.no_data = 999.0         
 
@@ -121,11 +124,11 @@ class Grid(abc.ABC):
         Returns values from grid at specified indexes. Each index returns two
         values, i.e. values are stored in pairs of 2 (8 bits for each value),
         N shift and E shift
+        Indexes are 0 index based and start with the first set (header ignored) 
+        of shift values (shift E and shif N)
 
         :param idxs: indexes from which grid values will be returned.
-            Indexes are 0 index based and start with the first set 
-            (header ignored) of shift values (shift E and shif N)
-        :type idxs: set
+        :type idxs: tuple of int
 
         :return: Grid (shift) values for the input indexes
         :rtype: dict (key = pos index, value = tuple of shift values for E and N)         
@@ -137,7 +140,7 @@ class Grid(abc.ABC):
             # 0, 1, 2 indexes are used by the grid header
             # 48 = 8(bits) * 2(values) * 3(sets of values)
             start_bit = 48   
-            for idx in (idxs):
+            for idx in idxs:
                 f.seek(start_bit + idx * tmp_buffer)
                 r[idx] = struct.unpack(tmp_format, f.read(tmp_buffer))
         return r
@@ -176,8 +179,16 @@ class Grid(abc.ABC):
         return (((n - self.n_min) % self.n_step) / self.n_step,
                 ((e - self.e_min) % self.e_step) / self.e_step)
 
-    # TODO: cache: cred ca aici e (o sa mai vad)
+    @functools.lru_cache(maxsize = 3072) 
     def init_interp(self, values):
+        """[summary]
+
+        :param values: [description]
+        :type values: tuple
+
+        :return: [description]
+        :rtype: [type]
+        """
         bi = self.BiInterp(values)
         return bi
 
@@ -208,8 +219,8 @@ class Grid(abc.ABC):
             raise  exceptions.OutOfGridErr(n, e, self)
 
         sg_idxs = self.get_inter_sgrid_idxs(n, e)
-        sg_v_dict = self.get_values_at_idxs(sg_idxs)    # todo: cache
-
+        sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
+        
         if self.values_have_no_data(sg_v_dict.values()):
             raise exceptions.NoDataGridErr(n, e, self)
 
@@ -217,33 +228,34 @@ class Grid(abc.ABC):
 
         # Grid1D case
         if self.v_size == 1:
-            sg_v_z_list = []
-            for v in sg_v_dict.values():
-                sg_v_z_list.append(v[0])   
+            sg_v_z_list = tuple(v[0] for v in sg_v_dict.values())  
             bi = self.init_interp(sg_v_z_list)
             interp_v_z = bi.interp(n_unity, e_unity)
             return (interp_v_z, )        
 
         # Grid2D case
         if self.v_size == 2:
-            sg_v_n_list = []
-            sg_v_e_list = []
-            for v in sg_v_dict.values():
-                sg_v_n_list.append(v[1])    
-                sg_v_e_list.append(v[0])
-            
+            sg_v_e_list, sg_v_n_list = zip(*sg_v_dict.values())
+
             bi = self.init_interp(sg_v_n_list)
             shift_n = bi.interp(n_unity, e_unity)
 
             bi = self.init_interp(sg_v_e_list)
             shift_e = bi.interp(n_unity, e_unity)  
-
-            # return (n + corr_sgn * shift_n,
-            #         e + corr_sgn * shift_e) 
             return (shift_n, shift_e)             
+    
     @abc.abstractmethod
     def transform(self):
         pass
+
+    @abc.abstractmethod
+    def get_vs_at_idxs_cached(self):
+        """Function used to cache values read from the grid.
+        The maxsize param of functools.lru_cache has been set to the number
+        of grid nodes covered by Romania's boundary
+        """
+        pass
+
     class BiInterp():
         """
         Class which does a bicubic spline interpolation.
@@ -353,6 +365,10 @@ class Grid1D(Grid):
     def _get_v_size(self):
         return 1
 
+    @functools.lru_cache(maxsize = 2048)
+    def get_vs_at_idxs_cached(self, idxs):      
+        return super().get_values_at_idxs(idxs)
+
     def transform(self, n, e, z, corr_sgn):
         corrs = self.interp(n, e)
         return (z + corr_sgn * corrs[0],)          
@@ -365,6 +381,11 @@ class Grid2D(Grid):
     @property
     def _get_v_size(self):
         return 2
+
+    
+    @functools.lru_cache(maxsize = 1024)    
+    def get_vs_at_idxs_cached(self, idxs):
+        return super().get_values_at_idxs(idxs)        
 
     def transform(self, n, e, corr_sgn):
         corrs = self.interp(n, e)
