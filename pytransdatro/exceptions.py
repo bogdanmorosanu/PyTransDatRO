@@ -17,7 +17,7 @@ class OutOfGridErr(Exception):
         :type grid: Grid        
         """
         message = (
-            f'({n}, {e}) location is out of the grid area.'
+            f'({n}, {e}) location is out of the grid area. '
             f'Location must be inside the grid defined by '
             f'Min N = {grid.n_min}, Min E = {grid.e_min}, '
             f'Max N = {grid.n_max}, Max E  = {grid.e_max}.'
@@ -42,7 +42,7 @@ class NoDataGridErr(Exception):
         :type grid: Grid
         """
         message = (
-            f'(The subgrid of size {grid.sg_size}x{grid.sg_size} required '
+            f'(The subgrid of size {grid.sg_size}x{grid.sg_size} nodes required '
             f'for the computation of interpolated value at {n}, {e} location '
             f'has No Data value(s).'
         )

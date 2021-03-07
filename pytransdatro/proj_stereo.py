@@ -5,9 +5,8 @@ Help_TransDatRO_code_source_EN.pdf and are assigned when a StereoProj object is
 instantiated 
 
 Usage:
-The purpose of StereoProj is to be part of the Stere70 <-> ETRS89 transformation
-defined in the module trans_ro. There should be no purpose of using it in
-another context.
+The purpose of proj_stereo is to be  referenced in the trans_ro module as part 
+of the Stere70 <-> ETRS89 transformation.
 Code example:
     st_proj = StereoProj()
     lat, lon = st_proj.to_geo(n, e)   # (Lat, Long) -> (N, E)

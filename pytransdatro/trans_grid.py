@@ -1,23 +1,94 @@
+"""This module stores classes for coordinate transformation using grids.
+The grid files (files which store the grid values) were copied from the
+official distribtion of the TransDatRO application (download link available
+here: https://rompos.ro/index.php/download/category/2-software).
+The grid files are stored in the /grid folder and referenced when Grid1D/Grid2D
+objects are instantiated.
+
+Usage:
+The purpose of trans_grid is to be  referenced in the trans_ro module as part 
+of the Stere70 <-> ETRS89 transformation.
+Code example:
+    t_grid1D = Grid1D()
+    z_out = t_grid1D.trans(lat_in, lon_in, z_in, corr_sgn)
+
+    t_grid2D = Grid2D()
+    # z value not included
+    n_out, e_out = t_grid1D.trans(n_in, e_in, corr_sgn)
+    # z value included
+    n_out, e_out, z_out = t_grid1D.trans(n_in, e_in, z_in, corr_sgn)
+
+Notes:
+    - coordinates used as input and output by functions of this module are named
+    n and e even though they don't necessarily describe easting and northing 
+    (for example, they could be latitudes and longitudes). The only meaning 
+    which can be associated with them is the axis direction:
+        - n: S-N/vertical direction
+        - e: W-E/horizontal direction
+
+Classes:
+    - Grid  # abstract class
+        - BiInterp
+    - Grid1D(Grid)
+    - Grid2D(Grid)
+"""
+
 import struct
-import time
 import math
 import abc
 import pathlib
 import functools
-from pytransdatro import exceptions # Transdat exceptions
+from pytransdatro import exceptions
 
 class Grid(abc.ABC):
     """An abstract class to be used as parent class for Grid1D and Grid2D
-    concrete classes
-    TODO: describe the grid, how is indexed (positions), step, min, max
-     - mention the neighbours used for interpolation - used by point is covered by grid
-    :ivar source: the grid's source file path
-    :ivar v_size: the grid's values count  
-    :ivar cell_count: the grid's total number of cells 
-    :ivar sg_size: interpolation subgrid size (size x size nodes)
+    concrete classes.
+    This class defines a grid as a collection of nodes (locations) which store
+    values (grid values). It can store a single value (Grid1D concrete class) or two values
+    (concrete class Grid2D). Each node is described by position and location.
+    Its position is described by an index as shown below:
+
+    (n-1)m   (n-1)m+1  (n-1)m+2   ...   nm-1
+       ...       ...       ...    ...    ...
+        2m       2m+1      2m+2   ...   3m-1
+         m       m+1        m+2   ...   2m-1
+         0       1          2     ...    m-1
+    
+    The above grid has m x n nodes, the first being at index 0 and the last one
+    at index n x m - 1.
+    Its location is computed based on the location of the node at index 0. This
+    can be done as distances between nodes in a row/column are equal. 
+    The distance between them is called Step E, for rows or W to E direction, 
+    and Step N, for columns or S to N direction.
+    So, the nodes of a grid cover an area which is defined by the most 
+    southwestern (SW) node and the most northeastern (NE) node.
+    The grid transformation consists of values being added/substracted to the
+    input coordinates. The values applied are computed based on a bicubic 
+    interpolation which uses a subgrid of 4 by 4 nodes centered in the input
+    location.
+    A grid cell is defined by 4 nodes which are next to each other
     """
     grid_dir = 'grids'   # grid file directory name
     def __init__(self):
+        """Contructor method which sets the grid file reference and reads
+        grid definition data from its header.
+
+        :ivar source: the grid's source file. This is the binary file which is 
+        distributed with every official realease of TransDatRO application 
+        (https://rompos.ro/index.php/download/category/2-software) 
+        :ivar v_size: the grid's values count (1 for Grid1D and 2 for Grid2D)
+        :ivar n_min, e_min, n_max, e_max: min and max ccordinates for grid area
+        :ivar n_step, e_step: Step N and Step E values
+        :ivar c_count: grid's number of columns (m-1)
+        :ivar r_count: grid's number of rows (n)
+        :ivar sg_size: interpolation subgrid size (sg_size x sg_size nodes)
+        :ivar no_data: grid value which indicates that there is no data
+            available for the corresponding node
+        
+        :raises FileNotFoundError: if grid file not found
+        :raises IOError: if it fails to read the header content of the grid file  
+        """
+
         self.source = pathlib.Path.cwd().joinpath(self.grid_dir, self.get_name)
         self.v_size = self._get_v_size
         try:
@@ -26,85 +97,83 @@ class Grid(abc.ABC):
                 self.e_min, self.e_max = struct.unpack('<dd', f.read(16))
                 self.n_min, self.n_max = struct.unpack('<dd', f.read(16))
                 self.e_step, self.n_step = struct.unpack('<dd', f.read(16))
-        except IOError:
-            raise IOError(f'Failed to open grid file: {self.source}')
-        except Exception:
-            raise Exception(f'Failed to read the grid file content: {self.source}')
+        
+        except FileNotFoundError:
+            raise FileNotFoundError(f'Failed to open grid file: {self.source}')
+        except (OSError, IOError):
+            raise IOError(f'Failed to read the grid file content: {self.source}')
         self.c_count = round((self.e_max - self.e_min) 
                             / self.e_step) + 1   # grid columns count
         self.r_count = round((self.n_max - self.n_min) 
                             / self.n_step) + 1   # grid rows count
-        self.cell_count =  (self.c_count - 1) * (self.r_count - 1)
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
-        self.no_data = 999.0         
+        self.no_data = 999.0
 
     @abc.abstractproperty
     def _get_v_size(self):
+        """Abstract property to get the grid's number of values for each node
+        """
         pass
 
     @abc.abstractproperty
     def get_name(self):
+        """Abstract property to get the grid's file name
+        """
         pass    
 
-    def is_inside_grid(self, n, e):
+    def covered_by_grid(self, n, e):
         """
-        Returns True if the input location (N,E) is inside (covered) by the grid,
-        False otherwise. It also checks the neighbouring grid nodes 
-        (subgrid 4x4 centered in the input N,E) which is required for 
-        computing the interpolated grid shift values.
-        
-        NE ± d must be inside the grid mins and maxs values to return True
+        Returns true if the interpolation subgrid (4x4 nodes centered in the 
+        input location) is covered by the grid, false otherwise
+        ne ± d must be inside the grid mins and maxs values to return True
         ---------
         |   d   |
         |   |   |
-        |d-N,E-d|
+        |d-n,e-d|
         |   |   |
         |   d   |
         ---------
 
-        :param n: northing
+        :param n: coordinate on north direction
         :type n: float
 
-        :param e: easting
+        :param e: coordinate on east direction
         :type e: float 
 
-        :return: (N,E) location and required subgrid is inside grid
+        :return: interpolation subgrid is covered by the grid area
         :rtype: bool
-
         """
-        # distances (d) from input N, E at defining a location which should
-        # still be covered by the grid so interpolated values can be computed
+        # distances (d) from n, e input at which a location should still be
+        #  covered by the grid such that interpolated values can be computed
         n_sg_dist = (self.sg_size / 2 - 1) * self.n_step
         e_sg_dist = (self.sg_size / 2 - 1) * self.e_step
 
-        return (n - n_sg_dist >= self.n_min 
-                and n + n_sg_dist <= self.n_max
-                and e - e_sg_dist >= self.e_min
-                and e + e_sg_dist <= self.e_max)    
+        return (n - n_sg_dist > self.n_min 
+                and n + n_sg_dist < self.n_max
+                and e - e_sg_dist > self.e_min
+                and e + e_sg_dist < self.e_max)    
 
-    def get_inter_sgrid_idxs(self, n, e):
-        """
-        Returns the indexes of a subgrid required for bicupic interpolation
-        The returned subgrid size is 4x4, centered on the input N and E
+    def _sgrid_idxs(self, n, e):
+        """Returns the indexes of the subgrid required for bicupic interpolation
+        The returned subgrid size is 4x4, centered on the input n and e
 
         13 14 15 16
         9  10 11 12
-            N,E - input location 
+            n,e - input location 
         4  5  7  8
         1  2  3  4
 
-        Note:
-        The function doesn't check if the (N,E) is covered by the grid. Wrong
-        result is returned if used in this case
+        .. warning:: the function doesn't check if the input location is
+        covered by the grid. Wrong result returned if used in this scenario
         
-        :param n: northing
+        :param n: coordinate on north direction
         :type n: float
 
-        :param e: easting
+        :param e: coordinate on east direction
         :type e: float 
 
-        :return: The indexes of the subgrid
-        :rtype: tuple of indexes values
+        :return: the indexes of the subgrid
+        :rtype: tuple of int
         """
         # calculate indexes of the bottom left corner (position 1)
         r_idx = int((n - self.n_min - self.n_step * (self.sg_size / 2 - 1)) 
@@ -119,19 +188,14 @@ class Grid(abc.ABC):
                 r[i * self.sg_size + j] = (r_idx + i) * self.c_count + c_idx + j
         return tuple(r)
 
-    def get_values_at_idxs(self, idxs):
-        """
-        Returns values from grid at specified indexes. Each index returns two
-        values, i.e. values are stored in pairs of 2 (8 bits for each value),
-        N shift and E shift
-        Indexes are 0 index based and start with the first set (header ignored) 
-        of shift values (shift E and shif N)
+    def _grid_vs_at_idxs(self, idxs):
+        """Returns grid values at specified indexes.
 
         :param idxs: indexes from which grid values will be returned.
         :type idxs: tuple of int
 
-        :return: Grid (shift) values for the input indexes
-        :rtype: dict (key = pos index, value = tuple of shift values for E and N)         
+        :return: grid values at input indexes
+        :rtype: dict (key = position/index, value = tuple of float(s))         
         """
         r = {}   # result dict
         tmp_format = f'<{"d" * self.v_size}'
@@ -145,124 +209,120 @@ class Grid(abc.ABC):
                 r[idx] = struct.unpack(tmp_format, f.read(tmp_buffer))
         return r
 
-    def values_have_no_data(self, values):
-        """
-        Returns True if a value from the grid data stores a No Data value,
-        False otherwise
+    def _grid_vs_no_data(self, values):
+        """Returns true if a value from values stores a No Data value,
+        false otherwise
 
         :param values: values which will be checked for No Data value
-        :type values: list of tuple(float, float)
+        :type values: list of tuple(float[, float])
 
-        :return: True if a No Data value is found
-        :rtype: boolean
+        :return: True if input contains No Data value, false otherwise
+        :rtype: bool
         """
         for v in values:
             if self.no_data in v:
                 return True
         return False
 
-    def reduce_to_unity(self, n, e):
-        """Reduce input (N,E) to a location relative to the unity cell of 
-        the grid.
-        Result coordinates are within the interval [0, 1]
-        TODO: add preciese description of what this does
+    def _reduce_to_unity(self, n, e):
+        """Reduce input location to coordinates relative to the unity cell.
+        The origin of the returned coordinates is defined by the SV node of the
+        cell in which the input location resides. The unit of measure is 
+        relative to the Step N and Step E values so that the result coordinates 
+        are within the interval [0, 1]
 
-        :param n: northing
+        :param n: coordinate on north direction
         :type n: float
 
-        :param e: easting
+        :param e: coordinate on east direction
         :type e: float
 
-        :return: The unity coordinates of input (N,E)
+        :return: The unity coordinates of input location
         :rtype: tuple of floats
         """
         return (((n - self.n_min) % self.n_step) / self.n_step,
                 ((e - self.e_min) % self.e_step) / self.e_step)
 
     @functools.lru_cache(maxsize = 3072) 
-    def init_interp(self, values):
-        """[summary]
+    def _init_interp(self, values):
+        """Function used to cache the BiInterp class instances. This is usefull
+        for locations which are within the same grid cell. In these cases the
+        bicubic interpolation coefficients are the same
 
-        :param values: [description]
+        :param values: 4x4 grid values used for interpolation
         :type values: tuple
 
-        :return: [description]
-        :rtype: [type]
+        :return: an instance of BiInterp initialized with coefficients 
+            derived from the input values
+        :rtype: BiInterp
         """
         bi = self.BiInterp(values)
         return bi
 
     def interp (self, n, e):
-        """
-        Transforms input (N,E) based on grid shift values 
-        and bicubic interpolation
+        """Returns interpolated grid values at input location
 
-        :param n: northing
+        :param n: coordinate on north direction
         :type n: float
 
-        :param e: easting
+        :param e: coordinate on east direction
         :type e: float 
 
-        :param corr_sgn: Determines how the shift grid corrections are applied.
-            Can have 2 values only. 1, corrections will be added and -1,
-            corrections will be substracted
-        :type corr_sgn: int 
-
-        :return: The transformed values of northing and easting (N, E)
+        :return: The interpolated value(s) (one or two if Grid1D or Grid2D 
+            respectively)
         :rtype: tuple of floats
 
-        :raises OutOfGridErr: if (N, E) is out of the grid/not covered by grid
-        :raises NoDataGridErr: if subgrid used for interpolation at (N, E) has
-            No Data value(s)
+        :raises OutOfGridErr: if interpolation subgrid not covered by the grid
+        :raises NoDataGridErr: if interpolation subgrid has No Data values
         """
-        if not self.is_inside_grid(n, e):
+        if not self.covered_by_grid(n, e):
             raise  exceptions.OutOfGridErr(n, e, self)
 
-        sg_idxs = self.get_inter_sgrid_idxs(n, e)
+        sg_idxs = self._sgrid_idxs(n, e)
         sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
-        
-        if self.values_have_no_data(sg_v_dict.values()):
+       
+        if self._grid_vs_no_data(sg_v_dict.values()):
             raise exceptions.NoDataGridErr(n, e, self)
 
-        n_unity, e_unity = self.reduce_to_unity(n, e)
+        n_unity, e_unity = self._reduce_to_unity(n, e)
 
-        # Grid1D case
+        # if instance of Grid1D
         if self.v_size == 1:
             sg_v_z_list = tuple(v[0] for v in sg_v_dict.values())  
-            bi = self.init_interp(sg_v_z_list)
+            bi = self._init_interp(sg_v_z_list)
             interp_v_z = bi.interp(n_unity, e_unity)
             return (interp_v_z, )        
 
-        # Grid2D case
+        # if instance of Grid2D
         if self.v_size == 2:
             sg_v_e_list, sg_v_n_list = zip(*sg_v_dict.values())
 
-            bi = self.init_interp(sg_v_n_list)
+            bi = self._init_interp(sg_v_n_list)
             shift_n = bi.interp(n_unity, e_unity)
 
-            bi = self.init_interp(sg_v_e_list)
+            bi = self._init_interp(sg_v_e_list)
             shift_e = bi.interp(n_unity, e_unity)  
             return (shift_n, shift_e)             
     
     @abc.abstractmethod
-    def transform(self):
+    def trans(self):
+        """Abstrasct function to define the transformation method of the grid
+        """
         pass
 
     @abc.abstractmethod
     def get_vs_at_idxs_cached(self):
         """Function used to cache values read from the grid.
-        The maxsize param of functools.lru_cache has been set to the number
-        of grid nodes covered by Romania's boundary
         """
         pass
 
     class BiInterp():
-        """
-        Class which does a bicubic spline interpolation.
-        Must be first initialized with grid values (values used for interpolation)
+        """Class which has a function to compute abicubic spline interpolation.
         """
         def __init__(self, sg_values):
-            """
+            """Constructor method which initializes the coefficients used in
+            the interpolation calculus
+
             :param sg_values: interpolation subgrid values
             :type sg_values: list of floats  
             """ 
@@ -270,11 +330,10 @@ class Grid(abc.ABC):
             self.__init_coefs(sg_values)
 
         def __init_coefs(self, g):
-            """
-            Initialize the coeficients of the bicubic interpolation.
+            """Initialize the coeficients of the bicubic interpolation.
 
-            :param sg_values: interpolation subgrid values
-            :type sg_values: list of floats          
+            :param g: interpolation subgrid values
+            :type g: list of floats          
             """
             df = {}
             df[0] = g[5]
@@ -326,17 +385,19 @@ class Grid(abc.ABC):
                             * df[5] - 2 * df[6] - 2 * df[7] + 2 * df[8] - 2 * df[9] + 2
                             * df[10] - 2 * df[11] + df[12] + df[13] + df[14] + df[15])
         
-        def interp(self, x, y):
-            """
-            Interpolates value at given x and y
+        def interp(self, n_unity, e_unity):
+            """ Interpolates value at given location (unity coordinates)
             
-            :param g: grid values
-            :type g: Ellipsoid  
+            :param n_unity: unity coordinate on north direction
+            :type n_unity: float 
+
+            :param e_unity: unity coordinate on east direction
+            :type e_unity: float              
             """         
             p={}
             for i in range(4):
                 for j in range(4):
-                    p[i * 4 + j] = math.pow(y, j) * math.pow(x, i)
+                    p[i * 4 + j] = math.pow(e_unity, j) * math.pow(n_unity, i)
             
             r = 0.0   # result value
             for k in range(16):
@@ -344,6 +405,8 @@ class Grid(abc.ABC):
             return r  
 
     def __str__(self):
+        """Returns a string representation of a Grid instance
+        """
         r = (
             f"e_min={self.e_min}\n"
             f"e_max={self.e_max}\n"
@@ -359,35 +422,96 @@ class Grid(abc.ABC):
 class Grid1D(Grid):       
     @property
     def get_name(self):
+        """Returns the default value of the Grid1D file name
+
+        :return: Default grid file name
+        :rtype: str
+        """
         return 'EGG97_QGRJ.GRD' 
 
     @property
     def _get_v_size(self):
+        """Returns the number of grid values stored by each node 
+        """        
         return 1
 
     @functools.lru_cache(maxsize = 2048)
-    def get_vs_at_idxs_cached(self, idxs):      
-        return super().get_values_at_idxs(idxs)
+    def get_vs_at_idxs_cached(self, idxs):
+        """Cached method used to return grid nodes values. Returned grid values
+        are the same for coordinates within the same grid cell.
 
-    def transform(self, n, e, z, corr_sgn):
+        :param idxs: indexes from which grid values will be returned.
+        :type idxs: tuple of int
+
+        :return: grid values at input indexes
+        :rtype: dict (key = position/index, value = tuple of float) 
+        """              
+        return super()._grid_vs_at_idxs(idxs)
+
+    def trans(self, n, e, z, corr_sgn):
+        """Transforms z by adding/substracting interpolated value 
+        (correction) obtained from the grid at the input location
+        
+        :param n: coordinate on north direction
+        :type n: float
+
+        :param e: coordinate on east direction
+        :type e: float
+
+        :param corr_sgn: 1 to add the grid correction, -1 to substract it  
+        :type corr_sgn: int
+
+        :return: the input z coordinate with the grid correction applied
+        :rtype: tuple of float
+        """        
         corrs = self.interp(n, e)
         return (z + corr_sgn * corrs[0],)          
          
 class Grid2D(Grid):
     @property
     def get_name(self):
+        """Returns the default value of the Grid2D file name
+
+        :return: Default grid file name
+        :rtype: str
+        """        
         return 'ETRS89_KRASOVSCHI42_2DJ.GRD'  
 
     @property
     def _get_v_size(self):
+        """Returns the number of grid values stored by each node 
+        """
         return 2
 
-    
     @functools.lru_cache(maxsize = 1024)    
     def get_vs_at_idxs_cached(self, idxs):
-        return super().get_values_at_idxs(idxs)        
+        """Cached method used to return grid nodes values. Returned grid values
+        are the same for coordinates within the same grid cell.
 
-    def transform(self, n, e, corr_sgn):
+        :param idxs: indexes from which grid values will be returned.
+        :type idxs: tuple of int
+
+        :return: grid values at input indexes
+        :rtype: dict (key = position/index, value = tuple of floats)   
+        """
+        return super()._grid_vs_at_idxs(idxs)        
+
+    def trans(self, n, e, corr_sgn):
+        """Transforms n, e by adding/substracting interpolated values 
+        (corrections) obtained from the grid at the input location
+        
+        :param n: coordinate on north direction
+        :type n: float
+
+        :param e: coordinate on east direction
+        :type e: float
+
+        :param corr_sgn: 1 to add the grid corrections, -1 to substract them  
+        :type corr_sgn: int
+
+        :return: the input coordinates with the grid corrections applied
+        :rtype: tuple of floats
+        """
         corrs = self.interp(n, e)
         return (n + corr_sgn * corrs[0], e + corr_sgn * corrs[1])         
 
