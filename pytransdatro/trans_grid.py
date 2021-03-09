@@ -36,7 +36,7 @@ Classes:
 import struct
 import math
 import abc
-import pathlib
+import pkg_resources
 import functools
 from pytransdatro import exceptions
 
@@ -88,8 +88,7 @@ class Grid(abc.ABC):
         :raises FileNotFoundError: if grid file not found
         :raises IOError: if it fails to read the header content of the grid file  
         """
-
-        self.source = pathlib.Path.cwd().joinpath(self.grid_dir, self.get_name)
+        self.source = self._get_grid_file(Grid.grid_dir, self.get_name)
         self.v_size = self._get_v_size
         try:
             # read grid header
@@ -108,6 +107,9 @@ class Grid(abc.ABC):
                             / self.n_step) + 1   # grid rows count
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
         self.no_data = 999.0
+    def _get_grid_file(self, grid_folder, grid_file):
+        return pkg_resources.resource_filename(__name__, 
+                                               f'{grid_folder}/{grid_file}')
 
     @abc.abstractproperty
     def _get_v_size(self):
