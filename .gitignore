@@ -1,2 +1,19 @@
+# vscode
 .vscode/
+
+# Python
 __pycache__/
+
+# Distribution / packaging
+build/
+dist/
+.eggs/
+
+# Testing
+*.egg
+.vscode/
+pytransdatro.egg-info
+
+# things, python testing etc
+call_tst.py
+perf_tst.py
