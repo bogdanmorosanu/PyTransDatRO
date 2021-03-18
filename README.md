@@ -8,12 +8,15 @@ It implments the official algorithm published by the Romanian *National Agency f
 For more details about the transformation please visit the [wiki](https://github.com/bogdanmorosanu/PyTransDatRO/wiki) section.
 
 ## Requirements
+
 Python 3.6 or later.
 
 ## Intallation
-$ pip install pytransdatro
+
+    $ pip install pytransdatro
 
 ## Usage
+
 This example does a transformation 
 ```python
 import pytransdatro
@@ -35,5 +38,6 @@ n, e = t.etrs89_to_st70(0.832795488097716, 0.3922724455407368)
 n, e, h = t.etrs89_to_st70(0.832795488097716, 0.3922724455407368, 162.0874)
 ```
 ## Features
+
 The library is optimized for transformation of coordinates inside the same grid cell, that is, some parameters used in computation are cached for multiple calls against an instance of the class *TransRO*. This boosts the performance when transforming multiple coordinates covered by the same grid cell. The 2D transformation (no elevation/height) uses a grid cell of 11 km size. In the case of a 3D transformation (elevation/height inluced) an additional grid of 0.0333333 degrees is used.
 
