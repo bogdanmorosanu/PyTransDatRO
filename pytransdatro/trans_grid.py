@@ -40,6 +40,8 @@ import pkg_resources
 import functools
 from pytransdatro import exceptions
 
+_GRID_DIR = 'grids'   # grid files directory name
+
 class Grid(abc.ABC):
     """An abstract class to be used as parent class for Grid1D and Grid2D
     concrete classes.
@@ -68,8 +70,8 @@ class Grid(abc.ABC):
     location.
     A grid cell is defined by 4 nodes which are next to each other
     """
-    grid_dir = 'grids'   # grid file directory name
-    def __init__(self):
+
+    def __init__(self, file_name):
         """Contructor method which sets the grid file reference and reads
         grid definition data from its header.
 
@@ -88,7 +90,8 @@ class Grid(abc.ABC):
         :raises FileNotFoundError: if grid file not found
         :raises IOError: if it fails to read the header content of the grid file  
         """
-        self.source = self._get_grid_file(Grid.grid_dir, self.get_name)
+        self.file_name = file_name
+        self.source = self._get_grid_file(_GRID_DIR, file_name)
         self.v_size = self._get_v_size
         try:
             # read grid header
@@ -116,12 +119,6 @@ class Grid(abc.ABC):
         """Abstract property to get the grid's number of values for each node
         """
         pass
-
-    @abc.abstractproperty
-    def get_name(self):
-        """Abstract property to get the grid's file name
-        """
-        pass    
 
     def covered_by_grid(self, n, e):
         """
@@ -319,7 +316,7 @@ class Grid(abc.ABC):
         pass
 
     class BiInterp():
-        """Class which has a function to compute abicubic spline interpolation.
+        """Class which has a function to compute a bicubic spline interpolation.
         """
         def __init__(self, sg_values):
             """Constructor method which initializes the coefficients used in
@@ -422,14 +419,6 @@ class Grid(abc.ABC):
         return r    
 
 class Grid1D(Grid):       
-    @property
-    def get_name(self):
-        """Returns the default value of the Grid1D file name
-
-        :return: Default grid file name
-        :rtype: str
-        """
-        return 'EGG97_QGRJ.GRD' 
 
     @property
     def _get_v_size(self):
@@ -470,14 +459,6 @@ class Grid1D(Grid):
         return (z + corr_sgn * corrs[0],)          
          
 class Grid2D(Grid):
-    @property
-    def get_name(self):
-        """Returns the default value of the Grid2D file name
-
-        :return: Default grid file name
-        :rtype: str
-        """        
-        return 'ETRS89_KRASOVSCHI42_2DJ.GRD'  
 
     @property
     def _get_v_size(self):
