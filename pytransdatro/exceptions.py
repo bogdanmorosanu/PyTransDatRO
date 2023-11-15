@@ -17,7 +17,7 @@ class OutOfGridErr(Exception):
         :type grid: Grid        
         """
         message = (
-            f'({n}, {e}) location is out of the grid area. '
+            f'({n}, {e}) location is out of the grid area defined by file {grid.source}. '
             f'Location must be inside the grid defined by '
             f'Min N = {grid.n_min}, Min E = {grid.e_min}, '
             f'Max N = {grid.n_max}, Max E  = {grid.e_max}.'
