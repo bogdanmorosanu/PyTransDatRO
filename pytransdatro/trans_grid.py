@@ -37,6 +37,7 @@ import struct
 import math
 import abc
 import pkg_resources
+import os.path
 import functools
 from pytransdatro import exceptions
 
@@ -81,8 +82,9 @@ class Grid(abc.ABC):
         :ivar v_size: the grid's values count (1 for Grid1D and 2 for Grid2D)
         :ivar n_min, e_min, n_max, e_max: min and max ccordinates for grid area
         :ivar n_step, e_step: Step N and Step E values
-        :ivar c_count: grid's number of columns (m-1)
+        :ivar c_count: grid's number of columns (m)
         :ivar r_count: grid's number of rows (n)
+        :ivar nodes_count: grid's number of nodes (m x n)
         :ivar sg_size: interpolation subgrid size (sg_size x sg_size nodes)
         :ivar no_data: grid value which indicates that there is no data
             available for the corresponding node
@@ -110,7 +112,47 @@ class Grid(abc.ABC):
                             / self.e_step) + 1   # grid columns count
         self.r_count = round((self.n_max - self.n_min) 
                             / self.n_step) + 1   # grid rows count
+        self.nodes_count = self.c_count * self.r_count
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
+        self.no_data = 999
+            
+    def coo_at_idx(self, idx):
+        """Returns node's coordinates at specified grid index (0 based index)
+                
+        :param idx: grid index at which the coordinates will be returned
+        :type idx: int
+
+        :return: the coordinates at the specified grid index
+        :rtype: tuple of float
+        """
+        if idx >= 0 and idx < self.nodes_count:
+            return (
+                self.n_min + idx // self.c_count % self.r_count * self.n_step,
+                self.e_min + idx % self.c_count * self.e_step
+            )        
+        else:
+            raise exceptions.OutOfRangeIndexGridErr(idx, self)
+
+
+    def grid_coos_to_file(self, file = None):
+        """Writes the coordinates and values of all grid nodes to the 
+        specified file in a csv format: index, n, e, val(s)
+
+        :param file: full path of the output file
+        :type file: string
+
+        """
+        if file is None:
+            out_file = os.path.splitext(self.source)[0] + '_coos.csv.'
+        else:
+            out_file = file
+
+        with open(out_file, 'w') as f_out:
+            for i in range(self.nodes_count):
+                for idx, vals in self._grid_vs_at_idxs((i,)).items():
+                    vals_str = ','.join(str(v) for v in vals)
+                    n, e = self.coo_at_idx(idx)
+                    f_out.write(f'{idx},{n},{e},{vals_str}\n')
 
     @abc.abstractproperty
     def _get_v_size(self):

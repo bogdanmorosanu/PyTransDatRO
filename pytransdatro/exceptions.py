@@ -46,4 +46,25 @@ class NoDataGridErr(Exception):
             f'for the computation of interpolated value at {n}, {e} location '
             f'has No Data value(s).'
         )
-        super().__init__(message)        
+        super().__init__(message)  
+
+class OutOfRangeIndexGridErr(Exception):
+    """Signifies that the input index is out of the range of available
+    grid indexes
+    """
+
+    def __init__(self, idx, grid):
+        """Constructor method
+
+        :param idx: index
+        :type idx: int
+
+        :param grid: Grid against which index coordinates are queried
+        :type grid: Grid
+        """        
+        message = (
+            f'(Grid {grid.file_name} has index values ranging from 0 to '
+            f'{grid.c_count * grid.r_count - 1}. The requested index ({idx}) '
+            f'is out of range.'
+        )
+        super().__init__(message)  
