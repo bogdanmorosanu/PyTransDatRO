@@ -91,7 +91,9 @@ class Grid(abc.ABC):
         :raises IOError: if it fails to read the header content of the grid file  
         """
         self.file_name = file_name
-        self.source = self._get_grid_file(_GRID_DIR, file_name)
+        self.source = pkg_resources.resource_filename(__name__, 
+                                               f'{_GRID_DIR}/{file_name}')
+        
         self.v_size = self._get_v_size
         try:
             # read grid header
@@ -109,10 +111,6 @@ class Grid(abc.ABC):
         self.r_count = round((self.n_max - self.n_min) 
                             / self.n_step) + 1   # grid rows count
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
-        self.no_data = 999.0
-    def _get_grid_file(self, grid_folder, grid_file):
-        return pkg_resources.resource_filename(__name__, 
-                                               f'{grid_folder}/{grid_file}')
 
     @abc.abstractproperty
     def _get_v_size(self):
