@@ -77,6 +77,42 @@ def coo_elev_tol():
     """
     return 0.003
 
+def create_transdatro_test_file(file, template='st70_half_grid'):
+    """Creates a coordinate file compatible with TrandatRO. This file can then
+    be used with TransDatRO application to transform the coordinates and use
+    the results for testing.
+    The function is not a test, it only creates the file needed for testing.
+    
+    :param file: file path for the output file
+    :type file: string   
+    
+    :param template: the name of the template to be used for the coordinate
+    generation. Template names:
+        - half_grid: points at every node of the grid and half distance 
+        between two neighbouring nodes (horisontal, vertical and diagonal)
+    :type template: string
+
+    :return: creates a coordinate file on the specified path
+    :rtype: None 
+    """
+    if template == 'st70_half_grid':
+        t = pytransdatro.TransRO()
+        grd = t._t_gr2d
+
+        with open(file, 'w') as f_out:
+            n_step = grd.n_step / 2
+            e_step = grd.e_step / 2
+            f_out.write('TransadatRO ignores this line\n')
+            id = 0
+            for i in range(grd.r_count * 2 - 1):
+                n = grd.n_min + i * n_step
+                for j in range(grd.c_count * 2 -1):
+                    e = grd.e_min + j * e_step
+                    f_out.write(f'{id},{n},{e},{100}\n')
+                    id += 1
+    else:
+        raise ValueError(f'Grid template {template} is not defined!')
+
 
 def test_st70_to_etrs89_2D(st70_pnts, etrs89_pnts, coo_rad_tol):
     """Test for the Stereo 70 to ETRS89 coordinate transformation without
