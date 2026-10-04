@@ -1,5 +1,6 @@
 import pytest
 import math
+import pkg_resources
 import pytransdatro 
 
 @pytest.fixture
@@ -77,6 +78,25 @@ def coo_elev_tol():
     """
     return 0.003
 
+@pytest.fixture
+def st70_coo_file():
+    """File name for Stereo70 coordinates file used for testing
+    against the TransDatRO results. The format of the file
+    is compatible with TransDatRo requirements.
+    The file is expected to be found in the 'tests' folder.
+    """
+    return pkg_resources.resource_filename(__name__, 'coos_for_testing_st70.txt')    
+
+
+@pytest.fixture
+def etrs89_coo_file():
+    """File name for ETRS89 coordinates file used for testing
+    against the TransDatRO results. The format of the file
+    is compatible with TransDatRo requirements.
+    The file is expected to be found in the 'tests' folder.
+    """
+    return pkg_resources.resource_filename(__name__, 'coos_for_testing_etrs89.txt')
+
 def create_transdatro_test_file(file, template='st70_half_grid'):
     """Creates a coordinate file compatible with TrandatRO. This file can then
     be used with TransDatRO application to transform the coordinates and use
@@ -113,6 +133,49 @@ def create_transdatro_test_file(file, template='st70_half_grid'):
     else:
         raise ValueError(f'Grid template {template} is not defined!')
 
+
+
+def test_st70_to_etrs89_2D_fromfile(st70_coo_file, etrs89_coo_file, coo_rad_tol):
+    """Test for the Stereo70 to ETRS89 2D coordinate transformation 
+    by using test coordinates files computed with TransDatRO.
+    """
+    # arrannge
+    t = pytransdatro.TransRO()
+    tst_coo_st70 = []
+    tst_coo_etrs89 = []
+    sut = []
+
+    with open(st70_coo_file, 'r') as f_st70:
+        next(f_st70) # skip first line
+        for line in f_st70:
+            vals = line.split(',')
+            tst_coo_st70.append((float(vals[1]), float(vals[2])))
+
+    with open(etrs89_coo_file, 'r',  encoding='ANSI') as f_etrs89:
+        next(f_etrs89) #skip  first line
+        for line in f_etrs89:
+            vals = [v.strip() for v in line.split(',')]
+            if vals[0] == 'ENDF':
+                break
+            else:
+                tst_coo_etrs89.append((
+                    pytransdatro.utils.sexa_dms_chars_to_rad(vals[1]),
+                    pytransdatro.utils.sexa_dms_chars_to_rad(vals[2])
+                ))
+    
+    if len(tst_coo_st70) != len(tst_coo_etrs89):
+        raise ValueError(f'Coordinates count in Stereo70 {len(tst_coo_st70)} is different from the ones in ETRS89 {len(tst_coo_etrs89)}.')
+
+    # act
+    for coo_st70 in tst_coo_st70:
+        sut.append(t.st70_to_etrs89(coo_st70[0], coo_st70[1]))
+
+    # assert
+    for i, coo_etrs89 in enumerate(tst_coo_etrs89):
+        print(sut[i][0], coo_etrs89[0])
+        print(sut[i][1], coo_etrs89[1])
+        assert math.isclose(sut[i][0], coo_etrs89[0], abs_tol = coo_rad_tol)
+        assert math.isclose(sut[i][1], coo_etrs89[1], abs_tol = coo_rad_tol)
 
 def test_st70_to_etrs89_2D(st70_pnts, etrs89_pnts, coo_rad_tol):
     """Test for the Stereo 70 to ETRS89 coordinate transformation without

@@ -10,7 +10,7 @@ def sexa_to_rad(s):
     :type s: string
 
     .. warnings also:: This function doesn't make any check on the input. 
-        It is designed to be used internaly, so valid in put is expected
+        It is designed to be used internaly, so valid input is expected
     """
     sgn = -1 if s[0] == '-' else 1
     values = s.split(' ')
@@ -18,6 +18,21 @@ def sexa_to_rad(s):
     m = float(values[1])
     s = float(values[2])
     return  sgn * DEG_TO_RAD_FACTOR * (s / 3600 + m / 60 + d)
+
+def sexa_dms_chars_to_rad(s :str):
+    """Returns the value in radians of a sexagesimal representation of an angle
+    The format of the representation is: [DD°MM'SS.SSSSS"N].
+    This is mainly to deal with processing the output of TransDatRO.
+
+    :param s: DMS angle
+    :type s: string
+
+    .. warnings also:: This function doesn't make any check on the input. 
+        It is designed to be used internaly, so valid input is expected
+    """
+    for c in "°\'\"NESV":
+        s = s.replace(c, ' ', 1)
+    return sexa_to_rad(s)
 
 def rad_to_sexa(a):
     """[summary]
