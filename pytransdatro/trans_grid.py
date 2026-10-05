@@ -36,7 +36,6 @@ Classes:
 import struct
 import math
 import abc
-import pkg_resources
 import os.path
 import functools
 from pytransdatro import exceptions
@@ -93,8 +92,7 @@ class Grid(abc.ABC):
         :raises IOError: if it fails to read the header content of the grid file  
         """
         self.file_name = file_name
-        self.source = pkg_resources.resource_filename(__name__, 
-                                               f'{_GRID_DIR}/{file_name}')
+        self.source = os.path.join(os.path.dirname(__file__), _GRID_DIR, file_name)
         
         self.v_size = self._get_v_size
         try:
@@ -140,7 +138,6 @@ class Grid(abc.ABC):
 
         :param file: full path of the output file
         :type file: string
-
         """
         if file is None:
             out_file = os.path.splitext(self.source)[0] + '_coos.csv.'
