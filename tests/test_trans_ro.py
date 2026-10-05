@@ -1,6 +1,6 @@
 import pytest
 import math
-import pkg_resources
+from pathlib import Path
 import pytransdatro 
 
 @pytest.fixture
@@ -83,9 +83,9 @@ def st70_coo_file():
     """File name for Stereo70 coordinates file used for testing
     against the TransDatRO results. The format of the file
     is compatible with TransDatRo requirements.
-    The file is expected to be found in the 'tests' folder.
+    The file is expected to be found in the 'tests/data' folder.
     """
-    return pkg_resources.resource_filename(__name__, 'coos_for_testing_st70.txt')    
+    return Path(__file__).parent / "data" / "st70_to_etrs89_input.csv"    
 
 
 @pytest.fixture
@@ -93,9 +93,9 @@ def etrs89_coo_file():
     """File name for ETRS89 coordinates file used for testing
     against the TransDatRO results. The format of the file
     is compatible with TransDatRo requirements.
-    The file is expected to be found in the 'tests' folder.
+    The file is expected to be found in the 'tests/data' folder.
     """
-    return pkg_resources.resource_filename(__name__, 'coos_for_testing_etrs89.txt')
+    return Path(__file__).parent / "data" / "st70_to_etrs89_expected.csv"
 
 def create_transdatro_test_file(file, template='st70_half_grid'):
     """Creates a coordinate file compatible with TrandatRO. This file can then
@@ -172,12 +172,13 @@ def test_st70_to_etrs89_2D_fromfile(st70_coo_file, etrs89_coo_file, coo_rad_tol)
 
     # assert
     for i, coo_etrs89 in enumerate(tst_coo_etrs89):
-        print(sut[i][0], coo_etrs89[0])
-        print(sut[i][1], coo_etrs89[1])
         assert math.isclose(sut[i][0], coo_etrs89[0], abs_tol = coo_rad_tol)
         assert math.isclose(sut[i][1], coo_etrs89[1], abs_tol = coo_rad_tol)
 
-def test_st70_to_etrs89_2D(st70_pnts, etrs89_pnts, coo_rad_tol):
+POINT_IDS = [f"P{i}" for i in range(1, 10)]
+
+@pytest.mark.parametrize("point_id", POINT_IDS)
+def test_st70_to_etrs89_2D(point_id, st70_pnts, etrs89_pnts, coo_rad_tol):
     """Test for the Stereo 70 to ETRS89 coordinate transformation without
     elevation
     (N,E) -> (lat,lon)
@@ -185,37 +186,33 @@ def test_st70_to_etrs89_2D(st70_pnts, etrs89_pnts, coo_rad_tol):
     """    
     # arrannge
     t = pytransdatro.TransRO()
-    sut = {}
     
     # act
-    for k, v in st70_pnts.items():
-        sut[k] = t.st70_to_etrs89(v[0], v[1])
+    lat, lon = t.st70_to_etrs89(st70_pnts[point_id][0], st70_pnts[point_id][1])
     
     # assert
-    for k in sut:
-        assert math.isclose(sut[k][0], etrs89_pnts[k][0], abs_tol = coo_rad_tol)
-        assert math.isclose(sut[k][1], etrs89_pnts[k][1], abs_tol = coo_rad_tol)
+    assert math.isclose(lat, etrs89_pnts[point_id][0], abs_tol = coo_rad_tol)
+    assert math.isclose(lon, etrs89_pnts[point_id][1], abs_tol = coo_rad_tol)
 
-def test_st70_to_etrs89_3D(st70_pnts, etrs89_pnts, coo_rad_tol, coo_elev_tol):
+@pytest.mark.parametrize("point_id", POINT_IDS)
+def test_st70_to_etrs89_3D(point_id, st70_pnts, etrs89_pnts, coo_rad_tol, coo_elev_tol):
     """Test for the Stereo 70 to ETRS89 coordinate transformation with elevation
     (N,E,H) -> (lat,lon,h)
     Input of "st70_pnts" should transform to "etrs89_pnts" (elevation included)
     """    
     # arrannge
     t = pytransdatro.TransRO()
-    sut = {}
     
     # act
-    for k, v in st70_pnts.items():
-        sut[k] = t.st70_to_etrs89(v[0], v[1], v[2])
+    lat, lon, h = t.st70_to_etrs89(st70_pnts[point_id][0], st70_pnts[point_id][1], st70_pnts[point_id][2])
     
     # assert
-    for k in sut:
-        assert math.isclose(sut[k][0], etrs89_pnts[k][0], abs_tol = coo_rad_tol)
-        assert math.isclose(sut[k][1], etrs89_pnts[k][1], abs_tol = coo_rad_tol)
-        assert math.isclose(sut[k][2], etrs89_pnts[k][2], abs_tol = coo_elev_tol)
+    assert math.isclose(lat, etrs89_pnts[point_id][0], abs_tol = coo_rad_tol)
+    assert math.isclose(lon, etrs89_pnts[point_id][1], abs_tol = coo_rad_tol)
+    assert math.isclose(h, etrs89_pnts[point_id][2], abs_tol = coo_elev_tol)
 
-def test_etrs89_to_st70_2D(st70_pnts, etrs89_pnts, coo_plan_tol):
+@pytest.mark.parametrize("point_id", POINT_IDS)
+def test_etrs89_to_st70_2D(point_id, st70_pnts, etrs89_pnts, coo_plan_tol):
     """Test for the ETRS89 to Stereo 70 coordinate transformation without
     elevation
     (lat,lon) -> (N,E)
@@ -223,35 +220,30 @@ def test_etrs89_to_st70_2D(st70_pnts, etrs89_pnts, coo_plan_tol):
     """    
     # arrannge
     t = pytransdatro.TransRO()
-    sut = {}
     
     # act
-    for k, v in etrs89_pnts.items():
-        sut[k] = t.etrs89_to_st70(v[0], v[1])
+    n, e = t.etrs89_to_st70(etrs89_pnts[point_id][0], etrs89_pnts[point_id][1])
     
     # assert
-    for k in sut:
-        assert math.isclose(sut[k][0], st70_pnts[k][0], abs_tol = coo_plan_tol)
-        assert math.isclose(sut[k][1], st70_pnts[k][1], abs_tol = coo_plan_tol)
+    assert math.isclose(n, st70_pnts[point_id][0], abs_tol = coo_plan_tol)
+    assert math.isclose(e, st70_pnts[point_id][1], abs_tol = coo_plan_tol)
 
-def test_etrs89_to_st70_3D(st70_pnts, etrs89_pnts, coo_plan_tol, coo_elev_tol):
+@pytest.mark.parametrize("point_id", POINT_IDS)
+def test_etrs89_to_st70_3D(point_id, st70_pnts, etrs89_pnts, coo_plan_tol, coo_elev_tol):
     """Test for the ETRS89 to Stereo 70 coordinate transformation with elevation
     (lat,lon, h) -> (N,E,Z)
     Input of "etrs89_pnts" should transform to "st70_pnts" (elevation included)
     """    
     # arrannge
     t = pytransdatro.TransRO()
-    sut = {}
     
     # act
-    for k, v in etrs89_pnts.items():
-        sut[k] = t.etrs89_to_st70(v[0], v[1], v[2])
+    n, e, z = t.etrs89_to_st70(etrs89_pnts[point_id][0], etrs89_pnts[point_id][1], etrs89_pnts[point_id][2])
     
     # assert
-    for k in sut:
-        assert math.isclose(sut[k][0], st70_pnts[k][0], abs_tol = coo_plan_tol)
-        assert math.isclose(sut[k][1], st70_pnts[k][1], abs_tol = coo_plan_tol)  
-        assert math.isclose(sut[k][2], st70_pnts[k][2], abs_tol = coo_plan_tol)  
+    assert math.isclose(n, st70_pnts[point_id][0], abs_tol = coo_plan_tol)
+    assert math.isclose(e, st70_pnts[point_id][1], abs_tol = coo_plan_tol)  
+    assert math.isclose(z, st70_pnts[point_id][2], abs_tol = coo_elev_tol)  
 
 @pytest.mark.parametrize("n", [213634.564, 224634.564, 774634.564, 785634.564])
 @pytest.mark.parametrize("e", [109783.040, 120783.040, 879783.040, 890783.040])
