@@ -17,3 +17,7 @@ pytransdatro.egg-info
 # things, python testing etc
 call_tst.py
 perf_tst.py
+
+# Generated Reports
+reports/
+tools/__pycache__/
