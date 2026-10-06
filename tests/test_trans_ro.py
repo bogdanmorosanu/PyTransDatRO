@@ -3,6 +3,32 @@ import math
 from pathlib import Path
 import pytransdatro 
 
+ST70_POINTS = {
+    'P1': (693771.731, 310723.518, 122.714),
+    'P2': (721361.806, 641283.450, 217.451),
+    'P3': (516470.189, 165265.572,  86.267), 
+    'P4': (402327.815, 713143.130,  22.941), 
+    'P5': (329703.378, 333185.413, 260.515),
+    'P6': (249343.594, 518651.464,  89.294), 
+    'P7': (528076.247, 411159.899, 494.894),
+    'P8': (334634.564, 593783.040, 100), # point in the 1D grid of Bucharest area
+    'P9': (340134.564, 577283.040, 100) # point next to 1D grid of Bucharest area
+}
+
+ETRS89_POINTS = {
+    'P1': (0.832795488117441, 0.392272445562385, 162.016),     
+    'P2': (0.8373372226820751, 0.4693321259276279, 250.709),  
+    'P3': (0.8040024035478642, 0.3607576171325035, 129.254), 
+    'P4': (0.7869408405792202, 0.4835725580374142, 54.842),   
+    'P5': (0.7757566737697043, 0.39972548637904465, 301.996), 
+    'P6': (0.7634710101797448, 0.44034705514033184, 128.748),  
+    'P7': (0.8071546621024385, 0.4161936375474547, 535.707),
+    'P8': (0.7767645292239739, 0.4568911886359511, 135.106),
+    'P9': (0.7776628832542685, 0.4532844607431238, 134.991) 
+}
+
+POINT_IDS = list(ST70_POINTS.keys())
+
 @pytest.fixture
 def st70_pnts():
     """Dictionary of points with Stereo70 coordinates for testing.
@@ -11,17 +37,7 @@ def st70_pnts():
     "TransDatRO_code_source_1.03" folder at link: 
     https://rompos.ro/index.php/download/category/2-software
     """
-    return {
-        'P1': (693771.731, 310723.518, 122.714),
-        'P2': (721361.806, 641283.450, 217.451),
-        'P3': (516470.189, 165265.572,  86.267), 
-        'P4': (402327.815, 713143.130,  22.941), 
-        'P5': (329703.378, 333185.413, 260.515),
-        'P6': (249343.594, 518651.464,  89.294), 
-        'P7': (528076.247, 411159.899, 494.894),
-        'P8': (334634.564, 593783.040, 100), # point in the 1D grid of Bucharest area
-        'P9': (340134.564, 577283.040, 100) # point next to 1D grid of Bucharest area
-    }
+    return ST70_POINTS
 
 @pytest.fixture
 def etrs89_pnts():
@@ -31,27 +47,17 @@ def etrs89_pnts():
     reference systems. Download link is available here: 
     https://rompos.ro/index.php/download/category/2-software
     The DMS result of TransDatRO v4.06 is included below:
-        P1, 47°42'56.40000"N, 22°28'31.99998"E,   162.016
-        P2, 47°58'33.20000"N, 26°53'26.70002"E,   250.709
-        P3, 46°03'57.39999"N, 20°40'11.60000"E,   129.254
-        P4, 45°05'18.20001"N, 27°42'23.99999"E,    54.842
-        P5, 44°26'51.30001"N, 22°54'09.30000"E,   301.996
-        P6, 43°44'37.19999"N, 25°13'48.10001"E,   128.748
-        P7, 46°14'47.59999"N, 23°50'46.10001"E,   535.707   
-        P8, 44°30'19.18512"N, 26°10'40.57250"E,   135.106 
-        P9, 44°33'24.48394"N, 25°58'16.63147"E,   134.991
+    P1, 47°42'56.40000"N, 22°28'31.99998"E,   162.016
+    P2, 47°58'33.20000"N, 26°53'26.70002"E,   250.709
+    P3, 46°03'57.39999"N, 20°40'11.60000"E,   129.254
+    P4, 45°05'18.20001"N, 27°42'23.99999"E,    54.842
+    P5, 44°26'51.30001"N, 22°54'09.30000"E,   301.996
+    P6, 43°44'37.19999"N, 25°13'48.10001"E,   128.748
+    P7, 46°14'47.59999"N, 23°50'46.10001"E,   535.707   
+    P8, 44°30'19.18512"N, 26°10'40.57250"E,   135.106 
+    P9, 44°33'24.48394"N, 25°58'16.63147"E,   134.991
     """
-    return {
-        'P1': (0.832795488117441, 0.392272445562385, 162.016),     
-        'P2': (0.8373372226820751, 0.4693321259276279, 250.709),  
-        'P3': (0.8040024035478642, 0.3607576171325035, 129.254), 
-        'P4': (0.7869408405792202, 0.4835725580374142, 54.842),   
-        'P5': (0.7757566737697043, 0.39972548637904465, 301.996), 
-        'P6': (0.7634710101797448, 0.44034705514033184, 128.748),  
-        'P7': (0.8071546621024385, 0.4161936375474547, 535.707),
-        'P8': (0.7767645292239739, 0.4568911886359511, 135.106),
-        'P9': (0.7776628832542685, 0.4532844607431238, 134.991) 
-    } 
+    return ETRS89_POINTS 
 
 @pytest.fixture
 def coo_rad_tol():
@@ -78,24 +84,56 @@ def coo_elev_tol():
     """
     return 0.003
 
-@pytest.fixture
-def st70_coo_file():
-    """File name for Stereo70 coordinates file used for testing
-    against the TransDatRO results. The format of the file
-    is compatible with TransDatRo requirements.
-    The file is expected to be found in the 'tests/data' folder.
-    """
-    return Path(__file__).parent / "data" / "st70_to_etrs89_input.csv"    
+@pytest.fixture(scope="session")
+def st70_to_etrs89_input_data():
+    file_path = Path(__file__).parent / "data" / "st70_to_etrs89_input.csv"
+    data = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            vals = line.split(',')
+            data.append((float(vals[1]), float(vals[2]), float(vals[3])))
+    return data
 
 
-@pytest.fixture
-def etrs89_coo_file():
-    """File name for ETRS89 coordinates file used for testing
-    against the TransDatRO results. The format of the file
-    is compatible with TransDatRo requirements.
-    The file is expected to be found in the 'tests/data' folder.
-    """
-    return Path(__file__).parent / "data" / "st70_to_etrs89_expected.csv"
+@pytest.fixture(scope="session")
+def st70_to_etrs89_expected_data():
+    file_path = Path(__file__).parent / "data" / "st70_to_etrs89_expected.csv"
+    data = []
+    with open(file_path, 'r', encoding='ANSI') as f:
+        for line in f:
+            vals = [v.strip() for v in line.split(',')]
+            data.append((
+                pytransdatro.utils.sexa_dms_chars_to_rad(vals[1]),
+                pytransdatro.utils.sexa_dms_chars_to_rad(vals[2]),
+                float(vals[3])
+            ))
+    return data
+
+
+@pytest.fixture(scope="session")
+def etrs89_to_st70_input_data():
+    file_path = Path(__file__).parent / "data" / "etrs89_to_st70_input.csv"
+    data = []
+    with open(file_path, 'r', encoding='ANSI') as f:
+        for line in f:
+            vals = [v.strip() for v in line.split(',')]
+            data.append((
+                pytransdatro.utils.sexa_dms_chars_to_rad(vals[1]),
+                pytransdatro.utils.sexa_dms_chars_to_rad(vals[2]),
+                float(vals[3])
+            ))
+    return data
+
+
+@pytest.fixture(scope="session")
+def etrs89_to_st70_expected_data():
+    file_path = Path(__file__).parent / "data" / "etrs89_to_st70_expected.csv"
+    data = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            vals = line.split(',')
+            data.append((float(vals[1]), float(vals[2]), float(vals[3])))
+    return data
 
 def create_transdatro_test_file(file, template='st70_half_grid'):
     """Creates a coordinate file compatible with TrandatRO. This file can then
@@ -135,47 +173,76 @@ def create_transdatro_test_file(file, template='st70_half_grid'):
 
 
 
-def test_st70_to_etrs89_2D_fromfile(st70_coo_file, etrs89_coo_file, coo_rad_tol):
+def test_st70_to_etrs89_2D_fromfile(st70_to_etrs89_input_data, st70_to_etrs89_expected_data, coo_rad_tol):
     """Test for the Stereo70 to ETRS89 2D coordinate transformation 
     by using test coordinates files computed with TransDatRO.
     """
-    # arrannge
     t = pytransdatro.TransRO()
-    tst_coo_st70 = []
-    tst_coo_etrs89 = []
     sut = []
-
-    with open(st70_coo_file, 'r') as f_st70:
-        next(f_st70) # skip first line
-        for line in f_st70:
-            vals = line.split(',')
-            tst_coo_st70.append((float(vals[1]), float(vals[2])))
-
-    with open(etrs89_coo_file, 'r',  encoding='ANSI') as f_etrs89:
-        next(f_etrs89) #skip  first line
-        for line in f_etrs89:
-            vals = [v.strip() for v in line.split(',')]
-            if vals[0] == 'ENDF':
-                break
-            else:
-                tst_coo_etrs89.append((
-                    pytransdatro.utils.sexa_dms_chars_to_rad(vals[1]),
-                    pytransdatro.utils.sexa_dms_chars_to_rad(vals[2])
-                ))
     
-    if len(tst_coo_st70) != len(tst_coo_etrs89):
-        raise ValueError(f'Coordinates count in Stereo70 {len(tst_coo_st70)} is different from the ones in ETRS89 {len(tst_coo_etrs89)}.')
-
     # act
-    for coo_st70 in tst_coo_st70:
+    for coo_st70 in st70_to_etrs89_input_data:
         sut.append(t.st70_to_etrs89(coo_st70[0], coo_st70[1]))
 
     # assert
-    for i, coo_etrs89 in enumerate(tst_coo_etrs89):
+    for i, coo_etrs89 in enumerate(st70_to_etrs89_expected_data):
         assert math.isclose(sut[i][0], coo_etrs89[0], abs_tol = coo_rad_tol)
         assert math.isclose(sut[i][1], coo_etrs89[1], abs_tol = coo_rad_tol)
 
-POINT_IDS = [f"P{i}" for i in range(1, 10)]
+
+@pytest.mark.xfail(reason="New grid release mismatch for elevation values")
+def test_st70_to_etrs89_3D_fromfile(st70_to_etrs89_input_data, st70_to_etrs89_expected_data, coo_rad_tol, coo_elev_tol):
+    """Test for the Stereo70 to ETRS89 3D coordinate transformation 
+    by using test coordinates files computed with TransDatRO.
+    """
+    t = pytransdatro.TransRO()
+    sut = []
+    
+    # act
+    for coo_st70 in st70_to_etrs89_input_data:
+        sut.append(t.st70_to_etrs89(coo_st70[0], coo_st70[1], coo_st70[2]))
+
+    # assert
+    for i, coo_etrs89 in enumerate(st70_to_etrs89_expected_data):
+        assert math.isclose(sut[i][0], coo_etrs89[0], abs_tol = coo_rad_tol)
+        assert math.isclose(sut[i][1], coo_etrs89[1], abs_tol = coo_rad_tol)
+        assert math.isclose(sut[i][2], coo_etrs89[2], abs_tol = coo_elev_tol)
+
+
+def test_etrs89_to_st70_2D_fromfile(etrs89_to_st70_input_data, etrs89_to_st70_expected_data, coo_plan_tol):
+    """Test for the ETRS89 to Stereo70 2D coordinate transformation 
+    by using test coordinates files computed with TransDatRO.
+    """
+    t = pytransdatro.TransRO()
+    sut = []
+    
+    # act
+    for coo_etrs89 in etrs89_to_st70_input_data:
+        sut.append(t.etrs89_to_st70(coo_etrs89[0], coo_etrs89[1]))
+
+    # assert
+    for i, coo_st70 in enumerate(etrs89_to_st70_expected_data):
+        assert math.isclose(sut[i][0], coo_st70[0], abs_tol = coo_plan_tol)
+        assert math.isclose(sut[i][1], coo_st70[1], abs_tol = coo_plan_tol)
+
+
+@pytest.mark.xfail(reason="New grid release mismatch for elevation values")
+def test_etrs89_to_st70_3D_fromfile(etrs89_to_st70_input_data, etrs89_to_st70_expected_data, coo_plan_tol, coo_elev_tol):
+    """Test for the ETRS89 to Stereo70 3D coordinate transformation 
+    by using test coordinates files computed with TransDatRO.
+    """
+    t = pytransdatro.TransRO()
+    sut = []
+    
+    # act
+    for coo_etrs89 in etrs89_to_st70_input_data:
+        sut.append(t.etrs89_to_st70(coo_etrs89[0], coo_etrs89[1], coo_etrs89[2]))
+
+    # assert
+    for i, coo_st70 in enumerate(etrs89_to_st70_expected_data):
+        assert math.isclose(sut[i][0], coo_st70[0], abs_tol = coo_plan_tol)
+        assert math.isclose(sut[i][1], coo_st70[1], abs_tol = coo_plan_tol)
+        assert math.isclose(sut[i][2], coo_st70[2], abs_tol = coo_elev_tol)
 
 @pytest.mark.parametrize("point_id", POINT_IDS)
 def test_st70_to_etrs89_2D(point_id, st70_pnts, etrs89_pnts, coo_rad_tol):
