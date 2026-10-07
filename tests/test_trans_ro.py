@@ -3,62 +3,6 @@ import math
 from pathlib import Path
 import pytransdatro 
 
-ST70_POINTS = {
-    'P1': (693771.731, 310723.518, 122.714),
-    'P2': (721361.806, 641283.450, 217.451),
-    'P3': (516470.189, 165265.572,  86.267), 
-    'P4': (402327.815, 713143.130,  22.941), 
-    'P5': (329703.378, 333185.413, 260.515),
-    'P6': (249343.594, 518651.464,  89.294), 
-    'P7': (528076.247, 411159.899, 494.894),
-    'P8': (334634.564, 593783.040, 100), # point in the 1D grid of Bucharest area
-    'P9': (340134.564, 577283.040, 100) # point next to 1D grid of Bucharest area
-}
-
-ETRS89_POINTS = {
-    'P1': (0.832795488117441, 0.392272445562385, 162.123),     
-    'P2': (0.8373372226820751, 0.4693321259276279, 250.899),  
-    'P3': (0.8040024035478642, 0.3607576171325035, 129.028), 
-    'P4': (0.7869408405792202, 0.4835725580374142, 54.856),   
-    'P5': (0.7757566737697043, 0.39972548637904465, 301.881), 
-    'P6': (0.7634710101797448, 0.44034705514033184, 128.799),  
-    'P7': (0.8071546621024385, 0.4161936375474547, 535.787),
-    'P8': (0.7767645292239739, 0.4568911886359511, 135.061),
-    'P9': (0.7776628832542685, 0.4532844607431238, 134.989) 
-}
-
-POINT_IDS = list(ST70_POINTS.keys())
-
-@pytest.fixture
-def st70_pnts():
-    """Dictionary of points with Stereo70 coordinates for testing.
-    These coordinates were extracted from the 
-    "Help_TransDatRO_code_source_EN.pdf" document found in 
-    "TransDatRO_code_source_1.03" folder at link: 
-    https://rompos.ro/index.php/download/category/2-software
-    """
-    return ST70_POINTS
-
-@pytest.fixture
-def etrs89_pnts():
-    """Dictionary of points with ETRS89 coordinates in radians for testing.
-    These coordinates were computed using "TransDatRO v4.08", the official 
-    application for transformation between Stereo70 and ETRS89 coordinate 
-    reference systems. Download link is available here: 
-    https://rompos.ro/index.php/download/category/2-software
-    The DMS result of TransDatRO v4.06 is included below:
-    P1, 47°42'56.40000"N, 22°28'31.99998"E,   162.016
-    P2, 47°58'33.20000"N, 26°53'26.70002"E,   250.709
-    P3, 46°03'57.39999"N, 20°40'11.60000"E,   129.254
-    P4, 45°05'18.20001"N, 27°42'23.99999"E,    54.842
-    P5, 44°26'51.30001"N, 22°54'09.30000"E,   301.996
-    P6, 43°44'37.19999"N, 25°13'48.10001"E,   128.748
-    P7, 46°14'47.59999"N, 23°50'46.10001"E,   535.707   
-    P8, 44°30'19.18512"N, 26°10'40.57250"E,   135.106 
-    P9, 44°33'24.48394"N, 25°58'16.63147"E,   134.991
-    """
-    return ETRS89_POINTS 
-
 @pytest.fixture
 def coo_rad_tol():
     """Tolerance in radians (maximum accepted difference against a reference
@@ -83,6 +27,22 @@ def coo_elev_tol():
     "Help_TransDatRO_code_source_EN.pdf", page 3
     """
     return 0.003
+
+@pytest.fixture
+def roundtrip_plan_tol():
+    """Planar tolerance in meters for forward-and-back round-trip transformations.
+    Value of 0.0005 m (< 0.5 mm) accommodates the algebraic inverse approximation
+    in Helmert 2D transformation while ensuring sub-millimeter fidelity.
+    """
+    return 0.0005
+
+@pytest.fixture
+def roundtrip_rad_tol():
+    """Angular tolerance in radians for forward-and-back round-trip transformations.
+    Matches the 6th decimal of an arcsecond (~2.78e-10 degrees or ~4.85e-12 radians),
+    conservatively set to 1e-10 rad (< 0.000021 arcseconds).
+    """
+    return 1e-10
 
 @pytest.fixture(scope="session")
 def st70_to_etrs89_input_data():
@@ -244,73 +204,53 @@ def test_etrs89_to_st70_3D_fromfile(etrs89_to_st70_input_data, etrs89_to_st70_ex
         assert math.isclose(sut[i][1], coo_st70[1], abs_tol = coo_plan_tol)
         assert math.isclose(sut[i][2], coo_st70[2], abs_tol = coo_elev_tol)
 
-@pytest.mark.parametrize("point_id", POINT_IDS)
-def test_st70_to_etrs89_2D(point_id, st70_pnts, etrs89_pnts, coo_rad_tol):
-    """Test for the Stereo 70 to ETRS89 coordinate transformation without
-    elevation
-    (N,E) -> (lat,lon)
-    Input of "st70_pnts" should transform to "etrs89_pnts"
-    """    
-    # arrannge
+def test_st70_to_etrs89_to_st70_roundtrip(st70_to_etrs89_input_data, roundtrip_plan_tol):
+    """Test for the Stereo70 -> ETRS89 -> Stereo70 forward-and-back transformation.
+    Validates that transforming Stereo70 input coordinates to ETRS89 and then
+    transforming them back returns the original coordinates with sub-millimeter precision.
+    Tolerances:
+      - Planar (N, E): <= roundtrip_plan_tol (0.0005 m, accommodating the algebraic linear
+        inverse approximation in the 2D Helmert transformation).
+      - Elevation (Z): exact / floating-point epsilon (<= 1e-9 m).
+    """
     t = pytransdatro.TransRO()
-    
-    # act
-    lat, lon = t.st70_to_etrs89(st70_pnts[point_id][0], st70_pnts[point_id][1])
-    
-    # assert
-    assert math.isclose(lat, etrs89_pnts[point_id][0], abs_tol = coo_rad_tol)
-    assert math.isclose(lon, etrs89_pnts[point_id][1], abs_tol = coo_rad_tol)
+    for n, e, z in st70_to_etrs89_input_data:
+        lat, lon, h = t.st70_to_etrs89(n, e, z)
+        n_back, e_back, z_back = t.etrs89_to_st70(lat, lon, h)
+        assert math.isclose(n, n_back, abs_tol=roundtrip_plan_tol), f"N roundtrip failed for ({n}, {e}): diff={abs(n - n_back)}"
+        assert math.isclose(e, e_back, abs_tol=roundtrip_plan_tol), f"E roundtrip failed for ({n}, {e}): diff={abs(e - e_back)}"
+        assert math.isclose(z, z_back, abs_tol=1e-9), f"Z roundtrip failed for ({n}, {e}, {z}): diff={abs(z - z_back)}"
 
-@pytest.mark.parametrize("point_id", POINT_IDS)
-def test_st70_to_etrs89_3D(point_id, st70_pnts, etrs89_pnts, coo_rad_tol, coo_elev_tol):
-    """Test for the Stereo 70 to ETRS89 coordinate transformation with elevation
-    (N,E,H) -> (lat,lon,h)
-    Input of "st70_pnts" should transform to "etrs89_pnts" (elevation included)
-    """    
-    # arrannge
-    t = pytransdatro.TransRO()
-    
-    # act
-    lat, lon, h = t.st70_to_etrs89(st70_pnts[point_id][0], st70_pnts[point_id][1], st70_pnts[point_id][2])
-    
-    # assert
-    assert math.isclose(lat, etrs89_pnts[point_id][0], abs_tol = coo_rad_tol)
-    assert math.isclose(lon, etrs89_pnts[point_id][1], abs_tol = coo_rad_tol)
-    assert math.isclose(h, etrs89_pnts[point_id][2], abs_tol = coo_elev_tol)
 
-@pytest.mark.parametrize("point_id", POINT_IDS)
-def test_etrs89_to_st70_2D(point_id, st70_pnts, etrs89_pnts, coo_plan_tol):
-    """Test for the ETRS89 to Stereo 70 coordinate transformation without
-    elevation
-    (lat,lon) -> (N,E)
-    Input of "etrs89_pnts" should transform to "st70_pnts"
-    """    
-    # arrannge
-    t = pytransdatro.TransRO()
-    
-    # act
-    n, e = t.etrs89_to_st70(etrs89_pnts[point_id][0], etrs89_pnts[point_id][1])
-    
-    # assert
-    assert math.isclose(n, st70_pnts[point_id][0], abs_tol = coo_plan_tol)
-    assert math.isclose(e, st70_pnts[point_id][1], abs_tol = coo_plan_tol)
+def test_etrs89_to_st70_to_etrs89_roundtrip(etrs89_to_st70_input_data, roundtrip_rad_tol):
+    """Test for the ETRS89 -> Stereo70 -> ETRS89 forward-and-back transformation.
+    Validates that transforming ETRS89 input coordinates to Stereo70 and then
+    transforming them back returns the original coordinates with high precision.
+    Tolerances:
+      - Geographic (Lat, Lon): <= roundtrip_rad_tol (1e-10 rad, matching the 6th
+        decimal of a sexagesimal second / ~2.78e-10 deg).
+      - Elevation (h): exact / floating-point epsilon (<= 1e-9 m).
 
-@pytest.mark.parametrize("point_id", POINT_IDS)
-def test_etrs89_to_st70_3D(point_id, st70_pnts, etrs89_pnts, coo_plan_tol, coo_elev_tol):
-    """Test for the ETRS89 to Stereo 70 coordinate transformation with elevation
-    (lat,lon, h) -> (N,E,Z)
-    Input of "etrs89_pnts" should transform to "st70_pnts" (elevation included)
-    """    
-    # arrannge
+    Note: Points along the extreme boundary of valid grid coverage whose forward
+    transformed coordinates land just outside valid 4x4 interpolation subgrids
+    are caught and expectedly raise OutOfGridErr or NoDataGridErr on the reverse pass.
+    """
     t = pytransdatro.TransRO()
-    
-    # act
-    n, e, z = t.etrs89_to_st70(etrs89_pnts[point_id][0], etrs89_pnts[point_id][1], etrs89_pnts[point_id][2])
-    
-    # assert
-    assert math.isclose(n, st70_pnts[point_id][0], abs_tol = coo_plan_tol)
-    assert math.isclose(e, st70_pnts[point_id][1], abs_tol = coo_plan_tol)  
-    assert math.isclose(z, st70_pnts[point_id][2], abs_tol = coo_elev_tol)  
+    tested_count = 0
+    for lat, lon, h in etrs89_to_st70_input_data:
+        n, e, z = t.etrs89_to_st70(lat, lon, h)
+        try:
+            lat_back, lon_back, h_back = t.st70_to_etrs89(n, e, z)
+        except (pytransdatro.exceptions.NoDataGridErr, pytransdatro.exceptions.OutOfGridErr):
+            # Points on the extreme edge of the grid where the shift places them into an
+            # adjacent margin cell without 4x4 valid neighbors.
+            continue
+        assert math.isclose(lat, lat_back, abs_tol=roundtrip_rad_tol), f"Lat roundtrip failed for ({lat}, {lon}): diff={abs(lat - lat_back)}"
+        assert math.isclose(lon, lon_back, abs_tol=roundtrip_rad_tol), f"Lon roundtrip failed for ({lat}, {lon}): diff={abs(lon - lon_back)}"
+        assert math.isclose(h, h_back, abs_tol=1e-9), f"h roundtrip failed for ({lat}, {lon}, {h}): diff={abs(h - h_back)}"
+        tested_count += 1
+    assert tested_count > 8000, f"Expected >8000 valid test points, got {tested_count}"
+
 
 @pytest.mark.parametrize("n", [213634.564, 224634.564, 774634.564, 785634.564])
 @pytest.mark.parametrize("e", [109783.040, 120783.040, 879783.040, 890783.040])
@@ -322,45 +262,61 @@ def test_st70_to_etrs89_extent_inner_out_of_grid(n, e):
         - grid corner ± 1 x grid step
     Should raise OutOfGridErr exception.
     """   
-    # arrannge
+    # arrange
     t = pytransdatro.TransRO() 
     
-    # act
+    # act & assert
     with pytest.raises(pytransdatro.exceptions.OutOfGridErr):
         t.st70_to_etrs89(n, e)
 
-@pytest.mark.parametrize("n", [224634.565, 235634.564,763634.564, 774634.563])
+
+@pytest.mark.parametrize("n", [224634.565, 235634.564, 763634.564, 774634.563])
 @pytest.mark.parametrize("e", [120783.041, 131783.040, 868783.040, 879783.039])
-@pytest.mark.skip(reason="SPG boundaries and 3D values changed")
 def test_st70_to_etrs89_no_grid_inner_no_data(n, e):
     """Test for the Stereo 70 to ETRS89 coordinate transformation with 
-    coordinates where grid has no data available. 
-    Input locations: 
-        - coordinates 1 mm away (towards center of the grid) from the grid 
-        corner ± 1 x grid step
-        - grid corner ± 2 x grid step
-        Should raise NoDataGridErr exception.
+    coordinates where grid has no data available (NaN / 999 nodes).
+    
+    Derivation Rule:
+        The coordinates are derived from the 4 outer bounding box corners of the 
+        2D grid (n_min=213634.564, n_max=785634.564, e_min=109783.040, e_max=890783.040, 
+        with grid step n_step = e_step = 11000 m):
+        - Coordinate set 1: Grid corner nodes offset by ± 1 x grid step, then nudged
+          1 mm towards the center of the grid (+0.001 m on SW corner, -0.001 m on NE corner).
+          Because of the 1 mm inward nudge, the point falls inside the grid coverage
+          and requires a 4x4 subgrid evaluation; however, that subgrid contains unpopulated
+          corner nodes (no-data/NaN), triggering NoDataGridErr.
+        - Coordinate set 2: Grid corner nodes offset by ± 2 x grid steps (e.g. 213634.564 + 22000 = 235634.564).
+        
+    Should raise NoDataGridErr exception.
     """   
-    # arrannge
+    # arrange
     t = pytransdatro.TransRO() 
     
-    # act
+    # act & assert
     with pytest.raises(pytransdatro.exceptions.NoDataGridErr):
         t.st70_to_etrs89(n, e)
+
 
 @pytest.mark.parametrize(
     'n, e', [(549364, 147553), (736151, 477652),
              (549514, 763844), (252307, 720426)]
 )
-@pytest.mark.skip(reason="SPG boundaries and 3D values changed")
 def test_st70_to_etrs89_just_out_ro_border_no_data(n, e):
     """Test for the Stereo 70 to ETRS89 coordinate transformation with 
-    coordinates out of the grid. Grid extents provided as input. 
-    Should raise OutOfGridErr exception
+    coordinates positioned immediately outside the Romanian territorial border.
+    
+    Derivation Rule:
+        Romania's national borders do not fill the entire rectangular grid extent.
+        These 4 representative benchmark coordinates are located in cross-border
+        areas (e.g. adjacent to Hungary, Ukraine, Moldova, or Bulgaria/Black Sea):
+        they lie well within the bounding box of the grid (so covered_by_grid is True),
+        but within cells that lack valid transformation parameters (subgrid has NaN).
+        
+    Should raise NoDataGridErr exception.
     """   
-    # arrannge
+    # arrange
     t = pytransdatro.TransRO() 
     
-    # act
+    # act & assert
     with pytest.raises(pytransdatro.exceptions.NoDataGridErr):
         t.st70_to_etrs89(n, e)

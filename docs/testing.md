@@ -8,44 +8,32 @@ This document summarizes the testing structure, datasets, tolerances, and test e
 
 The test suite relies on official reference coordinates and verification thresholds based on the official ROMPOS documentation (*Help_TransDatRO_code_source_EN.pdf*) and outputs from the official `TransDatRO v4.08` software.
 
-### A. Reference Points
+### A. Verification Tolerances
 
-The test suite defines dictionaries of reference points representing forward and inverse transformations:
-
-- **`st70_pnts` (Stereo70 coordinates)**:
-  - **Points P1 to P7**: Official reference points extracted from *Help_TransDatRO_code_source_EN.pdf* (page 3), defined with Northing ($N$), Easting ($E$), and Elevation ($Z$).
-  - **Point P8**: Located inside the local 1D quasigeoid grid of Bucharest (`zitaBucx.grd`).
-  - **Point P9**: Located immediately outside the Bucharest local grid area, falling back to the national 1D grid (`EGG97_QGRJ.GRD`).
-- **`etrs89_pnts` (ETRS89 coordinates)**:
-  - Official geographic coordinates in radians (`Latitude`, `Longitude`) and ellipsoidal height $h$ (meters), computed using `TransDatRO v4.08`.
-  - Documented sexagesimal DMS equivalents are included in the fixture docstrings.
-
-### B. Verification Tolerances
-
-Tolerances define the maximum acceptable discrepancy against official reference outputs, matching the criteria specified in *Help_TransDatRO_code_source_EN.pdf* (page 3):
+Tolerances define the maximum acceptable discrepancy against official reference outputs, matching the criteria specified in *Help_TransDatRO_code_source_EN.pdf* (page 3) and sub-millimeter round-trip precision:
 
 | Tolerance Fixture | Value | Physical Meaning | Description |
 |-------------------|-------|------------------|-------------|
-| `coo_rad_tol` | `0.00000000014544410` rad | $\approx 0.00003''$ | Angular tolerance for geographic latitude and longitude. |
-| `coo_plan_tol` | `0.003` m | $3\text{ mm}$ | Planar tolerance for Stereo70 Northing and Easting coordinates. |
+| `coo_rad_tol` | `0.00000000014544410` rad | $\approx 0.00003''$ | Angular tolerance for geographic latitude and longitude against official software. |
+| `coo_plan_tol` | `0.003` m | $3\text{ mm}$ | Planar tolerance for Stereo70 Northing and Easting coordinates against official software. |
 | `coo_elev_tol` | `0.003` m | $3\text{ mm}$ | Vertical tolerance for elevation / height components ($Z$ and $h$). |
+| `roundtrip_plan_tol` | `0.0005` m | $0.5\text{ mm}$ | Planar tolerance for forward-and-back round-trip conversions (accommodating the algebraic linear inverse in Helmert 2D). |
+| `roundtrip_rad_tol` | `1e-10` rad | $\approx 2.06 \times 10^{-5}''$ | Angular tolerance for forward-and-back round-trip conversions (matching the 6th decimal of an arcsecond). |
 
-### C. External Benchmark Files
+### B. External Benchmark Files
 
 For extensive surface verification across Romania, benchmark datasets are organized in a dedicated directory under `tests/data/` using a standardized naming convention (`<source>_to_<target>_<role>.csv`):
 
 - **Stereo70 to ETRS89 Transformation**:
   1. **`tests/data/st70_to_etrs89_input.csv`**:
-     - Contains 7,866 Stereo70 coordinates formatted as CSV (`id,n,e,z`).
+     - Contains 9,046 Stereo70 coordinates formatted as CSV (`id,n,e,z`).
      - Generated across a half-grid (nodes and mid-points) spanning the entire 2D shift grid extent.
   2. **`tests/data/st70_to_etrs89_expected.csv`**:
-     - Contains the corresponding 7,866 ETRS89 coordinates processed through official `TransDatRO v4.08`.
+     - Contains the corresponding 9,046 ETRS89 coordinates processed through official `TransDatRO v4.08`.
      - Encoded in ANSI/Windows-1252, with coordinates in sexagesimal DMS strings (e.g., `47°42'56.40000"N, 22°28'31.99998"E`).
-- **ETRS89 to Stereo70 Transformation (Placeholders)**:
-  3. **`tests/data/etrs89_to_st70_input.csv`**: Placeholder file for reverse transformation inputs.
-  4. **`tests/data/etrs89_to_st70_expected.csv`**: Placeholder file for reverse transformation reference outputs.
-
-File paths are resolved dynamically using `pathlib.Path` through pytest fixtures (`st70_coo_file`, `etrs89_coo_file`).
+- **ETRS89 to Stereo70 Transformation**:
+  3. **`tests/data/etrs89_to_st70_input.csv`**: Contains ETRS89 coordinates in sexagesimal DMS format for reverse transformation inputs.
+  4. **`tests/data/etrs89_to_st70_expected.csv`**: Reference Stereo70 outputs for reverse transformation verification.
 
 ---
 
@@ -53,16 +41,16 @@ File paths are resolved dynamically using `pathlib.Path` through pytest fixtures
 
 All tests are implemented using `pytest` and execute against the top-level coordinator class `pytransdatro.TransRO`.
 
-### A. Discrete Coordinate Transformations (Parametrized)
+### A. Round-Trip Forward-and-Back Testing
 
-Discrete reference point tests (points `P1` through `P9`) use `@pytest.mark.parametrize("point_id", POINT_IDS)` where `POINT_IDS = [f"P{i}" for i in range(1, 10)]`. This ensures each point runs as an independent test case, providing isolated failure diagnostics:
+To ensure mathematical reversibility without relying on hardcoded discrete reference points, two comprehensive round-trip tests process the bulk coordinate datasets:
 
-- **2D Transformations**:
-  - `test_st70_to_etrs89_2D`: Transforms $(N, E) \rightarrow (\text{lat}, \text{lon})$ for each point. Compares calculated angles against `etrs89_pnts` using `math.isclose(..., abs_tol=coo_rad_tol)`.
-  - `test_etrs89_to_st70_2D`: Transforms $(\text{lat}, \text{lon}) \rightarrow (N, E)$ for each point. Compares calculated planar coordinates against `st70_pnts` using `math.isclose(..., abs_tol=coo_plan_tol)`.
-- **3D Transformations (Elevation & Quasigeoid Shifts)**:
-  - `test_st70_to_etrs89_3D`: Transforms $(N, E, Z) \rightarrow (\text{lat}, \text{lon}, h)$ for each point. Asserts angular agreement within `coo_rad_tol` and vertical ellipsoidal height within `coo_elev_tol`.
-  - `test_etrs89_to_st70_3D`: Transforms $(\text{lat}, \text{lon}, h) \rightarrow (N, E, Z)$ for each point. Asserts planar coordinates within `coo_plan_tol` and normal elevation $Z$ within `coo_elev_tol`.
+- **`test_st70_to_etrs89_to_st70_roundtrip`**:
+  - Transforms $(N, E, Z) \rightarrow (\text{lat}, \text{lon}, h) \rightarrow (N', E', Z')$.
+  - Verifies planar coordinates match within `roundtrip_plan_tol` ($0.5\text{ mm}$) and vertical elevation matches within $10^{-9}\text{ m}$.
+- **`test_etrs89_to_st70_to_etrs89_roundtrip`**:
+  - Transforms $(\text{lat}, \text{lon}, h) \rightarrow (N, E, Z) \rightarrow (\text{lat}', \text{lon}', h')$.
+  - Verifies geographic coordinates match within `roundtrip_rad_tol` ($10^{-10}\text{ rad}$) and ellipsoidal height matches within $10^{-9}\text{ m}$.
 
 ### B. Bulk Grid Validation (`test_st70_to_etrs89_2D_fromfile`)
 

@@ -246,8 +246,8 @@ class Grid(abc.ABC):
         return {}
 
     def _grid_vs_no_data(self, values):
-        """Returns true if a value from values stores a No Data value,
-        false otherwise
+        """Returns true if a value from values stores a No Data value (NaN or 999),
+        false otherwise. Checks isnan first for SPG performance.
 
         :param values: values which will be checked for No Data value
         :type values: list of tuple(float[, float])
@@ -256,7 +256,7 @@ class Grid(abc.ABC):
         :rtype: bool
         """
         for v in values:
-            if self.no_data in v:
+            if any(math.isnan(x) or x == self.no_data for x in v):
                 return True
         return False
 
