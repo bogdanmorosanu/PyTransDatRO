@@ -22,28 +22,20 @@ class TransRO():
     def __init__(self):
         """Initialize the trans_ro coordinate transformation
         
-        :ivar _t_gr2d: 2D grid transformation using grid ETRS89_KRASOVSCHI42_2DJ
+        :ivar _t_gr2d: 2D grid transformation using grid rom_grid3d_25.09.spg
         :ivar _t_h2d: 2D Helmert transformation Stereo70 to StereoGRS80
         :ivar _p_st70: stereographic oblique projection on WGS84 ellipsoid
-        :ivar _t_gr1d: 1D grid transformation using grid EGG97_QGRJ      
-        :ivar _t_gr1d_buc: 1D grid transformation using grid zitaBucx 
+        :ivar _t_gr1d: 1D grid transformation using grid rom_grid3d_25.09.spg
+        :ivar _t_gr1d_buc: 1D grid transformation using grid rom_grid3d_25.09.spg (unified in SPG)
         """
-        self._t_gr2d = pytransdatro.trans_grid.Grid2D('ETRS89_KRASOVSCHI42_2DJ.GRD')
+        self._t_gr2d = pytransdatro.trans_grid.Grid2D('rom_grid3d_25.09.spg')
         self._t_h2d = pytransdatro.trans_helmert2d.Helmert2D() 
         self._p_st70 = pytransdatro.proj_stereo.StereoProj()
-        self._t_gr1d = pytransdatro.trans_grid.Grid1D('EGG97_QGRJ.GRD')
+        self._t_gr1d = pytransdatro.trans_grid.Grid1D('rom_grid3d_25.09.spg')
         
-        # grid added to match the transformation done by TransdatRO. Normaly,
-        # there should be only one 1D grid. But TransdatRO, intorduced another
-        # 1D grid for Bucharest area. This change in the computation algorithm 
-        # is not documented anywhere, so it was introduced in the py_transdat
-        # implementation in the same way so future grid updates can be done
-        # just by using copy and paste (another approach would have been to 
-        # merge the two grids into one so the algorithm stays consistent)
-        # This grid is used in an bounding box defined by min/max lat/lon
-        # extracted by checking where the results of using the EGG97_QGRJ.GRD
-        # started to be different from the one obtained by using TransDatRO. 
-        self._t_gr1d_buc = pytransdatro.trans_grid.Grid1D('zitaBucx.grd')
+        # In the new spg grid, the Bucharest specific grid is incorporated 
+        # but for now we will point this to the new spg grid as well
+        self._t_gr1d_buc = pytransdatro.trans_grid.Grid1D('rom_grid3d_25.09.spg')
     
     def _grid1d_sel(self, n_deg, e_deg):
         """Returns the 1D Grid which will be used for the h correction.

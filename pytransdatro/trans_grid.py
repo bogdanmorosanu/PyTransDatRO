@@ -72,40 +72,31 @@ class Grid(abc.ABC):
     """
 
     def __init__(self, file_name):
-        """Contructor method which sets the grid file reference and reads
-        grid definition data from its header.
-
-        :ivar source: the grid's source file. This is the binary file which is 
-        distributed with every official realease of TransDatRO application 
-        (https://rompos.ro/index.php/download/category/2-software) 
-        :ivar v_size: the grid's values count (1 for Grid1D and 2 for Grid2D)
-        :ivar n_min, e_min, n_max, e_max: min and max ccordinates for grid area
-        :ivar n_step, e_step: Step N and Step E values
-        :ivar c_count: grid's number of columns (m)
-        :ivar r_count: grid's number of rows (n)
-        :ivar nodes_count: grid's number of nodes (m x n)
-        :ivar sg_size: interpolation subgrid size (sg_size x sg_size nodes)
-        :ivar no_data: grid value which indicates that there is no data
-            available for the corresponding node
-        
-        :raises FileNotFoundError: if grid file not found
-        :raises IOError: if it fails to read the header content of the grid file  
+        """Initializes self. It reads the grid header in order to obtain
+        mins, maxs and step values. Also, the columns and rows count are 
+        calculated here.
         """
         self.file_name = file_name
         self.source = os.path.join(os.path.dirname(__file__), _GRID_DIR, file_name)
         
         self.v_size = self._get_v_size
-        try:
-            # read grid header
-            with open(self.source, 'rb') as f:
-                self.e_min, self.e_max = struct.unpack('<dd', f.read(16))
-                self.n_min, self.n_max = struct.unpack('<dd', f.read(16))
-                self.e_step, self.n_step = struct.unpack('<dd', f.read(16))
         
-        except FileNotFoundError:
-            raise FileNotFoundError(f'Failed to open grid file: {self.source}')
-        except (OSError, IOError):
-            raise IOError(f'Failed to read the grid file content: {self.source}')
+        if file_name.endswith('.spg'):
+            from pytransdatro.spg_reader import SpgReader
+            self.reader = SpgReader()
+            self._set_spg_bounds()
+        else:
+            try:
+                # read grid header
+                with open(self.source, 'rb') as f:
+                    self.e_min, self.e_max = struct.unpack('<dd', f.read(16))
+                    self.n_min, self.n_max = struct.unpack('<dd', f.read(16))
+                    self.e_step, self.n_step = struct.unpack('<dd', f.read(16))
+            except FileNotFoundError:
+                raise FileNotFoundError(f'Failed to open grid file: {self.source}')
+            except (OSError, IOError):
+                raise IOError(f'Failed to read the grid file content: {self.source}')
+        
         self.c_count = round((self.e_max - self.e_min) 
                             / self.e_step) + 1   # grid columns count
         self.r_count = round((self.n_max - self.n_min) 
@@ -113,6 +104,7 @@ class Grid(abc.ABC):
         self.nodes_count = self.c_count * self.r_count
         self.sg_size = 4   # interpolation subgrid size (4 columns by 4 rows)
         self.no_data = 999
+
             
     def coo_at_idx(self, idx):
         """Returns node's coordinates at specified grid index (0 based index)
@@ -224,15 +216,19 @@ class Grid(abc.ABC):
                 r[i * self.sg_size + j] = (r_idx + i) * self.c_count + c_idx + j
         return tuple(r)
 
+    def _set_spg_bounds(self):
+        """Method to be overridden by subclasses to set bounds from the SPG reader"""
+        pass
+
+    def _spg_grid_vs_at_idxs(self, idxs):
+        return {}
+
     def _grid_vs_at_idxs(self, idxs):
         """Returns grid values at specified indexes.
-
-        :param idxs: indexes from which grid values will be returned.
-        :type idxs: tuple of int
-
-        :return: grid values at input indexes
-        :rtype: dict (key = position/index, value = tuple of float(s))         
         """
+        if self.file_name.endswith('.spg'):
+            return self._spg_grid_vs_at_idxs(idxs)
+            
         r = {}   # result dict
         tmp_format = f'<{"d" * self.v_size}'
         tmp_buffer = self.v_size * 8
@@ -244,6 +240,10 @@ class Grid(abc.ABC):
                 f.seek(start_bit + idx * tmp_buffer)
                 r[idx] = struct.unpack(tmp_format, f.read(tmp_buffer))
         return r
+
+    def _spg_grid_vs_at_idxs(self, idxs):
+        """Method to be overridden by subclasses to return grid values from SPG memory"""
+        return {}
 
     def _grid_vs_no_data(self, values):
         """Returns true if a value from values stores a No Data value,
@@ -457,6 +457,20 @@ class Grid(abc.ABC):
 
 class Grid1D(Grid):       
 
+    def __init__(self, filename='rom_grid3d_25.09.spg'):
+        super().__init__(filename)
+
+    def _set_spg_bounds(self):
+        self.e_min, self.e_max, self.n_min, self.n_max, self.e_step, self.n_step = self.reader.height_bounds
+
+    def _spg_grid_vs_at_idxs(self, idxs):
+        r = {}
+        for idx in idxs:
+            # The height data is 1D array over grid (rows * cols)
+            r[idx] = (self.reader.height_flat[idx],)
+        return r
+
+
     @property
     def _get_v_size(self):
         """Returns the number of grid values stored by each node 
@@ -492,10 +506,36 @@ class Grid1D(Grid):
         :return: the input z coordinate with the grid correction applied
         :rtype: tuple of float
         """        
-        corrs = self.interp(n, e)
+        if self.file_name.endswith('.spg'):
+            c_idx = int(round((e - self.e_min) / self.e_step))
+            r_idx = int(round((n - self.n_min) / self.n_step))
+            
+            if c_idx < 0: c_idx = 0
+            if c_idx >= self.c_count: c_idx = self.c_count - 1
+            if r_idx < 0: r_idx = 0
+            if r_idx >= self.r_count: r_idx = self.r_count - 1
+            
+            idx = r_idx * self.c_count + c_idx
+            corrs = self._spg_grid_vs_at_idxs((idx,))[idx]
+        else:
+            corrs = self.interp(n, e)
+            
         return (z + corr_sgn * corrs[0],)          
          
 class Grid2D(Grid):
+
+    def __init__(self, filename='rom_grid3d_25.09.spg'):
+        super().__init__(filename)
+
+    def _set_spg_bounds(self):
+        self.e_min, self.e_max, self.n_min, self.n_max, self.e_step, self.n_step = self.reader.shift_bounds
+
+    def _spg_grid_vs_at_idxs(self, idxs):
+        r = {}
+        for idx in idxs:
+            r[idx] = (self.reader.shift_e_flat[idx], self.reader.shift_n_flat[idx])
+        return r
+
 
     @property
     def _get_v_size(self):
@@ -534,4 +574,5 @@ class Grid2D(Grid):
         """
         corrs = self.interp(n, e)
         return (n + corr_sgn * corrs[0], e + corr_sgn * corrs[1])         
+
 
