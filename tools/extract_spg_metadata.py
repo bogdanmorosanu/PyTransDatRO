@@ -2,14 +2,14 @@
 """
 Extract and report metadata from Romgeo SPG grid files (.spg).
 
-This tool reads the compiled 3D binary grid file (rom_grid3d_25.09.spg)
-located in the pytransdatro/grids/ package directory, extracts all embedded
-metadata, parameters, and grid layer properties, and generates an exhaustive,
-annotated text report in the reports/ directory.
+This tool reads the compiled 3D binary grid file (.spg) located in the 
+pytransdatro/grids/ directory, extracts all embedded metadata, parameters, 
+and grid layer properties, and generates a structured text report.
 """
 
 import os
 import sys
+import glob
 import datetime
 from pathlib import Path
 
@@ -23,26 +23,24 @@ except ImportError:
     print("Error: numpy is required to read and unpickle .spg files.")
     sys.exit(1)
 
+from pytransdatro.utils import rad_to_sexa, DEG_TO_RAD_FACTOR
+
 
 def decdeg_to_dms(dd: float, is_lat: bool = True) -> str:
-    """Convert decimal degrees to human-readable DMS string."""
+    """Convert decimal degrees to human-readable DMS string using rad_to_sexa from utils."""
+    rad_val = dd * DEG_TO_RAD_FACTOR
+    sexa_str = rad_to_sexa(rad_val)
+    parts = sexa_str.split(' ')
+    deg = int(parts[0])
+    minute = int(parts[1])
+    second = float(parts[2])
+    
     sign = -1 if dd < 0 else 1
-    val = abs(dd)
-    deg = int(val)
-    rem_min = (val - deg) * 60.0
-    minute = int(rem_min)
-    second = round((rem_min - minute) * 60.0, 2)
-    if second >= 60.0:
-        second = 0.0
-        minute += 1
-    if minute >= 60:
-        minute = 0
-        deg += 1
     if is_lat:
         hemi = "N" if sign >= 0 else "S"
     else:
         hemi = "E" if sign >= 0 else "W"
-    return f"{deg}° {minute:02d}' {second:05.2f}\" {hemi} ({dd:.8f}°)"
+    return f"{abs(deg)}° {minute:02d}' {second:05.2f}\" {hemi} ({dd:.8f}°)"
 
 
 def extract_metadata(spg_path: Path, output_report_path: Path):
@@ -91,21 +89,19 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     # ---------------------------------------------------------
     add_section("1. General Metadata & Provenance")
     add_line(f"Grid File Name      : {metadata.get('file', 'N/A')}")
-    add_line(f"Author / Creator    : {metadata.get('created_by', 'N/A')} (Centrul National de Cartografie / National Cartography Centre)")
+    add_line(f"Author / Creator    : {metadata.get('created_by', 'N/A')}")
     add_line(f"License             : {metadata.get('license', 'N/A')}")
     add_line(f"Abstract / Copyright: {metadata.get('abstract', 'N/A')}")
     
     release = metadata.get("release", {})
-    add_line(f"Release Version     : {release.get('major', 'N/A')}.{release.get('minor', 'N/A'):02d} (Revision: {release.get('revision', 0)}, Legacy: {release.get('legacy', 'no')})")
+    if release:
+        add_line(f"Release Version     : {release.get('major', 'N/A')}.{release.get('minor', 'N/A'):02d} (Revision: {release.get('revision', 0)}, Legacy: {release.get('legacy', 'no')})")
     add_line(f"Release Date        : {metadata.get('release_date', 'N/A')}")
     add_line(f"Validity Period     : From {metadata.get('valid_from', 'N/A')} to {metadata.get('valid_to', 'Indefinite (None)')}")
     
     notes = metadata.get("notes", "")
-    add_line(f"Release Notes       : {notes}")
-    add_line("  * Comment: The release notes explicitly document:")
-    add_line("    'switched to colocate (0) interpolation for geoid_heights'.")
-    add_line("    This explains why nearest-neighbor (INTERP_COLOCATE) lookup is used")
-    add_line("    for elevation rather than bicubic spline interpolation.")
+    if notes:
+        add_line(f"Release Notes       : {notes}")
     add_line()
 
     attribution = metadata.get("attribution", "")
@@ -121,11 +117,7 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line(f"Version String      : {params.get('version', 'N/A')}")
     add_line(f"Target Output File  : {params.get('output_file', 'N/A')}")
     add_line(f"Geodetic Shifts Src : {params.get('geodetic_shifts_file', 'N/A')}")
-    add_line("  * Comment: Source 2D distortion table containing planimetric correction shifts")
-    add_line("    between ETRS89 and Krasovsky 1940 ellipsoids.")
     add_line(f"Geoid Heights Src   : {params.get('geoid_heights_file', 'N/A')}")
-    add_line("  * Comment: Source hybrid quasi-geoid model raster (RomHybQGeoid) representing")
-    add_line("    height anomaly / undulation relative to Black Sea 1975 vertical datum.")
     add_line()
 
     # Interpolation flags
@@ -133,32 +125,22 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     h_interp = interp.get("horizontal", "N/A")
     v_interp = interp.get("vertical", "N/A")
 
-    h_desc = {
+    method_names = {
         0: "INTERP_COLOCATE (Nearest-Neighbor)",
         1: "INTERP_BILINEAR (Bilinear)",
         2: "INTERP_BICUBIC (Bicubic Spline)"
-    }.get(h_interp, f"Unknown ({h_interp})")
-
-    v_desc = {
-        0: "INTERP_COLOCATE (Nearest-Neighbor)",
-        1: "INTERP_BILINEAR (Bilinear)",
-        2: "INTERP_BICUBIC (Bicubic Spline)"
-    }.get(v_interp, f"Unknown ({v_interp})")
+    }
+    h_desc = method_names.get(h_interp, f"Method {h_interp}")
+    v_desc = method_names.get(v_interp, f"Method {v_interp}")
 
     add_line("Interpolation Strategy:")
     add_line(f"  - Horizontal (2D) : {h_interp} -> {h_desc}")
-    add_line("    * Usage: Bicubic Spline (4x4 subgrid) is used to interpolate dN and dE shifts")
-    add_line("      for continuous, smooth planimetric coordinate adjustments.")
     add_line(f"  - Vertical (1D)   : {v_interp} -> {v_desc}")
-    add_line("    * Usage: Colocate / Nearest-Neighbor selects the closest grid node value")
-    add_line("      for the quasi-geoid height anomaly without polynomial smoothing.")
     add_line()
 
     # Helmert Parameters
     helmert = params.get("helmert", {})
     add_line("2D Helmert Transformation Parameters:")
-    add_line("  * Context: Used during intermediate reprojection between Stereo 70 Oblique")
-    add_line("    Stereographic projection and the distortion-free conformal coordinate frame.")
     add_line()
 
     for direction, h_params in helmert.items():
@@ -184,18 +166,18 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line(f"Layer Name          : {geo_shifts.get('name', 'N/A')}")
     add_line(f"Source Coordinate   : {geo_shifts.get('source', 'N/A')}")
     add_line(f"Target Coordinate   : {geo_shifts.get('target', 'N/A')}")
-    add_line(f"CRS Type            : {geo_meta.get('crs_type', 'N/A')} (Stereo 70 Metric Projected Coordinates)")
-    add_line(f"Dimension Count     : {geo_meta.get('ndim', 'N/A')} dimensions (dN, dE)")
+    add_line(f"CRS Type            : {geo_meta.get('crs_type', 'N/A')}")
+    add_line(f"Dimension Count     : {geo_meta.get('ndim', 'N/A')} dimensions")
     add_line()
-    add_line("Planimetric Extents (Stereo 70 Projected Coordinates):")
+    add_line("Planimetric Extents:")
     add_line(f"  - Easting  (E) Min : {geo_meta.get('mine', 0.0):12.3f} m")
     add_line(f"  - Easting  (E) Max : {geo_meta.get('maxe', 0.0):12.3f} m (Span: {geo_meta.get('maxe', 0.0) - geo_meta.get('mine', 0.0):,.1f} m)")
     add_line(f"  - Northing (N) Min : {geo_meta.get('minn', 0.0):12.3f} m")
     add_line(f"  - Northing (N) Max : {geo_meta.get('maxn', 0.0):12.3f} m (Span: {geo_meta.get('maxn', 0.0) - geo_meta.get('minn', 0.0):,.1f} m)")
     add_line()
     add_line("Grid Resolution & Dimensions:")
-    add_line(f"  - Step Easting (E) : {geo_meta.get('stepe', 0.0):12.3f} m (11.0 km)")
-    add_line(f"  - Step Northing(N) : {geo_meta.get('stepn', 0.0):12.3f} m (11.0 km)")
+    add_line(f"  - Step Easting (E) : {geo_meta.get('stepe', 0.0):12.3f} m")
+    add_line(f"  - Step Northing(N) : {geo_meta.get('stepn', 0.0):12.3f} m")
     ncols_geo = geo_meta.get('ncols', 0)
     nrows_geo = geo_meta.get('nrows', 0)
     add_line(f"  - Columns (East)   : {ncols_geo}")
@@ -209,7 +191,6 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
         add_line(f"  - Data Type        : {geo_grid.dtype}")
         add_line(f"  - Memory Usage     : {geo_grid.nbytes / 1024.0:.2f} KB")
 
-        # Band 0: Northing shift, Band 1: Easting shift
         band_n = geo_grid[0]
         band_e = geo_grid[1]
         valid_n = band_n[~np.isnan(band_n)]
@@ -234,10 +215,10 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     geoid_grid = geoid.get("grid")
 
     add_line(f"Layer Name          : {geoid.get('name', 'N/A')}")
-    add_line(f"Source Coordinate   : {geoid.get('source', 'N/A')} (Quasigeoid Model RomHybQGeoid)")
-    add_line(f"Target Coordinate   : {geoid.get('target', 'N/A')} (Black Sea 1975 Normal Heights CS1)")
-    add_line(f"CRS Type            : {geoid_meta.get('crs_type', 'N/A')} (ETRS89 Geodetic Lat/Lon)")
-    add_line(f"Dimension Count     : {geoid_meta.get('ndim', 'N/A')} dimension (Height Anomaly N)")
+    add_line(f"Source Coordinate   : {geoid.get('source', 'N/A')}")
+    add_line(f"Target Coordinate   : {geoid.get('target', 'N/A')}")
+    add_line(f"CRS Type            : {geoid_meta.get('crs_type', 'N/A')}")
+    add_line(f"Dimension Count     : {geoid_meta.get('ndim', 'N/A')} dimension")
     add_line()
 
     minla = geoid_meta.get('minla', 0.0)
@@ -249,7 +230,7 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     ncols_geoid = geoid_meta.get('ncols', 0)
     nrows_geoid = geoid_meta.get('nrows', 0)
 
-    add_line("Geodetic Extents (ETRS89 Ellipsoidal Coordinates):")
+    add_line("Geodetic Extents:")
     add_line(f"  - Longitude (Lambda) Min : {decdeg_to_dms(minla, is_lat=False)}")
     add_line(f"  - Longitude (Lambda) Max : {decdeg_to_dms(maxla, is_lat=False)}")
     add_line(f"    * Longitude Span       : {maxla - minla:.6f}°")
@@ -288,22 +269,9 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_section("5. Transformation Pipeline Integration Summary")
     add_line("How PyTransDatRO applies these metadata parameters:")
     add_line()
-    add_line("1. Forward Transformation: Stereo70 (N, E, H) -> ETRS89 (lat, lon, h)")
-    add_line("   a. Project coordinates from Stereo 70 Oblique Stereographic to intermediate frame.")
-    add_line("   b. Apply 2D Helmert transformation parameters.")
-    add_line("   c. Interpolate horizontal distortion shifts (dN, dE) via Bicubic Spline (INTERP_BICUBIC = 2)")
-    add_line("      using the 72x53 geodetic_shifts layer.")
-    add_line("   d. Convert to final geodetic ETRS89 latitude and longitude.")
-    add_line("   e. Apply vertical height correction: h = H + N")
-    add_line("      where geoid undulation N is fetched from the 293x147 geoid_heights layer using")
-    add_line("      Nearest-Neighbor lookup (INTERP_COLOCATE = 0) at the ETRS89 (lat, lon) position.")
-    add_line()
-    add_line("2. Inverse Transformation: ETRS89 (lat, lon, h) -> Stereo70 (N, E, H)")
-    add_line("   a. Apply vertical height correction first: H = h - N")
-    add_line("      using Nearest-Neighbor lookup (INTERP_COLOCATE = 0) at the input ETRS89 (lat, lon).")
-    add_line("   b. Apply inverse 2D horizontal distortion shifts (Bicubic Spline).")
-    add_line("   c. Apply inverse 2D Helmert transformation.")
-    add_line("   d. Project coordinates to Stereo 70 (N, E).")
+    add_line(f"1. Horizontal (2D) Shifts: {h_desc}")
+    add_line(f"2. Vertical (1D) Heights : {v_desc}")
+    add_line(f"3. 2D Helmert Constants  : Dynamically loaded from params['helmert']")
     add_line()
     add_line("=" * 80)
     add_line("End of Report")
@@ -319,10 +287,17 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
 
 
 def main():
-    default_spg = PROJECT_ROOT / "pytransdatro" / "grids" / "rom_grid3d_25.09.spg"
-    default_report = PROJECT_ROOT / "reports" / "spg_grid_metadata.txt"
+    grids_dir = PROJECT_ROOT / "pytransdatro" / "grids"
+    spg_candidates = list(grids_dir.glob("*.spg"))
 
-    spg_file = Path(sys.argv[1]) if len(sys.argv) > 1 else default_spg
+    if len(sys.argv) > 1:
+        spg_file = Path(sys.argv[1])
+    elif len(spg_candidates) == 1:
+        spg_file = spg_candidates[0]
+    else:
+        spg_file = grids_dir / "rom_grid3d_25.09.spg"
+
+    default_report = PROJECT_ROOT / "reports" / "spg_grid_metadata.txt"
     report_file = Path(sys.argv[2]) if len(sys.argv) > 2 else default_report
 
     extract_metadata(spg_file, report_file)

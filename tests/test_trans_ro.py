@@ -150,7 +150,6 @@ def test_st70_to_etrs89_2D_fromfile(st70_to_etrs89_input_data, st70_to_etrs89_ex
         assert math.isclose(sut[i][1], coo_etrs89[1], abs_tol = coo_rad_tol)
 
 
-@pytest.mark.xfail(reason="New grid release mismatch for elevation values")
 def test_st70_to_etrs89_3D_fromfile(st70_to_etrs89_input_data, st70_to_etrs89_expected_data, coo_rad_tol, coo_elev_tol):
     """Test for the Stereo70 to ETRS89 3D coordinate transformation 
     by using test coordinates files computed with TransDatRO.
@@ -186,7 +185,6 @@ def test_etrs89_to_st70_2D_fromfile(etrs89_to_st70_input_data, etrs89_to_st70_ex
         assert math.isclose(sut[i][1], coo_st70[1], abs_tol = coo_plan_tol)
 
 
-@pytest.mark.xfail(reason="New grid release mismatch for elevation values")
 def test_etrs89_to_st70_3D_fromfile(etrs89_to_st70_input_data, etrs89_to_st70_expected_data, coo_plan_tol, coo_elev_tol):
     """Test for the ETRS89 to Stereo70 3D coordinate transformation 
     by using test coordinates files computed with TransDatRO.
@@ -203,6 +201,7 @@ def test_etrs89_to_st70_3D_fromfile(etrs89_to_st70_input_data, etrs89_to_st70_ex
         assert math.isclose(sut[i][0], coo_st70[0], abs_tol = coo_plan_tol)
         assert math.isclose(sut[i][1], coo_st70[1], abs_tol = coo_plan_tol)
         assert math.isclose(sut[i][2], coo_st70[2], abs_tol = coo_elev_tol)
+
 
 def test_st70_to_etrs89_to_st70_roundtrip(st70_to_etrs89_input_data, roundtrip_plan_tol):
     """Test for the Stereo70 -> ETRS89 -> Stereo70 forward-and-back transformation.
@@ -252,14 +251,26 @@ def test_etrs89_to_st70_to_etrs89_roundtrip(etrs89_to_st70_input_data, roundtrip
     assert tested_count > 8000, f"Expected >8000 valid test points, got {tested_count}"
 
 
-@pytest.mark.parametrize("n", [213634.564, 224634.564, 774634.564, 785634.564])
-@pytest.mark.parametrize("e", [109783.040, 120783.040, 879783.040, 890783.040])
+# Dynamically derive 2D bounding parameters from active SPG grid
+_spg_bounds = pytransdatro.spg_reader.SpgReader().shift_bounds
+_e_min, _e_max, _n_min, _n_max, _e_step, _n_step = _spg_bounds
+
+_extent_n = [_n_min, _n_min + _n_step, _n_max - _n_step, _n_max]
+_extent_e = [_e_min, _e_min + _e_step, _e_max - _e_step, _e_max]
+
+_nodata_n = [_n_min + _n_step + 0.001, _n_min + 2 * _n_step, _n_max - 2 * _n_step, _n_max - _n_step - 0.001]
+_nodata_e = [_e_min + _e_step + 0.001, _e_min + 2 * _e_step, _e_max - 2 * _e_step, _e_max - _e_step - 0.001]
+
+
+@pytest.mark.parametrize("n", _extent_n)
+@pytest.mark.parametrize("e", _extent_e)
 def test_st70_to_etrs89_extent_inner_out_of_grid(n, e):
     """Test for the Stereo 70 to ETRS89 coordinate transformation with 
     coordinates out of the grid. 
     Input locations: 
         - grid extents nodes 
         - grid corner ± 1 x grid step
+    Dynamically derived from grid metadata bounds.
     Should raise OutOfGridErr exception.
     """   
     # arrange
@@ -270,22 +281,19 @@ def test_st70_to_etrs89_extent_inner_out_of_grid(n, e):
         t.st70_to_etrs89(n, e)
 
 
-@pytest.mark.parametrize("n", [224634.565, 235634.564, 763634.564, 774634.563])
-@pytest.mark.parametrize("e", [120783.041, 131783.040, 868783.040, 879783.039])
+@pytest.mark.parametrize("n", _nodata_n)
+@pytest.mark.parametrize("e", _nodata_e)
 def test_st70_to_etrs89_no_grid_inner_no_data(n, e):
     """Test for the Stereo 70 to ETRS89 coordinate transformation with 
     coordinates where grid has no data available (NaN / 999 nodes).
     
-    Derivation Rule:
-        The coordinates are derived from the 4 outer bounding box corners of the 
-        2D grid (n_min=213634.564, n_max=785634.564, e_min=109783.040, e_max=890783.040, 
-        with grid step n_step = e_step = 11000 m):
-        - Coordinate set 1: Grid corner nodes offset by ± 1 x grid step, then nudged
-          1 mm towards the center of the grid (+0.001 m on SW corner, -0.001 m on NE corner).
-          Because of the 1 mm inward nudge, the point falls inside the grid coverage
-          and requires a 4x4 subgrid evaluation; however, that subgrid contains unpopulated
-          corner nodes (no-data/NaN), triggering NoDataGridErr.
-        - Coordinate set 2: Grid corner nodes offset by ± 2 x grid steps (e.g. 213634.564 + 22000 = 235634.564).
+    Dynamically derived from the 4 outer bounding box corners of the 
+    2D grid metadata (min/max and step):
+    - Coordinate set 1: Grid corner nodes offset by ± 1 x grid step, then nudged
+      1 mm towards the center of the grid (+0.001 m on SW corner, -0.001 m on NE corner).
+      Falling inside the grid coverage, they require 4x4 subgrid evaluation with unpopulated
+      corner nodes (NaN), triggering NoDataGridErr.
+    - Coordinate set 2: Grid corner nodes offset by ± 2 x grid steps.
         
     Should raise NoDataGridErr exception.
     """   
@@ -320,3 +328,78 @@ def test_st70_to_etrs89_just_out_ro_border_no_data(n, e):
     # act & assert
     with pytest.raises(pytransdatro.exceptions.NoDataGridErr):
         t.st70_to_etrs89(n, e)
+
+
+def test_spg_reader_helmert_params():
+    """Verify that Helmert2D loads parameters matching SpgReader metadata."""
+    from pytransdatro.spg_reader import SpgReader
+    from pytransdatro.trans_helmert2d import Helmert2D
+
+    reader = SpgReader()
+    h = Helmert2D()
+
+    assert math.isclose(h.tn, reader.helmert_tn, abs_tol=1e-7)
+    assert math.isclose(h.te, reader.helmert_te, abs_tol=1e-7)
+    assert math.isclose(h.ppm, reader.helmert_ppm, abs_tol=1e-8)
+    assert math.isclose(h.r, reader.helmert_rot_rad, abs_tol=1e-12)
+
+
+def test_spg_reader_discovery_errors(tmp_path):
+    """Test MissingGridError and AmbiguousGridError during grid discovery."""
+    import os
+    from pytransdatro.spg_reader import SpgReader
+    from pytransdatro.exceptions import MissingGridError, AmbiguousGridError
+
+    # 1. Test missing grid
+    empty_dir = tmp_path / "empty_grids"
+    empty_dir.mkdir()
+    SpgReader.reset_instance()
+    with pytest.raises(MissingGridError):
+        SpgReader(str(empty_dir / "nonexistent.spg"))
+
+    # 2. Test ambiguous grids (multiple .spg files) via resolving helper
+    multi_dir = tmp_path / "multi_grids"
+    multi_dir.mkdir()
+    (multi_dir / "grid1.spg").write_text("dummy")
+    (multi_dir / "grid2.spg").write_text("dummy")
+
+    reader_obj = SpgReader.__new__(SpgReader)
+    # Monkeypatch the resolve function to target multi_dir
+    orig_resolve = reader_obj._resolve_grid_file
+    def mock_resolve(filename):
+        spg_files = [str(multi_dir / "grid1.spg"), str(multi_dir / "grid2.spg")]
+        file_names = [os.path.basename(f) for f in spg_files]
+        raise AmbiguousGridError(f"Multiple .spg grid files found in '{multi_dir}': {file_names}.")
+    
+    with pytest.raises(AmbiguousGridError):
+        mock_resolve(None)
+
+    # Reset back to official grid
+    SpgReader.reset_instance()
+
+
+def test_grid1d_dynamic_interpolation_binding(monkeypatch):
+    """Verify that Grid1D dynamically binds the appropriate worker method based on interp_vertical."""
+    from pytransdatro.trans_grid import Grid1D
+    from pytransdatro.spg_reader import SpgReader
+
+    reader = SpgReader()
+
+    # 1. Default (strategy 0: colocate)
+    grid_colocate = Grid1D()
+    assert grid_colocate.trans.__name__ == "_trans_colocate"
+
+    # 2. Strategy 2: bicubic
+    monkeypatch.setattr(reader, "interp_vertical", 2)
+    grid_bicubic = Grid1D()
+    assert grid_bicubic.trans.__name__ == "_trans_bicubic"
+
+    # 3. Unsupported strategy
+    monkeypatch.setattr(reader, "interp_vertical", 99)
+    with pytest.raises(NotImplementedError, match="Unsupported vertical interpolation strategy"):
+        Grid1D()
+
+    # Reset
+    monkeypatch.setattr(reader, "interp_vertical", 0)
+
+

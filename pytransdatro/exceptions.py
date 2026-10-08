@@ -68,3 +68,13 @@ class OutOfRangeIndexGridErr(Exception):
             f'is out of range.'
         )
         super().__init__(message)  
+
+
+class MissingGridError(FileNotFoundError):
+    """Signifies that no valid grid file was found in the grids directory."""
+    pass
+
+
+class AmbiguousGridError(ValueError):
+    """Signifies that multiple grid files were found when exactly one was expected."""
+    pass
