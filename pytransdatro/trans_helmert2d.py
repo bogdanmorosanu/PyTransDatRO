@@ -55,28 +55,30 @@ class Helmert2D():
         return self.__r
 
     def trans(self, n, e, sign):
-        """Transforms the values of n and e
-        (N,E) -> (N',E')
+        """Transforms sequences of n and e coordinates: (N,E) -> (N',E').
 
-        :param n: northing
-        :type n: float
+        :param n: sequence of northings
+        :type n: sequence of floats
 
-        :param e: easting
-        :type e: float 
+        :param e: sequence of eastings
+        :type e: sequence of floats
 
         :param sign: Value of 1 to transform using defined parameters or -1 for 
             the inverse transformation (params x -1)
         :type sign: int     
 
-        :return: the new values of n and e (N',E')
-        :rtype: tuple of floats                 
+        :return: (n_out, e_out) lists of transformed coordinates
+        :rtype: tuple of lists
         """       
         scale = 1.0 + sign * self.__scale_factor
-        return (
-            (n * scale * self.__cosr 
-            + e * scale * sign * self.__sinr 
-            + sign * self.__tn),
-            (e * scale * self.__cosr 
-            - n * scale * sign * self.__sinr
-            + sign * self.__te)
-        )
+        cosr_scale = scale * self.__cosr
+        sinr_scale_sign = scale * sign * self.__sinr
+        tn_sign = sign * self.__tn
+        te_sign = sign * self.__te
+
+        n_out = []
+        e_out = []
+        for n_val, e_val in zip(n, e):
+            n_out.append(n_val * cosr_scale + e_val * sinr_scale_sign + tn_sign)
+            e_out.append(e_val * cosr_scale - n_val * sinr_scale_sign + te_sign)
+        return n_out, e_out

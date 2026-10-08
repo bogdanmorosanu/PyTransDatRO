@@ -403,3 +403,30 @@ def test_grid1d_dynamic_interpolation_binding(monkeypatch):
     monkeypatch.setattr(reader, "interp_vertical", 0)
 
 
+def test_polymorphic_batch_transformation():
+    """Verify that polymorphic TransRO methods return identical results for sequences and scalars."""
+    t = pytransdatro.TransRO()
+    # Sample points in Stereo70
+    n_list = [500000.0, 510000.0, 490000.0]
+    e_list = [500000.0, 510000.0, 490000.0]
+    z_list = [100.0, 150.0, 200.0]
+
+    # Batch call
+    lat_batch, lon_batch, h_batch = t.st70_to_etrs89(n_list, e_list, z_list)
+
+    # Scalar calls
+    for i in range(len(n_list)):
+        lat_sc, lon_sc, h_sc = t.st70_to_etrs89(n_list[i], e_list[i], z_list[i])
+        assert math.isclose(lat_batch[i], lat_sc, abs_tol=1e-12)
+        assert math.isclose(lon_batch[i], lon_sc, abs_tol=1e-12)
+        assert math.isclose(h_batch[i], h_sc, abs_tol=1e-12)
+
+    # Reverse batch call
+    n_back, e_back, z_back = t.etrs89_to_st70(lat_batch, lon_batch, h_batch)
+    for i in range(len(n_list)):
+        n_sc, e_sc, z_sc = t.etrs89_to_st70(lat_batch[i], lon_batch[i], h_batch[i])
+        assert math.isclose(n_back[i], n_sc, abs_tol=1e-9)
+        assert math.isclose(e_back[i], e_sc, abs_tol=1e-9)
+        assert math.isclose(z_back[i], z_sc, abs_tol=1e-9)
+
+

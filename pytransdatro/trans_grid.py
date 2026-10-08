@@ -116,12 +116,26 @@ class Grid(abc.ABC):
         """Returns the indexes of the subgrid required for bicubic interpolation."""
         r_idx = int((n - self.n_min - self.n_step * (self.sg_size / 2 - 1)) / self.n_step)
         c_idx = int((e - self.e_min - self.e_step * (self.sg_size / 2 - 1)) / self.e_step)
+        c_count = self.c_count
 
-        r = [None] * (self.sg_size * self.sg_size)   
-        for i in range(4):
-            for j in range(4):
-                r[i * self.sg_size + j] = (r_idx + i) * self.c_count + c_idx + j
-        return tuple(r)
+        return (
+            r_idx * c_count + c_idx,
+            r_idx * c_count + c_idx + 1,
+            r_idx * c_count + c_idx + 2,
+            r_idx * c_count + c_idx + 3,
+            (r_idx + 1) * c_count + c_idx,
+            (r_idx + 1) * c_count + c_idx + 1,
+            (r_idx + 1) * c_count + c_idx + 2,
+            (r_idx + 1) * c_count + c_idx + 3,
+            (r_idx + 2) * c_count + c_idx,
+            (r_idx + 2) * c_count + c_idx + 1,
+            (r_idx + 2) * c_count + c_idx + 2,
+            (r_idx + 2) * c_count + c_idx + 3,
+            (r_idx + 3) * c_count + c_idx,
+            (r_idx + 3) * c_count + c_idx + 1,
+            (r_idx + 3) * c_count + c_idx + 2,
+            (r_idx + 3) * c_count + c_idx + 3
+        )
 
     @abc.abstractmethod
     def _grid_vs_at_idxs(self, idxs):
@@ -140,43 +154,60 @@ class Grid(abc.ABC):
         return (((n - self.n_min) % self.n_step) / self.n_step,
                 ((e - self.e_min) % self.e_step) / self.e_step)
 
-    @functools.lru_cache(maxsize=3072) 
+    @functools.lru_cache(maxsize=8192) 
     def _init_interp(self, values):
         """Function used to cache BiInterp class instances."""
         return self.BiInterp(values)
 
     def interp(self, n, e):
-        """Returns interpolated grid values at input location."""
-        if not self.covered_by_grid(n, e):
-            raise exceptions.OutOfGridErr(n, e, self)
-
-        sg_idxs = self._sgrid_idxs(n, e)
-        sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
-       
-        if self._grid_vs_no_data(sg_v_dict.values()):
-            raise exceptions.NoDataGridErr(n, e, self)
-
-        n_unity, e_unity = self._reduce_to_unity(n, e)
-
-        # Grid1D
+        """Returns arrays of interpolated grid values at input locations (sequences)."""
         if self.v_size == 1:
-            sg_v_z_list = tuple(v[0] for v in sg_v_dict.values())  
-            bi = self._init_interp(sg_v_z_list)
-            interp_v_z = bi.interp(n_unity, e_unity)
-            return (interp_v_z,)        
+            z_out = []
+            for n_val, e_val in zip(n, e):
+                if not self.covered_by_grid(n_val, e_val):
+                    raise exceptions.OutOfGridErr(n_val, e_val, self)
 
-        # Grid2D
-        if self.v_size == 2:
-            sg_v_e_list, sg_v_n_list = zip(*sg_v_dict.values())
+                sg_idxs = self._sgrid_idxs(n_val, e_val)
+                sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
+            
+                if self._grid_vs_no_data(sg_v_dict.values()):
+                    raise exceptions.NoDataGridErr(n_val, e_val, self)
 
-            bi = self._init_interp(sg_v_n_list)
-            shift_n = bi.interp(n_unity, e_unity)
+                n_unity, e_unity = self._reduce_to_unity(n_val, e_val)
 
-            bi = self._init_interp(sg_v_e_list)
-            shift_e = bi.interp(n_unity, e_unity)  
+                sg_v_z_list = tuple(v[0] for v in sg_v_dict.values())  
+                bi = self._init_interp(sg_v_z_list)
+                interp_v_z = bi.interp(n_unity, e_unity)
+                z_out.append(interp_v_z)
+            return (z_out,)        
+        
+        elif self.v_size == 2:
+            n_out = []
+            e_out = []
+            for n_val, e_val in zip(n, e):
+                if not self.covered_by_grid(n_val, e_val):
+                    raise exceptions.OutOfGridErr(n_val, e_val, self)
 
-            return (shift_n, shift_e)
+                sg_idxs = self._sgrid_idxs(n_val, e_val)
+                sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
+            
+                if self._grid_vs_no_data(sg_v_dict.values()):
+                    raise exceptions.NoDataGridErr(n_val, e_val, self)
 
+                n_unity, e_unity = self._reduce_to_unity(n_val, e_val)
+
+                sg_v_e_list, sg_v_n_list = zip(*sg_v_dict.values())
+
+                bi_n = self._init_interp(sg_v_n_list)
+                shift_n = bi_n.interp(n_unity, e_unity)
+
+                bi_e = self._init_interp(sg_v_e_list)
+                shift_e = bi_e.interp(n_unity, e_unity)  
+
+                n_out.append(shift_n)
+                e_out.append(shift_e)
+
+            return (n_out, e_out)
     class BiInterp():
         """Class which computes the 16 coefficients of the bicubic interpolation
         polynomial and performs interpolation on a 4x4 subgrid.
@@ -270,35 +301,45 @@ class Grid1D(Grid):
     def _get_v_size(self):
         return 1
 
-    @functools.lru_cache(maxsize=2048)
+    @functools.lru_cache(maxsize=4096)
     def get_vs_at_idxs_cached(self, idxs):
         return self._grid_vs_at_idxs(idxs)
 
     def _trans_colocate(self, n, e, z, corr_sgn):
         """Transforms z by adding/subtracting grid height anomaly using
-        nearest-neighbor (colocate) node lookup.
+        nearest-neighbor (colocate) node lookup for sequences.
         """        
-        c_idx = int(round((e - self.e_min) / self.e_step))
-        r_idx = int(round((n - self.n_min) / self.n_step))
-        
-        if c_idx < 0: c_idx = 0
-        elif c_idx >= self.c_count: c_idx = self.c_count - 1
-        
-        if r_idx < 0: r_idx = 0
-        elif r_idx >= self.r_count: r_idx = self.r_count - 1
-        
-        idx = r_idx * self.c_count + c_idx
-        corr = self.reader.height_flat[idx]
-        return (z + corr_sgn * corr,)
+        c_count = self.c_count
+        r_count = self.r_count
+        e_min = self.e_min
+        n_min = self.n_min
+        e_step = self.e_step
+        n_step = self.n_step
+        height_flat = self.reader.height_flat
+
+        z_out = []
+        for n_val, e_val, z_val in zip(n, e, z):
+            c_idx = int(round((e_val - e_min) / e_step))
+            r_idx = int(round((n_val - n_min) / n_step))
+            
+            if c_idx < 0: c_idx = 0
+            elif c_idx >= c_count: c_idx = c_count - 1
+            
+            if r_idx < 0: r_idx = 0
+            elif r_idx >= r_count: r_idx = r_count - 1
+            
+            idx = r_idx * c_count + c_idx
+            corr = height_flat[idx]
+            z_out.append(z_val + corr_sgn * corr)
+        return (z_out,)
 
     def _trans_bicubic(self, n, e, z, corr_sgn):
         """Transforms z by adding/subtracting grid height anomaly using
-        bicubic spline polynomial interpolation on a 4x4 subgrid.
+        bicubic spline polynomial interpolation on a 4x4 subgrid for sequences.
         """
         corrs = self.interp(n, e)
-        return (z + corr_sgn * corrs[0],)
+        return ([z_val + corr_sgn * corr for z_val, corr in zip(z, corrs[0])],)
 
-         
 
 class Grid2D(Grid):
 
@@ -315,11 +356,12 @@ class Grid2D(Grid):
     def _get_v_size(self):
         return 2
 
-    @functools.lru_cache(maxsize=1024)    
+    @functools.lru_cache(maxsize=4096)    
     def get_vs_at_idxs_cached(self, idxs):
         return self._grid_vs_at_idxs(idxs)        
 
     def trans(self, n, e, corr_sgn):
-        """Transforms n, e by adding/subtracting interpolated values."""
+        """Transforms n, e by adding/subtracting interpolated values for sequences."""
         corrs = self.interp(n, e)
-        return (n + corr_sgn * corrs[0], e + corr_sgn * corrs[1])         
+        return ([n_val + corr_sgn * corr for n_val, corr in zip(n, corrs[0])], 
+                [e_val + corr_sgn * corr for e_val, corr in zip(e, corrs[1])])

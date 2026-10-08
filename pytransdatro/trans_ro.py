@@ -33,67 +33,91 @@ class TransRO():
         self._t_gr1d = pytransdatro.trans_grid.Grid1D(grid_filename)
         
     def st70_to_etrs89(self, n, e, z=None):
-        """Transforms Stereo70 grid coordinates to ETRS89 geographic coordinates:
+        """Transforms Stereo70 grid coordinates to ETRS89 geographic coordinates.
+        Supports both single coordinates (floats) and sequences (lists/tuples).
         (N, E[, H]) -> (Lat, Long[, h])
 
-        :param n: northing (meters)
-        :type n: float
+        :param n: northing (meters) or sequence of northings
+        :type n: float or sequence of floats
 
-        :param e: easting (meters)
-        :type e: float 
+        :param e: easting (meters) or sequence of eastings
+        :type e: float or sequence of floats
 
-        :param z: normal elevation (meters), optional
-        :type z: float, optional
+        :param z: normal elevation (meters) or sequence of elevations, optional
+        :type z: float or sequence of floats, optional
 
         :return: (lat, lon[, h]) in ETRS89 coordinate reference system
-        :rtype: tuple of floats
+        :rtype: tuple of floats or tuple of lists
 
         :raises OutOfGridErr: if (n,e) is out of the grid / not covered by grid
         :raises NoDataGridErr: if subgrid used for interpolation at (n,e) has
             No Data value(s).
         """
+        is_scalar = not isinstance(n, (list, tuple))
+        if is_scalar:
+            n, e = (n,), (e,)
+            if z is not None:
+                z = (z,)
+
         r_n, r_e = self._t_gr2d.trans(n, e, -1)
         r_n, r_e = self._t_h2d.trans(r_n, r_e, 1)
         r_n, r_e = self._p_st70.to_geo(r_n, r_e)
 
         # If z value provided, apply 1D grid elevation correction: h = H + N
         if z is not None:
-            n_deg = math.degrees(r_n)
-            e_deg = math.degrees(r_e)
+            _degrees = math.degrees
+            n_deg = [_degrees(x) for x in r_n]
+            e_deg = [_degrees(y) for y in r_e]
             r_z, = self._t_gr1d.trans(n_deg, e_deg, z, 1)
+            if is_scalar:
+                return (r_n[0], r_e[0], r_z[0])
             return (r_n, r_e, r_z)
         else:
+            if is_scalar:
+                return (r_n[0], r_e[0])
             return (r_n, r_e)
     
     def etrs89_to_st70(self, lat, lon, h=None):
-        """Transforms ETRS89 geographic coordinates to Stereo70 grid coordinates:
+        """Transforms ETRS89 geographic coordinates to Stereo70 grid coordinates.
+        Supports both single coordinates (floats) and sequences (lists/tuples).
         (Lat, Long[, h]) -> (N, E[, H])
 
-        :param lat: latitude (radians)
-        :type lat: float
+        :param lat: latitude (radians) or sequence of latitudes
+        :type lat: float or sequence of floats
 
-        :param lon: longitude (radians)
-        :type lon: float 
+        :param lon: longitude (radians) or sequence of longitudes
+        :type lon: float or sequence of floats
 
-        :param h: ellipsoidal elevation (meters), optional
-        :type h: float, optional
+        :param h: ellipsoidal elevation (meters) or sequence of elevations, optional
+        :type h: float or sequence of floats, optional
 
         :return: (n, e[, z]) in Stereo70 coordinate reference system
-        :rtype: tuple of floats
+        :rtype: tuple of floats or tuple of lists
 
         :raises OutOfGridErr: if (n,e) is out of the grid / not covered by grid
         :raises NoDataGridErr: if subgrid used for interpolation at (n,e) has
             No Data value(s).
         """        
+        is_scalar = not isinstance(lat, (list, tuple))
+        if is_scalar:
+            lat, lon = (lat,), (lon,)
+            if h is not None:
+                h = (h,)
+
         r_n, r_e = self._p_st70.to_grid(lat, lon)
         r_n, r_e = self._t_h2d.trans(r_n, r_e, -1)
         r_n, r_e = self._t_gr2d.trans(r_n, r_e, 1)
 
         # If h value provided, apply 1D grid elevation correction: H = h - N
         if h is not None:
-            lat_deg = math.degrees(lat)
-            lon_deg = math.degrees(lon)
+            _degrees = math.degrees
+            lat_deg = [_degrees(x) for x in lat]
+            lon_deg = [_degrees(y) for y in lon]
             r_z, = self._t_gr1d.trans(lat_deg, lon_deg, h, -1)
+            if is_scalar:
+                return (r_n[0], r_e[0], r_z[0])
             return (r_n, r_e, r_z)
         else:
+            if is_scalar:
+                return (r_n[0], r_e[0])
             return (r_n, r_e)

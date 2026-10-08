@@ -56,85 +56,91 @@ class StereoProj():
 
     def to_grid(self, lat, lon):
         """Returns the grid coordinates (projected) of the input geodetic
-        (geographic) coordinates 
+        (geographic) coordinates (sequences).
         (Lat, Long) -> (N, E)
 
-        :param lat: latitude
-        :type lat: float
+        :param lat: sequence of latitudes
+        :type lat: sequence of floats
 
-        :param lon: longitude
-        :type lon: float 
+        :param lon: sequence of longitudes
+        :type lon: sequence of floats
 
-        :return: The values of northing and easting (n,e)
-        :rtype: tuple of floats           
+        :return: (n_out, e_out) lists of northing and easting coordinates
+        :rtype: tuple of lists
         """
-        lat_c, lon_c = self.__conf_sphere.get_latlon_from_geo(lat, lon)
+        lat_c_arr, lon_c_arr = self.__conf_sphere.get_latlon_from_geo(lat, lon)
         lat_c0 = self.__conf_sphere.orig_lat
         lon_c0 = self.__conf_sphere.orig_lon
-
-        # some vars used in calculus (precompute values to optimize computation
-        # and improve readability)        
-        sin_lat_c = math.sin(lat_c)
-        cos_lat_c = math.cos(lat_c)
         sin_lat_c0 = math.sin(lat_c0)
         cos_lat_c0 = math.cos(lat_c0)
-        dlon = lon_c - lon_c0
-        b = (1 + sin_lat_c * sin_lat_c0 
-             + cos_lat_c * cos_lat_c0 * math.cos(dlon))
-        
-        return ((self._f_n + 2 * self.__conf_sphere.r * self._s 
-                               * (sin_lat_c * cos_lat_c0 
-                                  - cos_lat_c * sin_lat_c0 * math.cos(dlon)) 
-                                / b),
-                (self._f_e + 2 * self.__conf_sphere.r 
-                               * self._s * cos_lat_c * math.sin(dlon) / b))
+        f_n = self._f_n
+        f_e = self._f_e
+        r2s = 2 * self.__conf_sphere.r * self._s
+        _sin = math.sin
+        _cos = math.cos
+
+        n_out = []
+        e_out = []
+        for lat_c, lon_c in zip(lat_c_arr, lon_c_arr):
+            sin_lat_c = _sin(lat_c)
+            cos_lat_c = _cos(lat_c)
+            dlon = lon_c - lon_c0
+            b = 1 + sin_lat_c * sin_lat_c0 + cos_lat_c * cos_lat_c0 * _cos(dlon)
+            n_out.append(f_n + r2s * (sin_lat_c * cos_lat_c0 - cos_lat_c * sin_lat_c0 * _cos(dlon)) / b)
+            e_out.append(f_e + r2s * cos_lat_c * _sin(dlon) / b)
+        return n_out, e_out
 
     def to_geo(self, n, e):
         """Returns the geodetic (geographic) coordinates of the input grid
-        (projected) coordinates 
+        (projected) coordinates (sequences).
         (N, E) -> (Lat, Long)
 
-        :param n: northing
-        :type n: float
+        :param n: sequence of northings
+        :type n: sequence of floats
 
-        :param e: easting
-        :type e: float 
+        :param e: sequence of eastings
+        :type e: sequence of floats
 
-        :return: The values of latitude and longitude  (lat,lon)
-        :rtype: tuple of floats           
+        :return: (lat_out, lon_out) lists of latitudes and longitudes
+        :rtype: tuple of lists
         """
+        lat_c_arr, lon_c_arr = self.__conf_sphere.get_latlon_from_grid(n, e)
 
-        lat_c, lon_c = self.__conf_sphere.get_latlon_from_grid(n, e)
-
-        iso_lat = ((0.5 * math.log((1 + math.sin(lat_c))
-                   / (self.__conf_sphere.c * (1 - math.sin(lat_c))))) 
-                   / self.__conf_sphere.n)
-        e = self._ell.first_ecc
+        e_first = self._ell.first_ecc
         e2 = self._ell.first_ecc2
+        c_conf = self.__conf_sphere.c
+        n_conf = self.__conf_sphere.n
+        orig_lon = self._orig_lon
 
-        # next computation involves an iterative process until 
-        # precision is achieved (tolerance and counter used to control the loop)
-        tol = 0.0000000000484814   # radians of DMS value: 0 0 0.00001
-        i = 0   # counter to avoid infinite loop
-        diff = tol + 1
-        r_lat = 0.0   # assign a default value for result latitude
-        while diff >= tol and i < 50:
-            if i == 0:   # if first iteration compute first approximation
-                r_lat = 2 * math.atan(math.exp(iso_lat)) - math.pi / 2
-            else:
+        _sin = math.sin
+        _cos = math.cos
+        _log = math.log
+        _exp = math.exp
+        _atan = math.atan
+        _tan = math.tan
+        _pow = math.pow
+        pi_2 = math.pi / 2
+        pi_4 = math.pi / 4
+        tol = 0.0000000000484814
+
+        lat_out = []
+        lon_out = []
+        for lat_c, lon_c in zip(lat_c_arr, lon_c_arr):
+            sin_lat_c = _sin(lat_c)
+            iso_lat = (0.5 * _log((1 + sin_lat_c) / (c_conf * (1 - sin_lat_c)))) / n_conf
+            r_lat = 2 * _atan(_exp(iso_lat)) - pi_2
+            diff = tol + 1
+            i = 1
+            while diff >= tol and i < 50:
                 r_lat_before_next_iter = r_lat
-                iso_lat_i = math.log(math.tan(r_lat / 2 + math.pi / 4)
-                                     * math.pow((1 - e * math.sin(r_lat))
-                                     / (1 + e * math.sin(r_lat)), e / 2))
-
-                r_lat = r_lat - ((iso_lat_i - iso_lat) * math.cos(r_lat)
-                                 * (1 - e2 * math.pow(math.sin(r_lat), 2)) 
-                                 / (1 - e2))
+                sin_rlat = _sin(r_lat)
+                iso_lat_i = _log(_tan(r_lat / 2 + pi_4) * _pow((1 - e_first * sin_rlat) / (1 + e_first * sin_rlat), e_first / 2))
+                r_lat = r_lat - ((iso_lat_i - iso_lat) * _cos(r_lat) * (1 - e2 * sin_rlat * sin_rlat) / (1 - e2))
                 diff = abs(r_lat_before_next_iter - r_lat)
-            i+=1
-        
-        return (r_lat,
-                self._orig_lon + (lon_c - self._orig_lon) / self.__conf_sphere.n)
+                i += 1
+            lat_out.append(r_lat)
+            lon_out.append(orig_lon + (lon_c - orig_lon) / n_conf)
+        return lat_out, lon_out
 
     class _Ellipsoid:
         """Class which provides functionality for computation of basic 
@@ -235,42 +241,59 @@ class StereoProj():
             # some vars used in calculus (precompute values to optimize 
             # computation and improve readability) 
             sf = self.__proj._s   # projection scale factor
-            g = 2 * self.r * sf * math.tan((math.pi / 4) - (self.orig_lat / 2))
-            h = 4 * self.r * sf * math.tan(self.orig_lat) + g
-            dn = n - self.__proj._f_n
-            de = e - self.__proj._f_e
-            i = math.atan(de / (h + dn))
-            j = (math.atan(de / (g - dn))) - i  
+            r = self.r
+            g = 2 * r * sf * math.tan((math.pi / 4) - (self.orig_lat / 2))
+            h = 4 * r * sf * math.tan(self.orig_lat) + g
+            f_n = self.__proj._f_n
+            f_e = self.__proj._f_e
+            orig_lat = self.orig_lat
+            orig_lon = self.orig_lon
+            r2s = 2 * r * sf
+            _atan = math.atan
+            _tan = math.tan
 
-            return (self.orig_lat + 2 * math.atan((dn - de * math.tan(j / 2))
-                                                    / (2 * self.r * sf)), 
-                    j + 2 * i + self.orig_lon)
+            lat_out = []
+            lon_out = []
+            for n_val, e_val in zip(n, e):
+                dn = n_val - f_n
+                de = e_val - f_e
+                i = _atan(de / (h + dn))
+                j = _atan(de / (g - dn)) - i
+                lat_out.append(orig_lat + 2 * _atan((dn - de * _tan(j / 2)) / r2s))
+                lon_out.append(j + 2 * i + orig_lon)
+            return lat_out, lon_out
 
         def get_latlon_from_geo(self, lat, lon):
-            """Computes the equivalent conformal latitude and longitude for a 
-            given point with geodetic geographic coordinates (latitude, 
-            longitude)
+            """Computes the equivalent conformal latitude and longitude for 
+            sequences of geodetic geographic coordinates (latitudes, longitudes).
                 
-            :param lat: latitude in radians
-            :type lat: float
+            :param lat: sequence of latitudes in radians
+            :type lat: sequence of floats
 
-            :param lon: longitude in radians
-            :type lon: float 
+            :param lon: sequence of longitudes in radians
+            :type lon: sequence of floats
 
-            :return: the values of latitude and longitude (lat,lon)
-            :rtype: tuple of floats         
+            :return: (lat_out, lon_out) lists of conformal latitudes and longitudes
+            :rtype: tuple of lists
             """
-
-            # some vars used in calculus (precompute values to optimize 
-            # computation and improve readability)
             e = self.__proj._ell.first_ecc
-            sin_lat = math.sin(lat)
-            sa = (1 + sin_lat) / (1 - sin_lat)
-            sb = (1 - e * sin_lat) / (1 + e * sin_lat)
-            w = self.c * math.pow((sa * math.pow(sb, e)), self.n)
+            n = self.n
+            orig_lon = self.orig_lon
+            c = self.c
+            _sin = math.sin
+            _asin = math.asin
+            _pow = math.pow
 
-            return (math.asin((w - 1) / (w + 1)),
-                    self.n * (lon - self.orig_lon) + self.orig_lon)       
+            lat_out = []
+            lon_out = []
+            for lat_val, lon_val in zip(lat, lon):
+                sin_lat = _sin(lat_val)
+                sa = (1 + sin_lat) / (1 - sin_lat)
+                sb = (1 - e * sin_lat) / (1 + e * sin_lat)
+                w = c * _pow((sa * _pow(sb, e)), n)
+                lat_out.append(_asin((w - 1) / (w + 1)))
+                lon_out.append(n * (lon_val - orig_lon) + orig_lon)
+            return lat_out, lon_out
 
 
 
