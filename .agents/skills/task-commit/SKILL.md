@@ -50,14 +50,25 @@ Do **not** stage (`git add`) or commit anything yet. Present a clear, structured
 
 ---
 
-## Step 3: Pause for User Review
+## Step 3: Pause for Review (Interactive Buttons)
 
-Stop executing immediately after presenting the report.
+After presenting the pre-commit report in the chat, **do NOT proceed to Step 4**.
+Call the `ask_question` tool so the Antigravity IDE renders interactive clickable buttons for the user to approve, edit, or cancel:
 
-Ask the user:
-> *"Does this report and proposed commit message look good to execute, or would you like to make any adjustments?"*
+- **Question**: `"Review the pre-commit report above. How would you like to proceed?"`
+- **Options**:
+  1. `"(Recommended) Approve and execute the commit as proposed"`
+  2. `"Edit the commit message before committing"`
+  3. `"Cancel the commit"`
+- **is_multi_select**: `false`
 
-Wait for explicit user approval or requested edits before proceeding to Step 4. **Never proceed to Step 4 in the same turn.**
+Handle the response:
+- If the user selects **Approve**: Proceed to Step 4.
+- If the user selects **Edit**: Ask the user for their desired commit message or suggest revisions, then prompt again.
+- If the user selects **Cancel**: Terminate the workflow without making any commits.
+
+Wait for explicit user approval via the `ask_question` tool before proceeding to Step 4. **Never proceed to Step 4 in the same turn.**
+
 
 ---
 
