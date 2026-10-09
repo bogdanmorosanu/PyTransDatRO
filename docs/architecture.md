@@ -36,3 +36,12 @@ A decoupled REST service built on FastAPI provides public access to the `pytrans
 - **Modern Endpoints (`/api/v1`)**: Fast JSON point, batch, and streaming file endpoints supporting radians and decimal degrees.
 - **Legacy Compatibility (`/transdatonline/cooOpService`)**: 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service.
 - See [docs/rest_api.md](rest_api.md) for endpoint references and [docs/transdatonline/](transdatonline/README.md) for the historical reverse-engineering analysis.
+
+## Web Application Layer (`webapp/`)
+A responsive Web GIS client interface built with Vite, TypeScript, Vanilla CSS, and Leaflet:
+- **Interactive Workbench**: Single point, multi-line batch, and drag-and-drop file upload workbenches.
+- **Embedded Web GIS**: Leaflet map with basemap selector, Romania SPG grid boundary, and marker clustering.
+- **Client-Side Utilities**: DMS parsing, auto-delimited point parsing, Point ID preservation, and instant multi-format exports (CSV, GeoJSON, AutoCAD DXF).
+- **Production Serving**: Hosted directly from FastAPI root `/` via static file mounting.
+- See [docs/web_app.md](web_app.md) for full architectural specifications and [webapp/README.md](../webapp/README.md) for frontend development commands.
+

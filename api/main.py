@@ -1,7 +1,9 @@
 """FastAPI application factory and entry point for PyTransDatRO Web Service.
 """
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from api.middleware.rate_limit import SlidingWindowRateLimiter
 from api.routes import legacy, point, batch, file, info, health
@@ -61,6 +63,11 @@ def create_app() -> FastAPI:
     app.include_router(file.router)
     app.include_router(info.router)
     app.include_router(health.router)
+
+    # Mount static web application assets if built
+    webapp_dist = Path(__file__).resolve().parent.parent / "webapp" / "dist"
+    if webapp_dist.is_dir():
+        app.mount("/", StaticFiles(directory=str(webapp_dist), html=True), name="webapp")
 
     return app
 

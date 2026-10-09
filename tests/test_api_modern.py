@@ -159,3 +159,12 @@ def test_telemetry_stats(client):
     assert "summary" in data
     assert "total_calls" in data["summary"]
     assert isinstance(data["daily_trend"], list)
+
+
+def test_webapp_static_mount(client):
+    """Verifies the root path / serves the built webapp index.html."""
+    res = client.get("/")
+    assert res.status_code == 200
+    assert "text/html" in res.headers.get("content-type", "")
+    assert "PyTransDatRO" in res.text
+    assert 'id="app-root"' in res.text

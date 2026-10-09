@@ -26,7 +26,7 @@ tools/__pycache__/
 romgeo/
 
 # Legacy Java reference
-transdatonline/
+/transdatonline/
 
 # Telemetry / Local DB
 logs/usage.db
