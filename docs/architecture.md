@@ -30,3 +30,9 @@
 
 ## Grid Management
 The system automatically discovers and loads the single `.spg` grid located in `pytransdatro/grids/`. If multiple grids or no grids are found, explicit descriptive exceptions (`AmbiguousGridError`, `MissingGridError`) are raised to prevent transformation ambiguity. Legacy binary `.grd` files have been retired.
+
+## Web API Layer (`api/`)
+A decoupled REST service built on FastAPI provides public access to the `pytransdatro` transformation pipeline:
+- **Modern Endpoints (`/api/v1`)**: Fast JSON point, batch, and streaming file endpoints supporting radians and decimal degrees.
+- **Legacy Compatibility (`/transdatonline/cooOpService`)**: 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service.
+- See [docs/rest_api.md](rest_api.md) for endpoint references and [docs/transdatonline/](transdatonline/README.md) for the historical reverse-engineering analysis.

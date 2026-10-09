@@ -24,3 +24,6 @@ tools/__pycache__/
 
 #romgeo
 romgeo/
+
+# Legacy Java reference
+transdatonline/
