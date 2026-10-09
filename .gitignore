@@ -22,8 +22,14 @@ perf_tst.py
 reports/
 tools/__pycache__/
 
-#romgeo
+# romgeo
 romgeo/
 
 # Legacy Java reference
 transdatonline/
+
+# Telemetry / Local DB
+logs/usage.db
+
+# Scratch directory
+scratch/
