@@ -35,6 +35,7 @@ export class BatchConverter {
   private outputText: string = '';
   private lastTransformedItems: ExportPointItem[] = [];
   private isProcessing: boolean = false;
+  private viewLayout: 'split' | 'stacked' = 'stacked';
 
   constructor(callbacks: BatchConverterCallbacks) {
     this.callbacks = callbacks;
@@ -209,6 +210,11 @@ export class BatchConverter {
       <div class="studio-card">
         <div class="card-title">
           <span>${t('batch.title')}</span>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <button class="btn btn-outline" id="batch-layout-toggle" style="padding: 3px 8px; font-size: 11px;">
+              ${this.viewLayout === 'stacked' ? '⬍ ' + (t('batch.layoutStacked') || 'Suprapus') : '⬄ ' + (t('batch.layoutSplit') || 'Alăturat')}
+            </button>
+          </div>
         </div>
 
         <!-- Direction & Order Grid -->
@@ -252,16 +258,16 @@ export class BatchConverter {
           </div>
         </div>
 
-        <!-- Side-by-side Textareas -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <!-- Textareas (Stacked or Split) -->
+        <div style="display: grid; grid-template-columns: ${this.viewLayout === 'split' ? '1fr 1fr' : '1fr'}; gap: 12px;">
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${t('batch.inputLabel')}</label>
-            <textarea class="form-input mono" id="batch-input-area" rows="12" style="resize: vertical; font-size: 12px;">${this.inputText}</textarea>
+            <textarea class="form-input mono" id="batch-input-area" rows="${this.viewLayout === 'split' ? '12' : '7'}" style="resize: vertical; font-size: 12px;">${this.inputText}</textarea>
           </div>
 
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${t('batch.outputLabel')}</label>
-            <textarea class="form-input mono" id="batch-output-area" rows="12" readonly style="resize: vertical; font-size: 12px; background-color: var(--bg-surface-elevated);">${this.outputText}</textarea>
+            <textarea class="form-input mono" id="batch-output-area" rows="${this.viewLayout === 'split' ? '12' : '7'}" readonly style="resize: vertical; font-size: 12px; background-color: var(--bg-surface-elevated);">${this.outputText}</textarea>
           </div>
         </div>
 
@@ -291,6 +297,12 @@ export class BatchConverter {
   }
 
   private attachEventListeners(): void {
+    // Layout toggle
+    this.container.querySelector('#batch-layout-toggle')?.addEventListener('click', () => {
+      this.viewLayout = this.viewLayout === 'stacked' ? 'split' : 'stacked';
+      this.render();
+    });
+
     // Op switches
     this.container.querySelector('#batch-op-s70')?.addEventListener('click', () => {
       this.op = 'Stereo70ToETRS89';

@@ -8,6 +8,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Design System Specification (`DESIGN_GUIDE.md`)**:
+  - Comprehensive design system manual detailing the Simplicity, Optimal, and Modern trinity.
+  - Strict semantic isolation guidelines: scalar data metrics vs. system health/validation alerts.
+  - Standardized curvature scale and token rules for future UI components.
+- **Batch Converter Layout Modes (`BatchConverter.ts`)**:
+  - Added layout toggle button (`⬍ Suprapus / ⬄ Alăturat`) enabling users to switch between stacked (full-width textareas) and split (side-by-side) modes.
+
+### Changed
+- **Navigation Tabs Modernization (`main.ts`, `components.css`)**:
+  - Removed decorative icons/emojis from main tabs (`Punct Unic`, `Lot Coordonate`, `Fișier`, `Statistici`).
+  - Switched to rounded pill/dock segmented design with elevated active states.
+- **Segmented Option Controls (`components.css`)**:
+  - Added subtle vertical divider bars between adjacent unselected options for clearer text parsing.
+  - Switched active option pills from saturated blue to elevated neutral surfaces (`--bg-surface-elevated`) to restore clean visual hierarchy.
+- **Geodetic Metrics Neutral Styling (`PointConverter.ts`)**:
+  - Changed Quasigeoid undulation $\zeta$ value styling from green to neutral monospace typography (`var(--text-main)`), preventing confusion with success/validation states.
+- **Workbench Panel Geometry (`base.css`)**:
+  - Expanded utility panel width range to `560px`–`640px` to accommodate long coordinate tuples without wrapping.
+- **Map Controls & Marker Clusters (`map.css`)**:
+  - Styled Leaflet zoom controls with rounded corners and card theme backgrounds.
+  - Updated cluster styling to match precision technical blue tokens.
+
 ---
 
 ## [1.0.0] - 2026-10-10

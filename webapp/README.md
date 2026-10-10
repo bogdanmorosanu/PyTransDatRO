@@ -47,6 +47,7 @@ When the FastAPI server starts (`python -m uvicorn api.main:app`), it automatica
 
 ```
 webapp/
+├── DESIGN_GUIDE.md         # Single source of truth design system & styling manual
 ├── index.html              # HTML entrypoint with preloaded fonts and layout shells
 ├── package.json            # Node dependencies and build scripts
 ├── tsconfig.json           # Strict TypeScript configuration
@@ -90,8 +91,9 @@ webapp/
 
 2. **Vanilla CSS Design System**:
    - Built with pure CSS custom properties (`src/style/variables.css`).
+   - Detailed specifications, visual tokens, and component guidelines are documented in [DESIGN_GUIDE.md](DESIGN_GUIDE.md).
    - Supports **Dark Mode**, **Light Mode**, and **System Preference** with no heavy UI framework dependencies.
-   - Clean, modern geodetic aesthetic: Slate neutrals, Cyan and Emerald precision accents, monospace coordinate tables (`JetBrains Mono`).
+   - Clean, modern geodetic aesthetic: Deep obsidian/slate neutrals, precision technical blue, monospace coordinate typography (`JetBrains Mono`).
 
 3. **Bilingual Internationalization (`i18n`)**:
    - Romanian (`ro`) is the primary default language; English (`en`) is fully supported.

@@ -48,7 +48,7 @@ html, body {
 /* Main Split Workbench Layout */
 .workbench-layout {
   display: grid;
-  grid-template-columns: minmax(520px, 600px) 1fr;
+  grid-template-columns: minmax(560px, 640px) 1fr;
   flex: 1;
   min-height: 0;
   height: calc(100vh - 64px);

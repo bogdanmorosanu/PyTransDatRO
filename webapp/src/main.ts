@@ -119,19 +119,15 @@ class App {
   private renderTabs(): void {
     this.tabsBar.innerHTML = `
       <button class="tab-btn ${this.activeTab === 'point' ? 'active' : ''}" data-tab="point">
-        <span>📍</span>
         <span>${t('tabs.point')}</span>
       </button>
       <button class="tab-btn ${this.activeTab === 'batch' ? 'active' : ''}" data-tab="batch">
-        <span>📋</span>
         <span>${t('tabs.batch')}</span>
       </button>
       <button class="tab-btn ${this.activeTab === 'file' ? 'active' : ''}" data-tab="file">
-        <span>📁</span>
         <span>${t('tabs.file')}</span>
       </button>
       <button class="tab-btn ${this.activeTab === 'stats' ? 'active' : ''}" data-tab="stats">
-        <span>📊</span>
         <span>${t('tabs.stats')}</span>
       </button>
     `;

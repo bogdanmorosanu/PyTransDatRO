@@ -316,10 +316,10 @@ export class PointConverter {
           this.quasigeoidZeta !== null
             ? `
           <div class="result-row" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-medium);">
-            <span style="color: var(--color-primary-light); font-size: 12px; font-weight: 500;">
+            <span style="color: var(--text-muted); font-size: 12px; font-weight: 500;">
               ${t('point.quasigeoidLabel')}:
             </span>
-            <span class="result-val" style="color: var(--color-success);">
+            <span class="result-val mono" style="color: var(--text-main); font-weight: 600;">
               ${(this.quasigeoidZeta >= 0 ? '+' : '') + this.quasigeoidZeta.toFixed(3)} m
             </span>
           </div>

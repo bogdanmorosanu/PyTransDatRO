@@ -62,25 +62,25 @@
   display: flex;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
-  padding: 8px 16px 0;
-  gap: 4px;
+  padding: 10px 16px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .tab-btn {
-  background: none;
-  border: none;
-  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 7px 14px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
   transition: all var(--transition-fast);
   display: flex;
   align-items: center;
-  gap: 6px;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  user-select: none;
 }
 
 .tab-btn:hover {
@@ -89,10 +89,11 @@
 }
 
 .tab-btn.active {
-  color: var(--color-primary-light);
+  color: var(--text-main);
   font-weight: 600;
-  border-bottom-color: var(--color-primary);
   background-color: var(--bg-surface-elevated);
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Tab Content Container */
@@ -105,16 +106,19 @@
 .studio-card {
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: 18px;
   margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -135,13 +139,13 @@
 
 .form-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 9px 12px;
   background-color: var(--bg-surface-input);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-main);
   font-size: 13px;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .form-input:focus {
@@ -154,28 +158,47 @@
   font-family: var(--font-mono);
 }
 
-/* Segmented Control / Radio switch */
+/* Segmented Control / Radio switch with vertical separators */
 .segmented-control {
   display: flex;
+  align-items: stretch;
   background-color: var(--bg-surface-input);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  gap: 2px;
+  border-radius: var(--radius-md);
+  padding: 3px;
+  position: relative;
 }
 
 .segmented-btn {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
   text-align: center;
+  position: relative;
+  white-space: nowrap;
+}
+
+/* Vertical separator line between adjacent inactive buttons */
+.segmented-btn:not(:last-child):not(.active)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background-color: var(--border-subtle);
+  pointer-events: none;
+}
+
+.segmented-btn.active + .segmented-btn::after {
+  display: none;
 }
 
 .segmented-btn:hover {
@@ -183,9 +206,11 @@
 }
 
 .segmented-btn.active {
-  background-color: var(--color-primary);
-  color: white;
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
   font-weight: 600;
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Buttons */
@@ -195,7 +220,7 @@
   justify-content: center;
   gap: 8px;
   padding: 9px 16px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -206,10 +231,12 @@
 .btn-primary {
   background-color: var(--color-primary);
   color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary:hover {
   background-color: var(--color-primary-hover);
+  box-shadow: 0 2px 8px var(--color-primary-glow);
 }
 
 .btn-secondary {
@@ -220,22 +247,25 @@
 
 .btn-secondary:hover {
   background-color: var(--bg-surface-hover);
+  border-color: var(--border-focus);
 }
 
 .btn-outline {
   background-color: transparent;
   border-color: var(--border-medium);
   color: var(--text-muted);
+  border-radius: var(--radius-md);
 }
 
 .btn-outline:hover {
   color: var(--text-main);
   border-color: var(--border-focus);
+  background-color: var(--bg-surface-elevated);
 }
 
 .btn-icon {
   padding: 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   border: 1px solid var(--border-medium);
   color: var(--text-muted);
@@ -243,20 +273,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition-fast);
 }
 
 .btn-icon:hover {
   color: var(--text-main);
   background-color: var(--bg-surface-elevated);
+  border-color: var(--border-focus);
 }
 
 /* Result Box */
 .result-card {
-  background: linear-gradient(180deg, var(--bg-surface-elevated) 0%, var(--bg-surface-input) 100%);
+  background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: 16px;
   margin-top: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .result-row {
