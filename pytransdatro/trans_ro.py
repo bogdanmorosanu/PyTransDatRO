@@ -118,16 +118,16 @@ class TransRO():
             if h is not None:
                 h = (h,)
 
+        r_n, r_e = self._p_st70.to_grid(lat, lon)
+        r_n, r_e = self._t_h2d.trans(r_n, r_e, -1)
+        r_n, r_e = self._t_gr2d.trans(r_n, r_e, 1)
+
         if self._collector is not None:
             try:
                 is_3d = 1 if h is not None else 0
                 self._collector.record(0, lat, lon, is_3d=is_3d, source=source)
             except Exception:
                 pass
-
-        r_n, r_e = self._p_st70.to_grid(lat, lon)
-        r_n, r_e = self._t_h2d.trans(r_n, r_e, -1)
-        r_n, r_e = self._t_gr2d.trans(r_n, r_e, 1)
 
         # If h value provided, apply 1D grid elevation correction: H = h - N
         if h is not None:
