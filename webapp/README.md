@@ -47,7 +47,7 @@ When the FastAPI server starts (`python -m uvicorn api.main:app`), it automatica
 
 ```
 webapp/
-├── DESIGN_GUIDE.md         # Single source of truth design system & styling manual
+├── design_guide.md         # Single source of truth design system & styling manual
 ├── index.html              # HTML entrypoint with preloaded fonts and layout shells
 ├── package.json            # Node dependencies and build scripts
 ├── tsconfig.json           # Strict TypeScript configuration
@@ -55,11 +55,11 @@ webapp/
 └── src/
     ├── main.ts             # Application orchestrator & component lifecycle manager
     ├── components/         # Interactive UI workbench components
-    │   ├── Header.ts       # Branding, tab navigation, language & theme switcher
+    │   ├── Header.ts       # Branding, direct navbar links (Grid Info, Geodetic Help), lang & theme
     │   ├── PointConverter.ts  # Single-point transformation workbench
-    │   ├── BatchConverter.ts  # Multi-line text conversion & table preview
+    │   ├── BatchConverter.ts  # Multi-line text conversion workbench
     │   ├── FileUpload.ts      # Drag-and-drop file processor with streaming progress
-    │   ├── MapView.ts         # Leaflet map, basemap selector, clustering & grid extent
+    │   ├── MapView.ts         # Leaflet map, 3 independent layer groups, dual map navigation
     │   ├── StatsView.ts       # Operational telemetry and active grid metadata
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
     │   ├── GeodeticHelpModal.ts # Geodetic datum reference and parameter guide
@@ -71,13 +71,13 @@ webapp/
     │   └── en.ts           # English translation dictionary
     ├── style/              # Design system & styles (Pure Vanilla CSS)
     │   ├── variables.css   # Color palette tokens, dark/light themes, typography
-    │   ├── base.css        # CSS reset, responsive desktop split-screen grid
-    │   ├── components.css  # Buttons, pills, form inputs, tables, modals, toasts
+    │   ├── base.css        # CSS reset, 480px workbench panel layout
+    │   ├── components.css  # Buttons, pills, form inputs, folder tabs, modals, toasts
     │   └── map.css         # Leaflet container, custom popups & cluster styling
     └── utils/              # Client-side geodetic & formatting helpers
         ├── apiClient.ts    # Type-safe REST client (passes X-Client-Source: web_app)
-        ├── dmsParser.ts    # High-precision DMS <-> Decimal Degrees converter
-        ├── pointParser.ts  # Auto-delimiter detector & coordinate cleaner
+        ├── dmsParser.ts    # Unspaced DMS <-> Decimal Degrees converter
+        ├── pointParser.ts  # Auto-delimiter detector & strict coordinate validator
         ├── exporters.ts    # Client-side CSV, GeoJSON, and AutoCAD DXF generator
         ├── gridBounds.ts   # Coarse SPG grid envelope union validation
         └── toast.ts        # Non-intrusive floating toast notifications
@@ -91,18 +91,26 @@ webapp/
    - The frontend communicates with the transformation engine exclusively over HTTP via `src/utils/apiClient.ts`.
    - All requests send the HTTP header `X-Client-Source: web_app`, allowing the backend `SqliteUsageLogger` to attribute telemetry appropriately.
 
-2. **Vanilla CSS Design System**:
+2. **Vanilla CSS Design System & Visual Ergonomics**:
    - Built with pure CSS custom properties (`src/style/variables.css`).
-   - Detailed specifications, visual tokens, and component guidelines are documented in [DESIGN_GUIDE.md](DESIGN_GUIDE.md).
+   - Detailed specifications, visual tokens, and component guidelines are documented in [design_guide.md](design_guide.md).
    - Supports **Dark Mode**, **Light Mode**, and **System Preference** with no heavy UI framework dependencies.
-   - Clean, modern geodetic aesthetic: Deep obsidian/slate neutrals, high-contrast anchor CTA buttons, monospace coordinate typography (`JetBrains Mono`).
+   - Clean, modern geodetic aesthetic: Deep obsidian/slate neutrals, high-contrast theme-native anchor CTA buttons, monospace coordinate typography (`JetBrains Mono`).
+   - Fixed `480px` left workbench panel width with seamless folder bookmark tabs physically merging with the card container below (zero gap).
+   - Dedicated Quasigeoid Height box ($\zeta = h - H$) styled in technical metric cyan (`--color-metric-text: #38bdf8;`), strictly isolated from status colors.
 
-3. **Bilingual Internationalization (`i18n`)**:
+3. **3-Tier Shared Transformation Configuration**:
+   - Elevated above tabs in `main.ts` to globally manage `Point`, `Text`, and `Files` tabs:
+     - **Tier 1**: Direction sliding toggle (`ETRS89 ➔ Stereo 70` default / `Stereo 70 ➔ ETRS89`).
+     - **Tier 2**: 50/50 split between `Angular unit:` (Degrees, DMS, Radians) and `Coordinate order:` (`NE(H)` vs `EN(H)`).
+     - **Tier 3**: Dynamic, selectable angle format example badge with click-to-copy functionality.
+
+4. **Bilingual Internationalization (`i18n`)**:
    - Romanian (`ro`) is the primary default language; English (`en`) is fully supported.
    - User language preference is stored in browser `localStorage`.
    - UI re-renders reactively upon language change without full page reloads.
 
-4. **Map Performance & Guardrails**:
+5. **Map Performance & Guardrails**:
    - Built with **Leaflet** and **Leaflet.markercluster**.
    - Three independent LayerGroups (`pointLayer`, `textLayer`, `filesLayer`) for granular visibility toggling.
    - Transformations are decoupled from map viewports (no unwanted auto-panning).
