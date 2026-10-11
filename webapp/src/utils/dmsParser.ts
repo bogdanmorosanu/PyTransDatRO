@@ -49,6 +49,12 @@ export function parseAngleToDeg(input: string): number {
     throw new Error(`Invalid DMS format: "${input}"`);
   }
 
+  for (const tok of tokens) {
+    if (!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(tok) || isNaN(Number(tok))) {
+      throw new Error('Invalid numeric coordinate');
+    }
+  }
+
   const d = Math.abs(parseFloat(tokens[0]) || 0);
   const m = tokens.length > 1 ? parseFloat(tokens[1]) || 0 : 0;
   const s = tokens.length > 2 ? parseFloat(tokens[2]) || 0 : 0;
@@ -69,7 +75,7 @@ export function parseAngleToRad(input: string): number {
 }
 
 /**
- * Formats decimal degrees into standard geodetic DMS string: DD° MM' SS.sssss"
+ * Formats decimal degrees into standard geodetic DMS string: DD°MM'SS.sssss" (no spaces)
  */
 export function formatDegToDMS(deg: number, precision: number = 5): string {
   const sign = deg < 0 ? '-' : '';
@@ -98,5 +104,5 @@ export function formatDegToDMS(deg: number, precision: number = 5): string {
   const mStr = String(m).padStart(2, '0');
   const dStr = String(d);
 
-  return `${sign}${dStr}° ${mStr}' ${sStr}"`;
+  return `${sign}${dStr}°${mStr}'${sStr}"`;
 }

@@ -62,6 +62,7 @@ webapp/
     │   ├── MapView.ts         # Leaflet map, basemap selector, clustering & grid extent
     │   ├── StatsView.ts       # Operational telemetry and active grid metadata
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
+    │   ├── GeodeticHelpModal.ts # Geodetic datum reference and parameter guide
     │   ├── ReportModal.ts     # Diagnostic calculation details modal
     │   └── FeedbackModal.ts   # Discrepancy reporting and user feedback modal
     ├── i18n/               # Internationalization system
@@ -78,6 +79,7 @@ webapp/
         ├── dmsParser.ts    # High-precision DMS <-> Decimal Degrees converter
         ├── pointParser.ts  # Auto-delimiter detector & coordinate cleaner
         ├── exporters.ts    # Client-side CSV, GeoJSON, and AutoCAD DXF generator
+        ├── gridBounds.ts   # Coarse SPG grid envelope union validation
         └── toast.ts        # Non-intrusive floating toast notifications
 ```
 
@@ -93,7 +95,7 @@ webapp/
    - Built with pure CSS custom properties (`src/style/variables.css`).
    - Detailed specifications, visual tokens, and component guidelines are documented in [DESIGN_GUIDE.md](DESIGN_GUIDE.md).
    - Supports **Dark Mode**, **Light Mode**, and **System Preference** with no heavy UI framework dependencies.
-   - Clean, modern geodetic aesthetic: Deep obsidian/slate neutrals, precision technical blue, monospace coordinate typography (`JetBrains Mono`).
+   - Clean, modern geodetic aesthetic: Deep obsidian/slate neutrals, high-contrast anchor CTA buttons, monospace coordinate typography (`JetBrains Mono`).
 
 3. **Bilingual Internationalization (`i18n`)**:
    - Romanian (`ro`) is the primary default language; English (`en`) is fully supported.
@@ -102,6 +104,9 @@ webapp/
 
 4. **Map Performance & Guardrails**:
    - Built with **Leaflet** and **Leaflet.markercluster**.
+   - Three independent LayerGroups (`pointLayer`, `textLayer`, `filesLayer`) for granular visibility toggling.
+   - Transformations are decoupled from map viewports (no unwanted auto-panning).
+   - Dual explicit navigation buttons per tab: `Center on Map` (pans to centroid preserving current zoom) and `Zoom to Extents` (pans and fits bounds / zoom 14 for single point), strictly guarded within Romania envelope (`gridBounds.ts`).
    - **Large volume guardrail**: When batch transformations exceed **2,000 points**, the user is prompted via `VolumeWarningModal` to choose between full rendering, a 1,000-point sample preview, or skipping map rendering to preserve browser responsiveness.
    - Base maps: OpenStreetMap, CartoDB Positron, CartoDB Dark Matter, and ESRI World Imagery.
    - Raster shift overlays: Placeholders prepared for forthcoming $\Delta E$, $\Delta N$, and quasigeoid $\zeta$ map services.

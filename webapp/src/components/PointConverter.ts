@@ -1,31 +1,38 @@
 import { t, onLanguageChange } from '../i18n';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
-import { parseAngleToDeg, formatDegToDMS, degToRad } from '../utils/dmsParser';
+import { parseAngleToDeg, formatDegToDMS, degToRad, radToDeg } from '../utils/dmsParser';
+import { isValidDecimal, type CoordinateOrder } from '../utils/pointParser';
+import { isWithinStereo70Grid, isWithinETRS89Grid } from '../utils/gridBounds';
 import { showToast } from '../utils/toast';
+import { isInsideRomaniaGrid } from './MapView';
 
 export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
 export interface PointConverterCallbacks {
   onPointTransformed: (coords: { lat: number; lon: number; outOfGrid: boolean }) => void;
+  onCenterOnMap?: (coords: { lat: number; lon: number; outOfGrid: boolean }) => void;
+  onZoomToExtents?: (coords: { lat: number; lon: number; outOfGrid: boolean }) => void;
+  onDirectionChanged?: (op: TransformationOp) => void;
 }
 
 export class PointConverter {
   private container: HTMLElement;
   private callbacks: PointConverterCallbacks;
 
-  private op: TransformationOp = 'Stereo70ToETRS89';
-  private is3D: boolean = true;
+  private op: TransformationOp = 'ETRS89ToStereo70';
   private angularUnit: AngularUnitType = 'degrees';
+  private order: CoordinateOrder = 'NE';
 
-  // State
-  private inputCoo1: string = '500000.000';
-  private inputCoo2: string = '500000.000';
+  // Coordinate state - Default Stereo 70 projection center origin (46° N, 25° E, h=100.0 m)
+  private inputCoo1: string = '46.00000000';
+  private inputCoo2: string = '25.00000000';
   private inputCoo3: string = '100.000';
 
   private outputCoords: number[] | null = null;
   private outputWarning: string | null = null;
   private quasigeoidZeta: number | null = null;
   private isCalculating: boolean = false;
+  private validationError: string | null = null;
 
   constructor(callbacks: PointConverterCallbacks) {
     this.callbacks = callbacks;
@@ -45,26 +52,229 @@ export class PointConverter {
     return this.container;
   }
 
-  public setCoordinatesFromMap(lat: number, lon: number): void {
-    if (this.op === 'Stereo70ToETRS89') {
-      // User clicked on map, but current mode is Stereo70 -> ETRS89.
-      // Auto-switch to ETRS89 -> Stereo70 to make sense of the click!
-      this.op = 'ETRS89ToStereo70';
+  public setDirection(op: TransformationOp): void {
+    if (this.op === op) return;
+    this.op = op;
+
+    const hasValidOutput = this.outputCoords !== null && this.outputWarning !== 'Out of grid';
+
+    if (op === 'Stereo70ToETRS89') {
+      if (hasValidOutput && this.outputCoords && this.outputCoords.length >= 2) {
+        // Output from ETRS89ToStereo70: [N, E, (H)]
+        const nStr = this.outputCoords[0].toFixed(3);
+        const eStr = this.outputCoords[1].toFixed(3);
+        this.inputCoo1 = this.order === 'EN' ? eStr : nStr;
+        this.inputCoo2 = this.order === 'EN' ? nStr : eStr;
+        if (this.outputCoords[2] !== undefined) {
+          this.inputCoo3 = this.outputCoords[2].toFixed(3);
+        }
+      } else {
+        // Fallback default: Stereo 70 projection center origin (500000, 500000, 100)
+        this.inputCoo1 = '500000.000';
+        this.inputCoo2 = '500000.000';
+        if (!this.inputCoo3 || this.inputCoo3.trim() === '') {
+          this.inputCoo3 = '100.000';
+        }
+      }
+    } else {
+      // Switched to ETRS89ToStereo70
+      if (hasValidOutput && this.outputCoords && this.outputCoords.length >= 2) {
+        // Output from Stereo70ToETRS89: [Lat, Lon, (h)] (in degrees)
+        const lat = this.outputCoords[0];
+        const lon = this.outputCoords[1];
+        let latStr: string;
+        let lonStr: string;
+        if (this.angularUnit === 'dms') {
+          latStr = formatDegToDMS(lat);
+          lonStr = formatDegToDMS(lon);
+        } else if (this.angularUnit === 'radians') {
+          latStr = degToRad(lat).toFixed(10);
+          lonStr = degToRad(lon).toFixed(10);
+        } else {
+          latStr = lat.toFixed(8);
+          lonStr = lon.toFixed(8);
+        }
+        this.inputCoo1 = this.order === 'EN' ? lonStr : latStr;
+        this.inputCoo2 = this.order === 'EN' ? latStr : lonStr;
+        if (this.outputCoords[2] !== undefined) {
+          this.inputCoo3 = this.outputCoords[2].toFixed(3);
+        }
+      } else {
+        // Fallback default: projection center origin (46° N, 25° E, 100 m)
+        let latStr = '46.00000000';
+        let lonStr = '25.00000000';
+        if (this.angularUnit === 'dms') {
+          latStr = '46°00\'00.00000"';
+          lonStr = '25°00\'00.00000"';
+        } else if (this.angularUnit === 'radians') {
+          latStr = degToRad(46.0).toFixed(10);
+          lonStr = degToRad(25.0).toFixed(10);
+        }
+        this.inputCoo1 = this.order === 'EN' ? lonStr : latStr;
+        this.inputCoo2 = this.order === 'EN' ? latStr : lonStr;
+        if (!this.inputCoo3 || this.inputCoo3.trim() === '') {
+          this.inputCoo3 = '100.000';
+        }
+      }
     }
+    this.render();
+    this.calculate();
+  }
+
+  public getDirection(): TransformationOp {
+    return this.op;
+  }
+
+  public setAngularUnit(unit: AngularUnitType): void {
+    if (this.angularUnit === unit) return;
+    const oldUnit = this.angularUnit;
+    this.angularUnit = unit;
+    if (this.op === 'ETRS89ToStereo70') {
+      try {
+        const c1Val = this.order === 'NE' ? this.inputCoo1 : this.inputCoo2;
+        const c2Val = this.order === 'NE' ? this.inputCoo2 : this.inputCoo1;
+
+        const parseOldToDeg = (val: string): number => {
+          if (oldUnit === 'radians') {
+            if (val.includes('°') || val.includes("'") || val.includes('"')) {
+              return parseAngleToDeg(val);
+            }
+            const num = Number(val.replace(/rad/gi, '').trim());
+            return !isNaN(num) ? radToDeg(num) : NaN;
+          }
+          return parseAngleToDeg(val);
+        };
+
+        const degLat = parseOldToDeg(c1Val);
+        const degLon = parseOldToDeg(c2Val);
+        if (!isNaN(degLat) && !isNaN(degLon)) {
+          const latStr = unit === 'dms' ? formatDegToDMS(degLat) : unit === 'radians' ? degToRad(degLat).toFixed(10) : degLat.toFixed(8);
+          const lonStr = unit === 'dms' ? formatDegToDMS(degLon) : unit === 'radians' ? degToRad(degLon).toFixed(10) : degLon.toFixed(8);
+          this.inputCoo1 = this.order === 'NE' ? latStr : lonStr;
+          this.inputCoo2 = this.order === 'NE' ? lonStr : latStr;
+        }
+      } catch {
+        // keep existing if parse fails
+      }
+    }
+    this.render();
+  }
+
+  public setCoordinateOrder(order: CoordinateOrder): void {
+    if (this.order === order) return;
+    this.order = order;
+    // Swap coordinate values so inputs match the newly selected column positions
+    const tmp = this.inputCoo1;
+    this.inputCoo1 = this.inputCoo2;
+    this.inputCoo2 = tmp;
+    this.render();
+    this.calculate();
+  }
+
+  public getCoordinateOrder(): CoordinateOrder {
+    return this.order;
+  }
+
+  public setCoordinatesFromMap(lat: number, lon: number): void {
+    let latStr: string;
+    let lonStr: string;
 
     if (this.angularUnit === 'dms') {
-      this.inputCoo1 = formatDegToDMS(lat);
-      this.inputCoo2 = formatDegToDMS(lon);
+      latStr = formatDegToDMS(lat);
+      lonStr = formatDegToDMS(lon);
     } else if (this.angularUnit === 'radians') {
-      this.inputCoo1 = degToRad(lat).toFixed(12);
-      this.inputCoo2 = degToRad(lon).toFixed(12);
+      latStr = degToRad(lat).toFixed(10);
+      lonStr = degToRad(lon).toFixed(10);
     } else {
-      this.inputCoo1 = lat.toFixed(7);
-      this.inputCoo2 = lon.toFixed(7);
+      latStr = lat.toFixed(8);
+      lonStr = lon.toFixed(8);
+    }
+
+    if (this.order === 'EN') {
+      this.inputCoo1 = lonStr;
+      this.inputCoo2 = latStr;
+    } else {
+      this.inputCoo1 = latStr;
+      this.inputCoo2 = lonStr;
     }
 
     this.render();
     this.calculate();
+  }
+
+  public setStereoCoordinatesFromMap(northing: number, easting: number): void {
+    const nStr = northing.toFixed(3);
+    const eStr = easting.toFixed(3);
+    if (this.order === 'EN') {
+      this.inputCoo1 = eStr;
+      this.inputCoo2 = nStr;
+    } else {
+      this.inputCoo1 = nStr;
+      this.inputCoo2 = eStr;
+    }
+    this.render();
+    this.calculate();
+  }
+
+  private cleanCoordinateString(val: string): string {
+    let s = val.trim();
+    // Strip wrapping quotes
+    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+      s = s.slice(1, -1).trim();
+    }
+    // Remove trailing unit words/letters like 'm', 'meters', 'metri'
+    s = s.replace(/(\d+(?:\.\d+)?)\s*(?:m|metri|meters)\b/gi, '$1');
+    // Strip compass letters (N, S, E, W) unless part of DMS string with minute/sec symbols
+    if (!s.includes('°') && !s.includes("'") && !s.includes('"')) {
+      s = s.replace(/([0-9.-]+)\s*[NSEWnsew]\b/g, '$1');
+      s = s.replace(/^[NSEWnsew]\s*([0-9.-]+)/g, '$1');
+    } else {
+      // Normalize DMS: remove spaces after degree and minute symbols
+      s = s.replace(/°\s+/g, '°').replace(/'\s+/g, "'");
+    }
+    return s.trim();
+  }
+
+  private handlePasteIntoInput(e: ClipboardEvent, targetIndex: 1 | 2 | 3): void {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+
+    const trimmed = text.trim();
+    // If the entire pasted text is a single DMS string, do not treat whitespace inside it as a multi-coordinate delimiter
+    const isSingleDmsString = /^[-+]?\d{1,3}°\s*\d{1,2}'\s*[\d.]+"?\s*[NSEW]?$/i.test(trimmed);
+
+    const delimiterMatch = isSingleDmsString
+      ? null
+      : trimmed.includes('\t')
+      ? '\t'
+      : trimmed.includes(';')
+      ? ';'
+      : trimmed.includes(',')
+      ? ','
+      : /\s{2,}|\s+/.test(trimmed)
+      ? /\s+/
+      : null;
+
+    if (delimiterMatch && targetIndex === 1) {
+      const parts = trimmed.split(delimiterMatch).map((p) => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        e.preventDefault();
+        this.inputCoo1 = this.cleanCoordinateString(parts[0]);
+        this.inputCoo2 = this.cleanCoordinateString(parts[1]);
+        if (parts.length >= 3) {
+          this.inputCoo3 = this.cleanCoordinateString(parts[2]);
+        }
+        this.render();
+        this.calculate();
+        return;
+      }
+    }
+
+    const cleaned = this.cleanCoordinateString(trimmed);
+    if (cleaned !== text) {
+      e.preventDefault();
+      document.execCommand('insertText', false, cleaned);
+    }
   }
 
   private readQueryParams(): void {
@@ -73,14 +283,15 @@ export class PointConverter {
       const opParam = params.get('op');
       if (opParam === 'Stereo70ToETRS89' || opParam === 'ETRS89ToStereo70') {
         this.op = opParam;
+        if (opParam === 'Stereo70ToETRS89' && !params.has('c1') && !params.has('c2')) {
+          this.inputCoo1 = '500000.000';
+          this.inputCoo2 = '500000.000';
+        }
       }
     }
     if (params.has('c1')) this.inputCoo1 = params.get('c1') || this.inputCoo1;
     if (params.has('c2')) this.inputCoo2 = params.get('c2') || this.inputCoo2;
-    if (params.has('c3')) {
-      this.inputCoo3 = params.get('c3') || this.inputCoo3;
-      this.is3D = true;
-    }
+    if (params.has('c3')) this.inputCoo3 = params.get('c3') || this.inputCoo3;
   }
 
   private updateQueryParams(): void {
@@ -88,7 +299,9 @@ export class PointConverter {
     params.set('op', this.op);
     params.set('c1', this.inputCoo1);
     params.set('c2', this.inputCoo2);
-    if (this.is3D) params.set('c3', this.inputCoo3);
+    if (this.inputCoo3.trim() !== '') {
+      params.set('c3', this.inputCoo3);
+    }
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
   }
@@ -96,45 +309,114 @@ export class PointConverter {
   private async calculate(): Promise<void> {
     if (this.isCalculating) return;
     this.isCalculating = true;
+    this.validationError = null;
 
     try {
       let raw1: number;
       let raw2: number;
       let raw3: number | undefined;
 
+      const val1 = this.inputCoo1.trim();
+      const val2 = this.inputCoo2.trim();
+
+      // Determine northing/lat vs easting/lon according to coordinate order
+      const northingOrLat = this.order === 'NE' ? val1 : val2;
+      const eastingOrLon = this.order === 'NE' ? val2 : val1;
+
       if (this.op === 'Stereo70ToETRS89') {
-        raw1 = parseFloat(this.inputCoo1);
-        raw2 = parseFloat(this.inputCoo2);
+        const nonNumericAngleRegex = /[°'"’“”a-zA-Z]/;
+        if (
+          nonNumericAngleRegex.test(northingOrLat) ||
+          nonNumericAngleRegex.test(eastingOrLon) ||
+          !isValidDecimal(northingOrLat) ||
+          !isValidDecimal(eastingOrLon)
+        ) {
+          this.outputCoords = null;
+          this.outputWarning = null;
+          this.quasigeoidZeta = null;
+          this.validationError = t('point.errNonNumericStereo');
+          return;
+        }
+
+        raw1 = Number(northingOrLat);
+        raw2 = Number(eastingOrLon);
       } else {
         // ETRS89 is source: parse angle into decimal degrees
-        raw1 = parseAngleToDeg(this.inputCoo1);
-        raw2 = parseAngleToDeg(this.inputCoo2);
+        const parseInputAngle = (str: string): number => {
+          if (this.angularUnit === 'radians') {
+            if (str.includes('°') || str.includes("'") || str.includes('"')) {
+              return parseAngleToDeg(str);
+            }
+            const clean = str.replace(/rad/gi, '').trim();
+            const num = Number(clean);
+            return !isNaN(num) ? radToDeg(num) : NaN;
+          }
+          return parseAngleToDeg(str);
+        };
+
+        try {
+          raw1 = parseInputAngle(northingOrLat);
+        } catch {
+          raw1 = NaN;
+        }
+        try {
+          raw2 = parseInputAngle(eastingOrLon);
+        } catch {
+          raw2 = NaN;
+        }
+
+        if (isNaN(raw1) || isNaN(raw2) || raw1 < -90 || raw1 > 90 || raw2 < -180 || raw2 > 180) {
+          this.outputCoords = null;
+          this.outputWarning = null;
+          this.quasigeoidZeta = null;
+          this.validationError = t('point.errInvalidCoords');
+          return;
+        }
       }
 
-      if (isNaN(raw1) || isNaN(raw2)) {
-        throw new Error('Invalid coordinate inputs');
+      // Auto-detect 2D vs 3D based on 3rd coordinate input
+      const trimmed3 = this.inputCoo3.trim();
+      const is3D = trimmed3 !== '';
+
+      if (is3D) {
+        if (!isValidDecimal(trimmed3)) {
+          this.outputCoords = null;
+          this.outputWarning = null;
+          this.quasigeoidZeta = null;
+          this.validationError =
+            this.op === 'Stereo70ToETRS89' ? t('point.errNonNumericStereo') : t('point.errInvalidCoords');
+          return;
+        }
+        raw3 = Number(trimmed3);
       }
 
-      if (this.is3D) {
-        raw3 = parseFloat(this.inputCoo3);
-        if (isNaN(raw3)) raw3 = 0.0;
+      const coos = is3D && raw3 !== undefined ? [raw1, raw2, raw3] : [raw1, raw2];
+
+      // Coarse pre-flight envelope check
+      const isCoarseInGrid =
+        this.op === 'Stereo70ToETRS89'
+          ? isWithinStereo70Grid(raw1, raw2)
+          : isWithinETRS89Grid(raw1, raw2);
+
+      let res: { coos: number[]; warning?: string | null };
+      if (!isCoarseInGrid) {
+        res = { coos, warning: 'Out of grid' };
+      } else {
+        res = await apiClient.transformPoint({
+          op: this.op,
+          coos,
+          unit: 'degrees',
+        });
       }
-
-      const coos = raw3 !== undefined ? [raw1, raw2, raw3] : [raw1, raw2];
-
-      const res = await apiClient.transformPoint({
-        op: this.op,
-        coos,
-        unit: 'degrees',
-      });
 
       this.outputCoords = res.coos;
-      this.outputWarning = res.warning;
+      this.outputWarning = res.warning || null;
+      const isOutOfGrid = res.warning === 'Out of grid';
 
-      // Quasigeoid anomaly calculation in 3D:
+      // Quasigeoid height calculation in 3D:
       // When Stereo70 -> ETRS89: res.coos[2] is h, input is H => zeta = h - H
       // When ETRS89 -> Stereo70: res.coos[2] is H, input is h => zeta = h - H
-      if (this.is3D && this.outputCoords.length >= 3 && raw3 !== undefined) {
+      if (!isOutOfGrid && is3D && this.outputCoords.length >= 3 && raw3 !== undefined) {
         if (this.op === 'Stereo70ToETRS89') {
           this.quasigeoidZeta = this.outputCoords[2] - raw3;
         } else {
@@ -147,17 +429,18 @@ export class PointConverter {
       this.updateQueryParams();
 
       // Emit coordinates to map
-      let mapLat: number;
-      let mapLon: number;
+      let mapLat = NaN;
+      let mapLon = NaN;
       if (this.op === 'Stereo70ToETRS89') {
-        mapLat = this.outputCoords[0];
-        mapLon = this.outputCoords[1];
+        if (!isOutOfGrid && this.outputCoords) {
+          mapLat = this.outputCoords[0];
+          mapLon = this.outputCoords[1];
+        }
       } else {
         mapLat = raw1;
         mapLon = raw2;
       }
 
-      const isOutOfGrid = res.warning === 'Out of grid';
       this.callbacks.onPointTransformed({ lat: mapLat, lon: mapLon, outOfGrid: isOutOfGrid });
 
       if (isOutOfGrid) {
@@ -175,80 +458,63 @@ export class PointConverter {
 
   private render(): void {
     const isS70 = this.op === 'Stereo70ToETRS89';
-    const c1Label = isS70 ? t('point.northingLabel') : t('point.latitudeLabel');
-    const c2Label = isS70 ? t('point.eastingLabel') : t('point.longitudeLabel');
-    const c3Label = isS70 ? t('point.elevationNormal') : t('point.elevationEllipsoidal');
+    let c1Label: string;
+    let c2Label: string;
+
+    if (isS70) {
+      c1Label = this.order === 'EN' ? t('point.eastingLabel') : t('point.northingLabel');
+      c2Label = this.order === 'EN' ? t('point.northingLabel') : t('point.eastingLabel');
+    } else {
+      c1Label = this.order === 'EN' ? t('point.longitudeLabel') : t('point.latitudeLabel');
+      c2Label = this.order === 'EN' ? t('point.latitudeLabel') : t('point.longitudeLabel');
+    }
+    const c3Label = isS70 ? t('point.altitudeLabel') : t('point.heightLabel');
 
     this.container.innerHTML = `
       <div class="studio-card">
-        <div class="card-title">
-          <span>${t('point.title')}</span>
-          <button class="btn btn-outline" id="point-swap-op-btn" style="padding: 4px 10px; font-size: 11px;">
-            ⇄ ${t('point.swapDirection')}
-          </button>
-        </div>
+        <!-- Input Coordinates Micro-Header -->
+        <div class="section-micro-label">${t('point.inputCoordsHint')}</div>
 
-        <!-- Direction & Mode Toggles -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+        <!-- Symmetrical 3-Column Inputs Grid -->
+        <div class="coord-grid-3">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('point.opLabel')}</label>
-            <div class="segmented-control">
-              <button class="segmented-btn ${isS70 ? 'active' : ''}" id="op-s70-btn">
-                ${t('point.opS70ToETRS')}
-              </button>
-              <button class="segmented-btn ${!isS70 ? 'active' : ''}" id="op-etrs-btn">
-                ${t('point.opETRSToS70')}
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('point.dimensionLabel')}</label>
-            <div class="segmented-control">
-              <button class="segmented-btn ${!this.is3D ? 'active' : ''}" id="dim-2d-btn">${t('point.dim2D')}</button>
-              <button class="segmented-btn ${this.is3D ? 'active' : ''}" id="dim-3d-btn">${t('point.dim3D')}</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Angular Units (for ETRS89) -->
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label class="form-label">${t('point.unitLabel')}</label>
-          <div class="segmented-control">
-            <button class="segmented-btn ${this.angularUnit === 'degrees' ? 'active' : ''}" id="unit-deg-btn">${t('point.unitDeg')}</button>
-            <button class="segmented-btn ${this.angularUnit === 'dms' ? 'active' : ''}" id="unit-dms-btn">${t('point.unitDMS')}</button>
-            <button class="segmented-btn ${this.angularUnit === 'radians' ? 'active' : ''}" id="unit-rad-btn">${t('point.unitRad')}</button>
-          </div>
-        </div>
-
-        <!-- Inputs Grid -->
-        <div style="display: grid; grid-template-columns: ${this.is3D ? '1fr 1fr 1fr' : '1fr 1fr'}; gap: 10px;">
-          <div class="form-group">
             <label class="form-label">${c1Label}</label>
             <input type="text" class="form-input mono" id="pt-input-1" value="${this.inputCoo1}" />
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${c2Label}</label>
             <input type="text" class="form-input mono" id="pt-input-2" value="${this.inputCoo2}" />
           </div>
-          ${
-            this.is3D
-              ? `
-            <div class="form-group">
-              <label class="form-label">${c3Label}</label>
-              <input type="text" class="form-input mono" id="pt-input-3" value="${this.inputCoo3}" />
-            </div>
-          `
-              : ''
-          }
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${c3Label}</label>
+            <input 
+              type="text" 
+              class="form-input mono" 
+              id="pt-input-3" 
+              value="${this.inputCoo3}" 
+              placeholder="${t('point.optionalPlaceholder')}" 
+            />
+          </div>
         </div>
 
-        <button class="btn btn-primary" id="pt-calculate-btn" style="width: 100%; margin-top: 4px;">
-          <span>${this.isCalculating ? '⏳...' : '⚡ ' + t('point.transformBtn')}</span>
+        ${
+          this.validationError
+            ? `
+          <div class="error-banner">
+            <span>⚠</span>
+            <span>${this.validationError}</span>
+          </div>
+        `
+            : ''
+        }
+
+        <!-- Primary Action Button (no emoji) -->
+        <button class="btn btn-primary" id="pt-calculate-btn" style="width: 100%; margin-top: 14px;">
+          <span>${this.isCalculating ? t('point.calculating') : t('point.transformBtn')}</span>
         </button>
       </div>
 
-      <!-- Output Result Card -->
+      <!-- Persistent Output Result Card with Dedicated Metric Box & Quality Report -->
       ${this.renderResultCard()}
     `;
 
@@ -256,143 +522,221 @@ export class PointConverter {
   }
 
   private renderResultCard(): string {
-    if (!this.outputCoords) return '';
-
     const isTargetGeo = this.op === 'Stereo70ToETRS89';
-    let val1Str: string;
-    let val2Str: string;
+    let outCol1Val = '—';
+    let outCol2Val = '—';
+    let val3Str = '—';
+    let outCol1Raw = '';
+    let outCol2Raw = '';
+    let raw3Str = '';
 
-    if (isTargetGeo) {
-      if (this.angularUnit === 'dms') {
-        val1Str = formatDegToDMS(this.outputCoords[0]);
-        val2Str = formatDegToDMS(this.outputCoords[1]);
-      } else if (this.angularUnit === 'radians') {
-        val1Str = degToRad(this.outputCoords[0]).toFixed(12) + ' rad';
-        val2Str = degToRad(this.outputCoords[1]).toFixed(12) + ' rad';
+    const isOutOfGrid = this.outputWarning === 'Out of grid';
+    const is3D = this.outputCoords !== null && this.outputCoords.length >= 3;
+
+    if (this.outputCoords && !isOutOfGrid) {
+      if (isTargetGeo) {
+        const lat = this.outputCoords[0];
+        const lon = this.outputCoords[1];
+
+        if (this.angularUnit === 'dms') {
+          outCol1Raw = this.order === 'EN' ? formatDegToDMS(lon) : formatDegToDMS(lat);
+          outCol2Raw = this.order === 'EN' ? formatDegToDMS(lat) : formatDegToDMS(lon);
+        } else if (this.angularUnit === 'radians') {
+          outCol1Raw = this.order === 'EN' ? degToRad(lon).toFixed(10) : degToRad(lat).toFixed(10);
+          outCol2Raw = this.order === 'EN' ? degToRad(lat).toFixed(10) : degToRad(lon).toFixed(10);
+        } else {
+          outCol1Raw = this.order === 'EN' ? lon.toFixed(8) : lat.toFixed(8);
+          outCol2Raw = this.order === 'EN' ? lat.toFixed(8) : lon.toFixed(8);
+        }
+        outCol1Val = outCol1Raw;
+        outCol2Val = outCol2Raw;
       } else {
-        val1Str = this.outputCoords[0].toFixed(8) + '°';
-        val2Str = this.outputCoords[1].toFixed(8) + '°';
+        const n = this.outputCoords[0];
+        const e = this.outputCoords[1];
+        outCol1Raw = this.order === 'EN' ? e.toFixed(3) : n.toFixed(3);
+        outCol2Raw = this.order === 'EN' ? n.toFixed(3) : e.toFixed(3);
+        outCol1Val = outCol1Raw;
+        outCol2Val = outCol2Raw;
       }
-    } else {
-      val1Str = this.outputCoords[0].toFixed(3) + ' m';
-      val2Str = this.outputCoords[1].toFixed(3) + ' m';
+
+      if (this.outputCoords[2] !== undefined) {
+        raw3Str = this.outputCoords[2].toFixed(3);
+        val3Str = raw3Str;
+      }
     }
 
-    const val3Str = this.outputCoords[2] !== undefined ? this.outputCoords[2].toFixed(3) + ' m' : null;
+    let outCol1Label: string;
+    let outCol2Label: string;
+    if (isTargetGeo) {
+      outCol1Label = this.order === 'EN' ? t('point.longitudeLabel') : t('point.latitudeLabel');
+      outCol2Label = this.order === 'EN' ? t('point.latitudeLabel') : t('point.longitudeLabel');
+    } else {
+      outCol1Label = this.order === 'EN' ? t('point.eastingLabel') : t('point.northingLabel');
+      outCol2Label = this.order === 'EN' ? t('point.northingLabel') : t('point.eastingLabel');
+    }
+    const label3 = isTargetGeo ? t('point.heightLabel') : t('point.altitudeLabel');
 
-    const label1 = isTargetGeo ? t('point.latitudeLabel') : t('point.northingLabel');
-    const label2 = isTargetGeo ? t('point.longitudeLabel') : t('point.eastingLabel');
-    const label3 = isTargetGeo ? t('point.elevationEllipsoidal') : t('point.elevationNormal');
+    let zetaDisplay = '—';
+    if (this.quasigeoidZeta !== null) {
+      zetaDisplay = (this.quasigeoidZeta >= 0 ? '+' : '') + this.quasigeoidZeta.toFixed(3);
+    }
+
+    // Map point coordinates
+    let mapLat = NaN;
+    let mapLon = NaN;
+    if (this.outputCoords) {
+      if (this.op === 'Stereo70ToETRS89') {
+        if (!isOutOfGrid) {
+          mapLat = this.outputCoords[0];
+          mapLon = this.outputCoords[1];
+        }
+      } else {
+        const val1 = this.inputCoo1.trim();
+        const val2 = this.inputCoo2.trim();
+        const northingOrLat = this.order === 'NE' ? val1 : val2;
+        const eastingOrLon = this.order === 'NE' ? val2 : val1;
+        const parseInputAngle = (str: string): number => {
+          if (this.angularUnit === 'radians') {
+            if (str.includes('°') || str.includes("'") || str.includes('"')) {
+              return parseAngleToDeg(str);
+            }
+            const clean = str.replace(/rad/gi, '').trim();
+            const num = Number(clean);
+            return !isNaN(num) ? radToDeg(num) : NaN;
+          }
+          return parseAngleToDeg(str);
+        };
+        try {
+          mapLat = parseInputAngle(northingOrLat);
+          mapLon = parseInputAngle(eastingOrLon);
+        } catch {
+          mapLat = NaN;
+          mapLon = NaN;
+        }
+      }
+    }
+
+    const canCenterOnMap = !isOutOfGrid && !isNaN(mapLat) && !isNaN(mapLon) && isInsideRomaniaGrid(mapLat, mapLon);
+
+    let qualityBadges = '';
+    if (this.outputCoords) {
+      const isNoData = this.outputWarning === 'No data on grid';
+      qualityBadges = `
+        <span class="status-pill success">✓ ${t('quality.validCoords')}</span>
+        ${
+          isOutOfGrid
+            ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}</span>`
+            : isNoData
+            ? `<span class="status-pill warning">⚠ ${t('quality.noGridData')}</span>`
+            : `<span class="status-pill success">✓ ${t('quality.inGrid')}</span>`
+        }
+        <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+          ${is3D ? t('quality.mode3D') : t('quality.mode2D')}
+        </span>
+      `;
+    } else if (this.validationError) {
+      qualityBadges = `<span class="status-pill danger">✕ ${this.validationError}</span>`;
+    } else {
+      qualityBadges = `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`;
+    }
 
     return `
       <div class="result-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <span style="font-weight: 600; font-size: 13px; color: var(--text-main);">${t('point.outputCoords')}</span>
-          <button class="btn btn-outline" id="pt-copy-btn" style="padding: 3px 8px; font-size: 11px;">
-            📋 ${t('point.copyTuple')}
+        <!-- Computed Coordinates Micro-Header with Top-Right Code-Block Style Copy Action -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div class="section-micro-label">${t('point.computedCoords')}</div>
+          <button 
+            class="copy-code-btn" 
+            id="pt-copy-code-btn" 
+            title="${t('point.copyTuple')}" 
+            aria-label="${t('point.copyTuple')}" 
+            data-c1="${outCol1Raw}" 
+            data-c2="${outCol2Raw}" 
+            data-c3="${raw3Str}"
+            ${!this.outputCoords || isOutOfGrid ? 'disabled' : ''}
+          >
+            <svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="copy-feedback hidden">✓ ${t('point.copiedTooltip')}</span>
           </button>
         </div>
 
-        <div class="result-row">
-          <span style="color: var(--text-muted); font-size: 12px;">${label1}:</span>
-          <span class="result-val">${val1Str}</span>
+        <!-- 3-Column Output Row: Pure Numbers Only -->
+        <div class="output-grid-3">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${outCol1Label}</label>
+            <input type="text" readonly class="form-input mono" value="${outCol1Val}" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${outCol2Label}</label>
+            <input type="text" readonly class="form-input mono" value="${outCol2Val}" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${label3}</label>
+            <input type="text" readonly class="form-input mono" value="${val3Str}" />
+          </div>
         </div>
-        <div class="result-row">
-          <span style="color: var(--text-muted); font-size: 12px;">${label2}:</span>
-          <span class="result-val">${val2Str}</span>
+
+        <!-- Dedicated Quasigeoid Height Field on its Own Row -->
+        <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+          <label class="form-label">${t('point.quasigeoidLabel')}</label>
+          <input type="text" readonly class="form-input mono metric-field" value="${zetaDisplay}" />
         </div>
-        ${
-          val3Str
-            ? `
-          <div class="result-row">
-            <span style="color: var(--text-muted); font-size: 12px;">${label3}:</span>
-            <span class="result-val">${val3Str}</span>
-          </div>
-        `
-            : ''
-        }
 
-        ${
-          this.quasigeoidZeta !== null
-            ? `
-          <div class="result-row" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-medium);">
-            <span style="color: var(--text-muted); font-size: 12px; font-weight: 500;">
-              ${t('point.quasigeoidLabel')}:
-            </span>
-            <span class="result-val mono" style="color: var(--text-main); font-weight: 600;">
-              ${(this.quasigeoidZeta >= 0 ? '+' : '') + this.quasigeoidZeta.toFixed(3)} m
-            </span>
+        <!-- Unified Quality Report directly beneath outputs -->
+        <div class="quality-report-card">
+          <div class="quality-report-row">
+            <div class="quality-report-badges">
+              ${qualityBadges}
+            </div>
           </div>
-        `
-            : ''
-        }
+        </div>
 
-        ${
-          this.outputWarning
-            ? `
-          <div style="margin-top: 8px; padding: 6px 10px; background-color: var(--color-warning-bg); border: 1px solid var(--color-warning); border-radius: var(--radius-sm); font-size: 12px; color: var(--color-warning);">
-            ⚠ ${this.outputWarning}
-          </div>
-        `
-            : ''
-        }
+        <!-- Decoupled Map Navigation Actions -->
+        <div class="action-footer-right" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; margin-top: 10px;">
+          <button 
+            class="btn btn-outline center-map-btn" 
+            id="pt-center-map-btn" 
+            ${canCenterOnMap ? '' : 'disabled'}
+            data-lat="${mapLat}"
+            data-lon="${mapLon}"
+            data-oog="${isOutOfGrid ? '1' : '0'}"
+            style="padding: 4px 10px; font-size: 11.5px;"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="22" y1="12" x2="18" y2="12"></line>
+              <line x1="6" y1="12" x2="2" y2="12"></line>
+              <line x1="12" y1="6" x2="12" y2="2"></line>
+              <line x1="12" y1="22" x2="12" y2="18"></line>
+            </svg>
+            <span>${t('common.centerOnMap')}</span>
+          </button>
+          <button 
+            class="btn btn-outline zoom-extents-btn" 
+            id="pt-zoom-extents-btn" 
+            ${canCenterOnMap ? '' : 'disabled'}
+            data-lat="${mapLat}"
+            data-lon="${mapLon}"
+            data-oog="${isOutOfGrid ? '1' : '0'}"
+            style="padding: 4px 10px; font-size: 11.5px;"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="11" y1="8" x2="11" y2="14"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+            <span>${t('common.zoomToExtents')}</span>
+          </button>
+        </div>
       </div>
     `;
   }
 
   private attachEventListeners(): void {
-    // Op toggles
-    this.container.querySelector('#op-s70-btn')?.addEventListener('click', () => {
-      this.op = 'Stereo70ToETRS89';
-      this.render();
-      this.calculate();
-    });
-    this.container.querySelector('#op-etrs-btn')?.addEventListener('click', () => {
-      this.op = 'ETRS89ToStereo70';
-      this.render();
-      this.calculate();
-    });
-    this.container.querySelector('#point-swap-op-btn')?.addEventListener('click', () => {
-      this.op = this.op === 'Stereo70ToETRS89' ? 'ETRS89ToStereo70' : 'Stereo70ToETRS89';
-      // Invert input values with previous outputs if available
-      if (this.outputCoords) {
-        this.inputCoo1 = this.outputCoords[0].toFixed(3);
-        this.inputCoo2 = this.outputCoords[1].toFixed(3);
-        if (this.outputCoords[2] !== undefined) {
-          this.inputCoo3 = this.outputCoords[2].toFixed(3);
-        }
-      }
-      this.render();
-      this.calculate();
-    });
-
-    // 2D / 3D
-    this.container.querySelector('#dim-2d-btn')?.addEventListener('click', () => {
-      this.is3D = false;
-      this.render();
-      this.calculate();
-    });
-    this.container.querySelector('#dim-3d-btn')?.addEventListener('click', () => {
-      this.is3D = true;
-      this.render();
-      this.calculate();
-    });
-
-    // Angular Units
-    this.container.querySelector('#unit-deg-btn')?.addEventListener('click', () => {
-      this.angularUnit = 'degrees';
-      this.render();
-    });
-    this.container.querySelector('#unit-dms-btn')?.addEventListener('click', () => {
-      this.angularUnit = 'dms';
-      this.render();
-    });
-    this.container.querySelector('#unit-rad-btn')?.addEventListener('click', () => {
-      this.angularUnit = 'radians';
-      this.render();
-    });
-
-    // Inputs
     const i1 = this.container.querySelector('#pt-input-1') as HTMLInputElement;
     const i2 = this.container.querySelector('#pt-input-2') as HTMLInputElement;
     const i3 = this.container.querySelector('#pt-input-3') as HTMLInputElement;
@@ -403,9 +747,10 @@ export class PointConverter {
       if (i3) this.inputCoo3 = i3.value.trim();
     };
 
-    [i1, i2, i3].forEach((input) => {
+    [i1, i2, i3].forEach((input, idx) => {
       if (input) {
         input.addEventListener('input', onInputChange);
+        input.addEventListener('paste', (e) => this.handlePasteIntoInput(e, (idx + 1) as 1 | 2 | 3));
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             onInputChange();
@@ -415,17 +760,84 @@ export class PointConverter {
       }
     });
 
+    // Auto-select all text on focus on all inputs
+    this.container.querySelectorAll('input.form-input').forEach((el) => {
+      const input = el as HTMLInputElement;
+      input.addEventListener('focus', () => input.select());
+    });
+
     this.container.querySelector('#pt-calculate-btn')?.addEventListener('click', () => {
       onInputChange();
       this.calculate();
     });
 
-    // Copy tuple
-    this.container.querySelector('#pt-copy-btn')?.addEventListener('click', () => {
-      if (!this.outputCoords) return;
-      const copyStr = this.outputCoords.join(', ');
-      navigator.clipboard.writeText(copyStr);
-      showToast(t('point.copiedToast'), 'success');
-    });
+    // Top-right code-block copy button
+    const copyBtn = this.container.querySelector('#pt-copy-code-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        if (copyBtn.hasAttribute('disabled')) return;
+        const c1 = copyBtn.getAttribute('data-c1') || '';
+        const c2 = copyBtn.getAttribute('data-c2') || '';
+        const c3 = copyBtn.getAttribute('data-c3') || '';
+
+        const parts = [c1, c2].filter(Boolean);
+        if (parts.length === 0) return;
+        if (c3) parts.push(c3);
+        const textToCopy = parts.join(', ');
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(textToCopy);
+          } else {
+            throw new Error('Clipboard API unavailable');
+          }
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = textToCopy;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+
+        copyBtn.classList.add('copied');
+        const feedback = copyBtn.querySelector('.copy-feedback');
+        const icon = copyBtn.querySelector('.copy-icon');
+        if (feedback && icon) {
+          feedback.classList.remove('hidden');
+          icon.classList.add('hidden');
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            feedback.classList.add('hidden');
+            icon.classList.remove('hidden');
+          }, 2000);
+        }
+        showToast(t('point.copiedToast'), 'success');
+      });
+    }
+
+    // Center on Map action button
+    const centerBtn = this.container.querySelector('#pt-center-map-btn') as HTMLButtonElement;
+    if (centerBtn) {
+      centerBtn.addEventListener('click', () => {
+        const lat = parseFloat(centerBtn.getAttribute('data-lat') || '0');
+        const lon = parseFloat(centerBtn.getAttribute('data-lon') || '0');
+        const outOfGrid = centerBtn.getAttribute('data-oog') === '1';
+        this.callbacks.onCenterOnMap?.({ lat, lon, outOfGrid });
+      });
+    }
+
+    // Zoom to Extents action button
+    const zoomExtentsBtn = this.container.querySelector('#pt-zoom-extents-btn') as HTMLButtonElement;
+    if (zoomExtentsBtn) {
+      zoomExtentsBtn.addEventListener('click', () => {
+        const lat = parseFloat(zoomExtentsBtn.getAttribute('data-lat') || '0');
+        const lon = parseFloat(zoomExtentsBtn.getAttribute('data-lon') || '0');
+        const outOfGrid = zoomExtentsBtn.getAttribute('data-oog') === '1';
+        this.callbacks.onZoomToExtents?.({ lat, lon, outOfGrid });
+      });
+    }
   }
 }

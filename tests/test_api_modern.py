@@ -3,6 +3,7 @@
 import io
 import math
 import pytest
+from pathlib import Path
 from starlette.testclient import TestClient
 from api.main import app
 
@@ -168,3 +169,48 @@ def test_webapp_static_mount(client):
     assert "text/html" in res.headers.get("content-type", "")
     assert "PyTransDatRO" in res.text
     assert 'id="app-root"' in res.text
+
+
+def test_modern_file_streaming_200_points_st70_to_etrs89(client):
+    """Verifies streaming transformation of 200 real-world points from Stereo 70 to ETRS89."""
+    file_path = Path(__file__).parent / "data" / "st70_to_etrs89_input_200.csv"
+    with open(file_path, "rb") as f:
+        files = {"file": ("st70_200.csv", f, "text/csv")}
+        data = {"op": "Stereo70ToETRS89", "unit": "dms", "delimiter": "comma"}
+        res = client.post("/api/v1/transform/file", files=files, data=data)
+
+    assert res.status_code == 200
+    lines = res.text.strip().splitlines()
+    assert len(lines) == 200
+    # First line must preserve point ID '1' and produce DMS without spaces
+    first_line = lines[0]
+    assert first_line.startswith("1,")
+    assert "°" in first_line
+    assert "'" in first_line
+    assert '"' in first_line
+    assert " # Invalid" not in first_line
+    assert " # Out of grid" not in first_line
+
+
+def test_modern_file_streaming_200_points_etrs89_to_st70_dms(client):
+    """Verifies streaming transformation of 200 real-world points with DMS inputs from ETRS89 to Stereo 70."""
+    file_path = Path(__file__).parent / "data" / "etrs89_to_st70_input_200.csv"
+    with open(file_path, "rb") as f:
+        files = {"file": ("etrs89_200.csv", f, "text/csv")}
+        data = {"op": "ETRS89ToStereo70", "unit": "degrees", "delimiter": "comma"}
+        res = client.post("/api/v1/transform/file", files=files, data=data)
+
+    assert res.status_code == 200
+    lines = res.text.strip().splitlines()
+    assert len(lines) == 200
+    # First line must preserve point ID '1' and produce Stereo 70 coordinates
+    first_line = lines[0]
+    assert first_line.startswith("1,")
+    tokens = first_line.split(",")
+    assert len(tokens) >= 3
+    n = float(tokens[1])
+    e = float(tokens[2])
+    assert math.isclose(n, 230134.564, abs_tol=0.01)
+    assert math.isclose(e, 434283.040, abs_tol=0.01)
+    assert " # Invalid" not in first_line
+

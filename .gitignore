@@ -29,7 +29,8 @@ romgeo/
 /transdatonline/
 
 # Telemetry / Local DB
-logs/usage.db
+logs/usage.db*
+logs/*.db*
 
 # Scratch directory
 scratch/

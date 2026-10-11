@@ -1,14 +1,15 @@
 """Streaming delimited file transformation endpoint.
-Supports up to 100,000 coordinates in CSV/TXT formats.
+Supports up to 100,000 coordinates in CSV/TXT formats with robust Point ID and DMS handling.
 """
 import math
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional, Tuple, List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from api.dependencies import get_trans_engine
 from api.schemas.point import OperationEnum, AngleUnitEnum
 from pytransdatro.trans_ro import TransRO
 import pytransdatro.exceptions as exc
+import pytransdatro.utils as geoutils
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
 
@@ -28,6 +29,129 @@ def _detect_delimiter(line: str) -> str:
     return " "
 
 
+def rad_to_dms_str(rad: float, precision: int = 5) -> str:
+    """Format radians into DD°MM'SS.SSSSS" with no spaces."""
+    deg = math.degrees(rad)
+    sign = '-' if deg < 0 else ''
+    abs_deg = abs(deg)
+    d = int(abs_deg)
+    rem = (abs_deg - d) * 60.0
+    m = int(rem)
+    s = (rem - m) * 60.0
+    factor = 10 ** precision
+    s = round(s * factor) / factor
+    if s >= 60.0:
+        s = 0.0
+        m += 1
+        if m >= 60:
+            m = 0
+            d += 1
+    s_str = f"{s:0{precision + 3}.{precision}f}"
+    return f"{sign}{d:d}°{m:02d}'{s_str}\""
+
+
+def _parse_coordinate_token(token: str, is_geo: bool, is_degrees: bool) -> float:
+    t = token.strip().strip('"').strip("'")
+    if is_geo:
+        if any(c in t for c in "°'\"\ufffd") or len(t.split()) == 3:
+            clean_t = t.replace('\ufffd', '°')
+            return geoutils.sexa_dms_chars_to_rad(clean_t)
+        val = float(t)
+        return math.radians(val) if is_degrees else val
+    return float(t)
+
+
+def _transform_line(
+    line: str,
+    delim_char: str,
+    op: OperationEnum,
+    unit: AngleUnitEnum,
+    trans: TransRO,
+) -> str:
+    # Split tokens
+    tokens = [t.strip() for t in (line.split() if delim_char == " " else line.split(delim_char))]
+    tokens = [t for t in tokens if t]
+
+    if len(tokens) < 2:
+        return line + " # Wrong dimension\n"
+
+    is_source_geo = (op == OperationEnum.ETRS89_TO_STEREO70)
+    is_degrees = (unit == AngleUnitEnum.DEGREES)
+
+    point_id: Optional[str] = None
+    coord_tokens: List[str] = tokens
+
+    if len(tokens) >= 4:
+        point_id = tokens[0]
+        coord_tokens = tokens[1:4]
+    elif len(tokens) == 3:
+        t0, t1, t2 = tokens
+        if is_source_geo:
+            has_angle0 = any(c in t0 for c in "°'\"")
+            has_angle1 = any(c in t1 for c in "°'\"")
+            try:
+                num0 = float(t0.strip('"\''))
+            except ValueError:
+                num0 = None
+            if not has_angle0 and (has_angle1 or (num0 is not None and abs(num0) > 90) or num0 is None):
+                point_id = t0
+                coord_tokens = [t1, t2]
+            else:
+                coord_tokens = tokens
+        else:
+            try:
+                n0 = float(t0.strip('"\''))
+                n1 = float(t1.strip('"\''))
+                n2 = float(t2.strip('"\''))
+                if n1 > 50000 and n2 > 50000 and n0 < 50000:
+                    point_id = t0
+                    coord_tokens = [t1, t2]
+                else:
+                    coord_tokens = tokens
+            except ValueError:
+                point_id = t0
+                coord_tokens = [t1, t2]
+
+    try:
+        c1 = _parse_coordinate_token(coord_tokens[0], is_source_geo, is_degrees)
+        c2 = _parse_coordinate_token(coord_tokens[1], is_source_geo, is_degrees)
+        c3 = float(coord_tokens[2].strip('"\'')) if len(coord_tokens) >= 3 else None
+    except Exception:
+        return line + " # Invalid coordinate data\n"
+
+    dim = len(coord_tokens)
+
+    try:
+        if op == OperationEnum.STEREO70_TO_ETRS89:
+            res = trans.st70_to_etrs89(c1, c2, z=c3, source=2)
+            if unit == AngleUnitEnum.DMS:
+                lat_str = rad_to_dms_str(res[0])
+                lon_str = rad_to_dms_str(res[1])
+                out_coords = f"{lat_str}{delim_char}{lon_str}"
+            elif unit == AngleUnitEnum.DEGREES:
+                out_coords = f"{math.degrees(res[0]):.10f}{delim_char}{math.degrees(res[1]):.10f}"
+            else:
+                out_coords = f"{res[0]:.16f}{delim_char}{res[1]:.16f}"
+
+            if dim >= 3:
+                out_coords += f"{delim_char}{res[2]:.4f}"
+
+        else:
+            res = trans.etrs89_to_st70(c1, c2, h=c3, source=2)
+            out_coords = f"{res[0]:.4f}{delim_char}{res[1]:.4f}"
+            if dim >= 3:
+                out_coords += f"{delim_char}{res[2]:.4f}"
+
+        if point_id is not None:
+            return f"{point_id}{delim_char}{out_coords}\n"
+        return f"{out_coords}\n"
+
+    except exc.OutOfGridErr:
+        return line + " # Out of grid\n"
+    except exc.NoDataGridErr:
+        return line + " # No data on grid\n"
+
+
 @router.post("/file")
 async def transform_file(
     file: UploadFile = File(..., description="CSV or TXT file containing coordinates"),
@@ -40,7 +164,6 @@ async def transform_file(
     
     Processes up to 100,000 points with negligible memory overhead.
     """
-    is_degrees = (unit == AngleUnitEnum.DEGREES)
     chosen_delim = DELIMITER_MAP.get(delimiter.lower())
 
     async def line_generator() -> AsyncGenerator[bytes, None]:
@@ -75,101 +198,24 @@ async def transform_file(
                     if chosen_delim is None:
                         chosen_delim = _detect_delimiter(line)
 
-                    # Split tokens
-                    tokens = [t.strip() for t in (line.split() if chosen_delim == " " else line.split(chosen_delim))]
-                    tokens = [t for t in tokens if t]
-
-                    if len(tokens) < 2:
-                        yield (line + " # Wrong dimension\n").encode("utf-8")
-                        continue
-
-                    try:
-                        coords = [float(t) for t in tokens[:3]]
-                    except ValueError:
-                        yield (line + " # Invalid coordinate data\n").encode("utf-8")
-                        continue
-
-                    dim = len(coords)
+                    delim_char = chosen_delim if chosen_delim != " " else " "
                     row_count += 1
                     if row_count > max_rows:
                         yield b"# Limit exceeded: maximum 100,000 points allowed\n"
                         return
 
-                    delim_char = chosen_delim if chosen_delim != " " else " "
-
-                    try:
-                        if op == OperationEnum.STEREO70_TO_ETRS89:
-                            n, e = coords[0], coords[1]
-                            z = coords[2] if dim >= 3 else None
-                            res = trans.st70_to_etrs89(n, e, z=z, source=2)
-
-                            if is_degrees:
-                                lat_deg = math.degrees(res[0])
-                                lon_deg = math.degrees(res[1])
-                                out_line = f"{lat_deg:.10f}{delim_char}{lon_deg:.10f}"
-                                if dim >= 3:
-                                    out_line += f"{delim_char}{res[2]:.4f}"
-                            else:
-                                out_line = f"{res[0]:.16f}{delim_char}{res[1]:.16f}"
-                                if dim >= 3:
-                                    out_line += f"{delim_char}{res[2]:.4f}"
-
-                            yield (out_line + "\n").encode("utf-8")
-
-                        elif op == OperationEnum.ETRS89_TO_STEREO70:
-                            lat, lon = coords[0], coords[1]
-                            if is_degrees:
-                                lat = math.radians(lat)
-                                lon = math.radians(lon)
-
-                            h = coords[2] if dim >= 3 else None
-                            res = trans.etrs89_to_st70(lat, lon, h=h, source=2)
-
-                            out_line = f"{res[0]:.4f}{delim_char}{res[1]:.4f}"
-                            if dim >= 3:
-                                out_line += f"{delim_char}{res[2]:.4f}"
-
-                            yield (out_line + "\n").encode("utf-8")
-
-                    except exc.OutOfGridErr:
-                        yield (line + " # Out of grid\n").encode("utf-8")
-                    except exc.NoDataGridErr:
-                        yield (line + " # No data on grid\n").encode("utf-8")
+                    out = _transform_line(line, delim_char, op, unit, trans)
+                    yield out.encode("utf-8")
 
         # Process any remaining line in buffer
         if buffer.strip():
             line = buffer.strip()
-            if not line.startswith("#"):
-                tokens = [t.strip() for t in (line.split() if chosen_delim == " " else line.split(chosen_delim))]
-                tokens = [t for t in tokens if t]
-                if len(tokens) >= 2:
-                    try:
-                        coords = [float(t) for t in tokens[:3]]
-                        dim = len(coords)
-                        delim_char = chosen_delim or ","
-                        if op == OperationEnum.STEREO70_TO_ETRS89:
-                            n, e = coords[0], coords[1]
-                            z = coords[2] if dim >= 3 else None
-                            res = trans.st70_to_etrs89(n, e, z=z, source=2)
-                            if is_degrees:
-                                out_line = f"{math.degrees(res[0]):.10f}{delim_char}{math.degrees(res[1]):.10f}"
-                            else:
-                                out_line = f"{res[0]:.16f}{delim_char}{res[1]:.16f}"
-                            if dim >= 3:
-                                out_line += f"{delim_char}{res[2]:.4f}"
-                            yield (out_line + "\n").encode("utf-8")
-                        else:
-                            lat, lon = coords[0], coords[1]
-                            if is_degrees:
-                                lat, lon = math.radians(lat), math.radians(lon)
-                            h = coords[2] if dim >= 3 else None
-                            res = trans.etrs89_to_st70(lat, lon, h=h, source=2)
-                            out_line = f"{res[0]:.4f}{delim_char}{res[1]:.4f}"
-                            if dim >= 3:
-                                out_line += f"{delim_char}{res[2]:.4f}"
-                            yield (out_line + "\n").encode("utf-8")
-                    except (exc.OutOfGridErr, exc.NoDataGridErr, ValueError):
-                        yield (line + "\n").encode("utf-8")
+            if line.startswith("#"):
+                yield (line + "\n").encode("utf-8")
+            else:
+                delim_char = chosen_delim or ","
+                out = _transform_line(line, delim_char, op, unit, trans)
+                yield out.encode("utf-8")
 
     return StreamingResponse(
         line_generator(),

@@ -7,6 +7,24 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { t, onLanguageChange } from '../i18n';
 import { apiClient } from '../utils/apiClient';
 
+export const ROMANIA_GRID_BOUNDS = {
+  minLat: 43.5,
+  maxLat: 48.3,
+  minLon: 20.2,
+  maxLon: 29.8,
+};
+
+export function isInsideRomaniaGrid(lat: number, lon: number): boolean {
+  return (
+    !isNaN(lat) &&
+    !isNaN(lon) &&
+    lat >= ROMANIA_GRID_BOUNDS.minLat &&
+    lat <= ROMANIA_GRID_BOUNDS.maxLat &&
+    lon >= ROMANIA_GRID_BOUNDS.minLon &&
+    lon <= ROMANIA_GRID_BOUNDS.maxLon
+  );
+}
+
 export interface MapViewCallbacks {
   onMapPointClicked: (lat: number, lon: number) => void;
   onOpenVolumeWarning: (
@@ -23,8 +41,21 @@ export class MapView {
 
   private map: L.Map | null = null;
   private singlePointMarker: L.Marker | null = null;
-  private clusterGroup: any = null; // L.MarkerClusterGroup
-  private boundaryLayer: L.Polygon | null = null;
+  private pointLayer: L.LayerGroup | null = null;
+  private textLayer: any = null; // L.MarkerClusterGroup
+  private filesLayer: any = null; // L.MarkerClusterGroup
+  private boundaryGroup: L.LayerGroup | null = null;
+  private boundaryPolygon: L.Polygon | null = null;
+  private layerControl: L.Control.Layers | null = null;
+
+  private cartoDark: L.TileLayer | null = null;
+  private osm: L.TileLayer | null = null;
+  private satellite: L.TileLayer | null = null;
+
+  private shiftEastPlaceholder = L.layerGroup();
+  private shiftNorthPlaceholder = L.layerGroup();
+  private shiftVectorPlaceholder = L.layerGroup();
+  private shiftHeightPlaceholder = L.layerGroup();
 
   constructor(callbacks: MapViewCallbacks) {
     this.callbacks = callbacks;
@@ -41,7 +72,33 @@ export class MapView {
     this.coordsBadge.textContent = 'φ: 45.9997186°  λ: 24.9984476°';
     this.container.appendChild(this.coordsBadge);
 
-    onLanguageChange(() => this.updateLayerLabels());
+    onLanguageChange(() => {
+      this.updateLayerControl();
+      this.refreshBoundaryTooltip();
+    });
+
+    // Sync basemap with theme
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'attributes' && m.attributeName === 'data-theme') {
+          const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+          if (this.map && this.cartoDark && this.osm) {
+            if (isDarkTheme) {
+              if (this.map.hasLayer(this.osm)) this.map.removeLayer(this.osm);
+              if (!this.map.hasLayer(this.cartoDark) && !this.map.hasLayer(this.satellite!)) {
+                this.cartoDark.addTo(this.map);
+              }
+            } else {
+              if (this.map.hasLayer(this.cartoDark)) this.map.removeLayer(this.cartoDark);
+              if (!this.map.hasLayer(this.osm) && !this.map.hasLayer(this.satellite!)) {
+                this.osm.addTo(this.map);
+              }
+            }
+          }
+        }
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
   public getElement(): HTMLElement {
@@ -60,7 +117,7 @@ export class MapView {
     });
 
     // Basemaps
-    const cartoDark = L.tileLayer(
+    this.cartoDark = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
@@ -69,12 +126,12 @@ export class MapView {
       }
     );
 
-    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     });
 
-    const satellite = L.tileLayer(
+    this.satellite = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       {
         attribution: 'Tiles &copy; Esri',
@@ -84,39 +141,26 @@ export class MapView {
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     if (isDark) {
-      cartoDark.addTo(this.map);
+      this.cartoDark.addTo(this.map);
     } else {
-      osm.addTo(this.map);
+      this.osm.addTo(this.map);
     }
 
-    const baseMaps = {
-      [t('map.baseDark')]: cartoDark,
-      [t('map.baseOSM')]: osm,
-      [t('map.baseSatellite')]: satellite,
-    };
-
-    // Placeholder layers for future raster grid shifts
-    const shiftEastPlaceholder = L.layerGroup();
-    const shiftNorthPlaceholder = L.layerGroup();
-    const shiftVectorPlaceholder = L.layerGroup();
-    const shiftHeightPlaceholder = L.layerGroup();
-
-    const overlayMaps: Record<string, L.Layer> = {
-      [`${t('map.shiftsEast')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: shiftEastPlaceholder,
-      [`${t('map.shiftsNorth')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: shiftNorthPlaceholder,
-      [`${t('map.shiftsVector')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: shiftVectorPlaceholder,
-      [`${t('map.shiftsHeight')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: shiftHeightPlaceholder,
-    };
-
-    L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(this.map);
-
-    // Initialize Marker Cluster Group
-    this.clusterGroup = (L as any).markerClusterGroup({
+    // Initialize 3 independent data layers + boundary layer
+    this.pointLayer = L.layerGroup().addTo(this.map);
+    this.textLayer = (L as any).markerClusterGroup({
       showCoverageOnHover: false,
       maxClusterRadius: 50,
       spiderfyOnMaxZoom: true,
-    });
-    this.map.addLayer(this.clusterGroup);
+    }).addTo(this.map);
+    this.filesLayer = (L as any).markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+    }).addTo(this.map);
+    this.boundaryGroup = L.layerGroup().addTo(this.map);
+
+    this.updateLayerControl();
 
     // Map Event Listeners
     this.map.on('mousemove', (e: L.LeafletMouseEvent) => {
@@ -131,12 +175,58 @@ export class MapView {
     this.loadGridBoundary();
   }
 
-  public updateSinglePoint(lat: number, lon: number, outOfGrid: boolean): void {
-    if (!this.map) return;
-
-    if (this.singlePointMarker) {
-      this.map.removeLayer(this.singlePointMarker);
+  private updateLayerControl(): void {
+    if (
+      !this.map ||
+      !this.cartoDark ||
+      !this.osm ||
+      !this.satellite ||
+      !this.pointLayer ||
+      !this.textLayer ||
+      !this.filesLayer ||
+      !this.boundaryGroup
+    ) {
+      return;
     }
+
+    if (this.layerControl) {
+      this.map.removeControl(this.layerControl);
+    }
+
+    const baseMaps: Record<string, L.Layer> = {
+      [t('map.baseDark')]: this.cartoDark,
+      [t('map.baseOSM')]: this.osm,
+      [t('map.baseSatellite')]: this.satellite,
+    };
+
+    const overlayMaps: Record<string, L.Layer> = {
+      [t('map.singlePointLayer')]: this.pointLayer,
+      [t('map.textLayer')]: this.textLayer,
+      [t('map.filesLayer')]: this.filesLayer,
+      [t('map.gridBoundary')]: this.boundaryGroup,
+      [`${t('map.shiftsEast')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: this.shiftEastPlaceholder,
+      [`${t('map.shiftsNorth')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: this.shiftNorthPlaceholder,
+      [`${t('map.shiftsVector')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: this.shiftVectorPlaceholder,
+      [`${t('map.shiftsHeight')} <span class="layer-badge-soon">${t('map.comingSoon')}</span>`]: this.shiftHeightPlaceholder,
+    };
+
+    this.layerControl = L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(this.map);
+  }
+
+  private refreshBoundaryTooltip(): void {
+    if (this.boundaryPolygon) {
+      this.boundaryPolygon.unbindTooltip();
+      this.boundaryPolygon.bindTooltip(t('map.gridBoundary'), { sticky: true });
+    }
+  }
+
+  public updateSinglePoint(lat: number, lon: number, outOfGrid: boolean): void {
+    if (!this.map || !this.pointLayer) return;
+
+    this.pointLayer.clearLayers();
+    this.singlePointMarker = null;
+
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
 
     const customIcon = L.divIcon({
       className: `geodetic-marker ${outOfGrid ? 'out-of-grid' : ''}`,
@@ -148,44 +238,120 @@ export class MapView {
       iconAnchor: [12, 12],
     });
 
-    this.singlePointMarker = L.marker([lat, lon], { icon: customIcon }).addTo(this.map);
+    this.singlePointMarker = L.marker([lat, lon], { icon: customIcon });
+    this.pointLayer.addLayer(this.singlePointMarker);
 
-    // Smoothly pan map to new coordinates
+    // Decoupled non-panning update: do NOT panTo automatically.
+  }
+
+  public clearSinglePoint(): void {
+    this.pointLayer?.clearLayers();
+    this.singlePointMarker = null;
+  }
+
+  public centerOnPoint(lat: number, lon: number): boolean {
+    if (!this.map) return false;
+    if (!isInsideRomaniaGrid(lat, lon)) {
+      return false;
+    }
     this.map.panTo([lat, lon], { animate: true });
+    return true;
+  }
+
+  public zoomToPoint(lat: number, lon: number, zoom: number = 14): boolean {
+    if (!this.map) return false;
+    if (!isInsideRomaniaGrid(lat, lon)) {
+      return false;
+    }
+    this.map.setView([lat, lon], zoom, { animate: true });
+    return true;
+  }
+
+  public centerOnBatch(
+    points: Array<{ lat: number; lon: number; warning?: string | null }>
+  ): boolean {
+    return this.panToPointsCenter(points);
   }
 
   public plotBatchPoints(
     points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
   ): void {
-    if (!this.map || !this.clusterGroup) return;
+    if (!this.map || !this.textLayer) return;
 
     const count = points.length;
 
-    // High volume pre-warning threshold (> 2,000 points)
     if (count > 2000) {
       this.callbacks.onOpenVolumeWarning(count, (choice) => {
         if (choice === 'skip') {
           return;
         } else if (choice === 'sample') {
-          this.renderBatchPoints(points.slice(0, 1000));
+          this.renderPointsIntoLayer(this.textLayer, points.slice(0, 1000));
         } else {
-          this.renderBatchPoints(points);
+          this.renderPointsIntoLayer(this.textLayer, points);
         }
       });
     } else {
-      this.renderBatchPoints(points);
+      this.renderPointsIntoLayer(this.textLayer, points);
     }
   }
 
-  private renderBatchPoints(
+  public clearBatchPoints(): void {
+    this.textLayer?.clearLayers();
+  }
+
+  public zoomToTextExtents(
+    points: Array<{ lat: number; lon: number; warning?: string | null }>
+  ): boolean {
+    return this.fitPointsBounds(points);
+  }
+
+  public plotFilePoints(
     points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
   ): void {
-    if (!this.clusterGroup || !this.map) return;
+    if (!this.map || !this.filesLayer) return;
 
-    this.clusterGroup.clearLayers();
+    const count = points.length;
+
+    if (count > 2000) {
+      this.callbacks.onOpenVolumeWarning(count, (choice) => {
+        if (choice === 'skip') {
+          return;
+        } else if (choice === 'sample') {
+          this.renderPointsIntoLayer(this.filesLayer, points.slice(0, 1000));
+        } else {
+          this.renderPointsIntoLayer(this.filesLayer, points);
+        }
+      });
+    } else {
+      this.renderPointsIntoLayer(this.filesLayer, points);
+    }
+  }
+
+  public clearFilePoints(): void {
+    this.filesLayer?.clearLayers();
+  }
+
+  public centerOnFiles(
+    points: Array<{ lat: number; lon: number; warning?: string | null }>
+  ): boolean {
+    return this.panToPointsCenter(points);
+  }
+
+  public zoomToFilesExtents(
+    points: Array<{ lat: number; lon: number; warning?: string | null }>
+  ): boolean {
+    return this.fitPointsBounds(points);
+  }
+
+  private renderPointsIntoLayer(
+    targetLayer: any,
+    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
+  ): void {
+    if (!targetLayer) return;
+
+    targetLayer.clearLayers();
 
     const markers: L.Layer[] = [];
-    const bounds = L.latLngBounds([]);
 
     for (const pt of points) {
       if (isNaN(pt.lat) || isNaN(pt.lon)) continue;
@@ -210,22 +376,62 @@ export class MapView {
 
       marker.bindPopup(popupContent);
       markers.push(marker);
-      bounds.extend([pt.lat, pt.lon]);
     }
 
-    this.clusterGroup.addLayers(markers);
+    targetLayer.addLayers(markers);
+    // Note: Decoupled non-panning: do NOT call fitBounds automatically.
+  }
 
-    if (markers.length > 0) {
+  private panToPointsCenter(
+    points: Array<{ lat: number; lon: number; warning?: string | null }>
+  ): boolean {
+    if (!this.map || points.length === 0) return false;
+
+    const validInGrid = points.filter(
+      (p) => (!p.warning || p.warning !== 'Out of grid') && isInsideRomaniaGrid(p.lat, p.lon)
+    );
+
+    if (validInGrid.length === 0) return false;
+
+    if (validInGrid.length === 1) {
+      return this.centerOnPoint(validInGrid[0].lat, validInGrid[0].lon);
+    }
+
+    const bounds = L.latLngBounds(validInGrid.map((p) => [p.lat, p.lon] as [number, number]));
+    if (bounds.isValid()) {
+      this.map.panTo(bounds.getCenter(), { animate: true });
+      return true;
+    }
+    return false;
+  }
+
+  private fitPointsBounds(
+    points: Array<{ lat: number; lon: number; warning?: string | null }>
+  ): boolean {
+    if (!this.map || points.length === 0) return false;
+
+    const validInGrid = points.filter(
+      (p) => (!p.warning || p.warning !== 'Out of grid') && isInsideRomaniaGrid(p.lat, p.lon)
+    );
+
+    if (validInGrid.length === 0) return false;
+
+    if (validInGrid.length === 1) {
+      return this.zoomToPoint(validInGrid[0].lat, validInGrid[0].lon, 14);
+    }
+
+    const bounds = L.latLngBounds(validInGrid.map((p) => [p.lat, p.lon] as [number, number]));
+    if (bounds.isValid()) {
       this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      return true;
     }
+    return false;
   }
 
   private async loadGridBoundary(): Promise<void> {
     try {
       await apiClient.getGridInfo();
 
-      // Romania National TransDatRO Envelope:
-      // Approximate geodetic perimeter bounding the national territory
       const romaniaEnvelope: [number, number][] = [
         [43.618, 28.583],
         [43.833, 25.967],
@@ -246,23 +452,20 @@ export class MapView {
         [43.618, 28.583],
       ];
 
-      if (this.map) {
-        this.boundaryLayer = L.polygon(romaniaEnvelope, {
+      if (this.boundaryGroup) {
+        this.boundaryGroup.clearLayers();
+        this.boundaryPolygon = L.polygon(romaniaEnvelope, {
           color: '#38bdf8',
           weight: 2,
           dashArray: '6, 6',
           fillColor: '#0284c7',
           fillOpacity: 0.05,
-        }).addTo(this.map);
-
-        this.boundaryLayer.bindTooltip(t('map.gridBoundary'), { sticky: true });
+        });
+        this.boundaryPolygon.bindTooltip(t('map.gridBoundary'), { sticky: true });
+        this.boundaryGroup.addLayer(this.boundaryPolygon);
       }
     } catch (err) {
       console.warn('Failed to fetch grid bounds from API', err);
     }
-  }
-
-  private updateLayerLabels(): void {
-    // When language changes, update any dynamic labels
   }
 }

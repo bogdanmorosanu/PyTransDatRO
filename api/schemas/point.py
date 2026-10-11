@@ -13,6 +13,7 @@ class OperationEnum(str, Enum):
 class AngleUnitEnum(str, Enum):
     RADIANS = "radians"
     DEGREES = "degrees"
+    DMS = "dms"
 
 
 class PointRequest(BaseModel):

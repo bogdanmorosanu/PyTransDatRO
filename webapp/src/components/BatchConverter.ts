@@ -1,9 +1,11 @@
 import { t, onLanguageChange } from '../i18n';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
-import { parseInputLines, type CoordinateOrder } from '../utils/pointParser';
+import { parseInputLines, detectDelimiter, type CoordinateOrder } from '../utils/pointParser';
 import { formatDegToDMS, degToRad } from '../utils/dmsParser';
 import { exportToCSV, exportToGeoJSON, exportToDXF, type ExportPointItem } from '../utils/exporters';
 import { showToast } from '../utils/toast';
+
+export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
 export interface BatchReportData {
   total: number;
@@ -17,51 +19,122 @@ export interface BatchConverterCallbacks {
   onPointsPlotted: (
     points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
   ) => void;
-  onOpenReport: (report: BatchReportData) => void;
+  onCenterOnMap?: (
+    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
+  ) => void;
+  onZoomToExtents?: (
+    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
+  ) => void;
 }
 
 export class BatchConverter {
   private container: HTMLElement;
   private callbacks: BatchConverterCallbacks;
 
-  // Settings
-  private op: TransformationOp = 'Stereo70ToETRS89';
+  // Settings inherited from shared config
+  private op: TransformationOp = 'ETRS89ToStereo70';
+  private angularUnit: AngularUnitType = 'degrees';
   private order: CoordinateOrder = 'NE';
   private delimiter: string = 'auto';
-  private angularUnit: 'degrees' | 'dms' | 'radians' = 'degrees';
 
   // State
   private inputText: string = '';
   private outputText: string = '';
   private lastTransformedItems: ExportPointItem[] = [];
+  private lastMapPoints: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }> = [];
+  private lastSummary: {
+    inGridCount: number;
+    outOfGridCount: number;
+    syntaxErrorCount: number;
+  } | null = null;
   private isProcessing: boolean = false;
-  private viewLayout: 'split' | 'stacked' = 'stacked';
 
   constructor(callbacks: BatchConverterCallbacks) {
     this.callbacks = callbacks;
     this.container = document.createElement('div');
     this.container.className = 'tab-content';
 
-    // Sample default points for immediate exploration
+    // Sample default points for immediate exploration (ETRS89 Romania)
     this.inputText = [
-      '101, 500000.000, 500000.000, 100.000',
-      '102, 500250.000, 500150.000, 102.500',
-      '103, 501000.000, 499500.000, 98.300',
-      '104, 5.000, 1.000, 0.000', // Intentional out of grid sample
+      '101, 46.00000000, 25.00000000, 100.000',
+      '102, 46.00225000, 25.00195000, 102.500',
+      '103, 46.00900000, 24.99350000, 98.300',
+      '104, 10.00000000, 10.00000000, 0.000', // Intentional out of grid sample
     ].join('\n');
 
     this.render();
     onLanguageChange(() => this.render());
   }
 
+  private getDynamicPlaceholder(): string {
+    const isEtrs = this.op === 'ETRS89ToStereo70';
+    if (isEtrs) {
+      if (this.angularUnit === 'dms') {
+        return this.order === 'EN'
+          ? '101, 25° 00\' 00.00000", 46° 00\' 00.00000", 100.000\n102, 25° 01\' 15.20000", 46° 02\' 30.10000", 102.500'
+          : '101, 46° 00\' 00.00000", 25° 00\' 00.00000", 100.000\n102, 46° 02\' 30.10000", 25° 01\' 15.20000", 102.500';
+      }
+      return this.order === 'EN'
+        ? '101, 25.00000000, 46.00000000, 100.000\n102, 25.02000000, 46.05000000, 102.500'
+        : '101, 46.00000000, 25.00000000, 100.000\n102, 46.05000000, 25.02000000, 102.500';
+    }
+    return this.order === 'EN'
+      ? '101, 500000.000, 500000.000, 100.000\n102, 500150.000, 500200.000, 102.500'
+      : '101, 500000.000, 500000.000, 100.000\n102, 500200.000, 500150.000, 102.500';
+  }
+
   public getElement(): HTMLElement {
     return this.container;
   }
 
+  public setDirection(op: TransformationOp): void {
+    if (this.op === op) return;
+    this.op = op;
+
+    const defaultEtrsSample = [
+      '101, 46.00000000, 25.00000000, 100.000',
+      '102, 46.00225000, 25.00195000, 102.500',
+      '103, 46.00900000, 24.99350000, 98.300',
+      '104, 10.00000000, 10.00000000, 0.000',
+    ].join('\n');
+
+    const defaultS70Sample = [
+      '101, 500000.000, 500000.000, 100.000',
+      '102, 500250.000, 500200.000, 102.500',
+      '103, 501000.000, 499300.000, 98.300',
+      '104, 100000.000, 100000.000, 0.000',
+    ].join('\n');
+
+    if (this.op === 'Stereo70ToETRS89' && this.inputText.trim() === defaultEtrsSample.trim()) {
+      this.inputText = defaultS70Sample;
+    } else if (this.op === 'ETRS89ToStereo70' && this.inputText.trim() === defaultS70Sample.trim()) {
+      this.inputText = defaultEtrsSample;
+    }
+
+    this.render();
+  }
+
+  public setAngularUnit(unit: AngularUnitType): void {
+    if (this.angularUnit === unit) return;
+    this.angularUnit = unit;
+    this.render();
+  }
+
+  public setCoordinateOrder(order: CoordinateOrder): void {
+    if (this.order === order) return;
+    this.order = order;
+    this.render();
+  }
+
+  public getCoordinateOrder(): CoordinateOrder {
+    return this.order;
+  }
+
+
   private async processBatch(): Promise<void> {
     if (this.isProcessing) return;
     if (!this.inputText.trim()) {
-      showToast('Please enter coordinate rows to transform', 'warning');
+      showToast(t('batch.warnNoRows'), 'warning');
       return;
     }
 
@@ -70,52 +143,79 @@ export class BatchConverter {
 
     try {
       const isSourceGeo = this.op === 'ETRS89ToStereo70';
-      const parsedRows = parseInputLines(this.inputText, this.delimiter, this.order, isSourceGeo);
+      const parsedRows = parseInputLines(this.inputText, this.delimiter, this.order, isSourceGeo, this.angularUnit);
 
-      const validRows = parsedRows.filter((r) => !r.error && r.coords.length >= 2);
-      const invalidRows = parsedRows.filter((r) => r.error);
+      const validRows = parsedRows.filter((r) => !r.error && !r.isComment && !r.isEmpty && r.coords.length >= 2);
+      const syntaxErrorRows = parsedRows.filter((r) => !r.isComment && !r.isEmpty && !!r.error);
 
-      if (validRows.length === 0) {
+      if (validRows.length === 0 && syntaxErrorRows.length === 0) {
         throw new Error('No valid coordinate rows could be parsed');
       }
 
-      // Prepare batch payload: array of [North/Lat, East/Long, (Elev)]
-      const payloadPoints = validRows.map((r) => r.coords);
+      let batchResults: any[] = [];
+      if (validRows.length > 0) {
+        const payloadPoints = validRows.map((r) => r.coords);
+        const res = await apiClient.transformBatch({
+          op: this.op,
+          points: payloadPoints,
+          unit: 'degrees',
+        });
+        batchResults = res.results;
+      }
 
-      const res = await apiClient.transformBatch({
-        op: this.op,
-        points: payloadPoints,
-        unit: 'degrees',
-      });
-
-      // Assemble results
+      // Assemble results strictly maintaining 1-to-1 input-to-output sequence
       const items: ExportPointItem[] = [];
       const outputLines: string[] = [];
       const mapPoints: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }> = [];
 
       let validCount = 0;
       let outOfGridCount = 0;
+      let validRowIndex = 0;
+      let pointIndex = 0;
 
-      // Match responses with original valid rows
-      for (let i = 0; i < validRows.length; i++) {
-        const row = validRows[i];
-        const apiRes = res.results[i];
+      for (const row of parsedRows) {
+        if (row.isEmpty) {
+          outputLines.push('');
+          continue;
+        }
+        if (row.isComment) {
+          outputLines.push(row.rawLine);
+          continue;
+        }
+        if (row.error) {
+          outputLines.push(`${row.rawLine} # Error: ${row.error}`);
+          continue;
+        }
 
+        // Process valid coordinate row
+        pointIndex++;
+        const pointLabel = row.pointId || `Point ${pointIndex}`;
+        const apiRes = batchResults[validRowIndex++];
         const isGeoOutput = this.op === 'Stereo70ToETRS89';
         const isOutOfGrid = apiRes.warning === 'Out of grid';
 
-        if (isOutOfGrid) outOfGridCount++;
-        else validCount++;
+        if (isOutOfGrid) {
+          outOfGridCount++;
+          outputLines.push(row.pointId ? `${row.pointId}, # Out of grid` : '# Out of grid');
+          items.push({
+            pointId: row.pointId || pointLabel,
+            coords: [],
+            warning: 'Out of grid',
+            isGeo: isGeoOutput,
+          });
+          continue;
+        }
+
+        validCount++;
 
         const item: ExportPointItem = {
-          pointId: row.pointId,
+          pointId: pointLabel,
           coords: apiRes.coos,
           warning: apiRes.warning,
           isGeo: isGeoOutput,
         };
         items.push(item);
 
-        // Format for output textarea
         const parts: string[] = [];
         if (row.pointId) parts.push(row.pointId);
 
@@ -130,8 +230,8 @@ export class BatchConverter {
             latStr = formatDegToDMS(lat);
             lonStr = formatDegToDMS(lon);
           } else if (this.angularUnit === 'radians') {
-            latStr = degToRad(lat).toFixed(12);
-            lonStr = degToRad(lon).toFixed(12);
+            latStr = degToRad(lat).toFixed(10);
+            lonStr = degToRad(lon).toFixed(10);
           } else {
             latStr = lat.toFixed(8);
             lonStr = lon.toFixed(8);
@@ -145,9 +245,8 @@ export class BatchConverter {
 
           if (elev !== undefined) parts.push(elev.toFixed(3));
 
-          mapPoints.push({ id: row.pointId, lat, lon, elev, warning: apiRes.warning });
+          mapPoints.push({ id: pointLabel, lat, lon, elev, warning: apiRes.warning });
         } else {
-          // Stereo 70 output
           const n = apiRes.coos[0];
           const e = apiRes.coos[1];
           const z = apiRes.coos[2];
@@ -160,41 +259,32 @@ export class BatchConverter {
 
           if (z !== undefined) parts.push(z.toFixed(3));
 
-          // For map plotting Stereo70 outputs, we approximate lat/lon from original inputs or plot coords
           const origLat = row.coords[0];
           const origLon = row.coords[1];
-          mapPoints.push({ id: row.pointId, lat: origLat, lon: origLon, elev: z, warning: apiRes.warning });
+          mapPoints.push({ id: pointLabel, lat: origLat, lon: origLon, elev: z, warning: apiRes.warning });
         }
 
         if (apiRes.warning) {
           parts.push(`# ${apiRes.warning}`);
         }
 
-        const outDelim = this.delimiter === 'auto' || this.delimiter === ' ' ? ', ' : `${this.delimiter} `;
+        const detectedDelim = this.delimiter === 'auto' ? detectDelimiter(this.inputText.split(/\r?\n/)) : this.delimiter;
+        const outDelim = detectedDelim === ' ' ? ', ' : detectedDelim === '\t' ? '\t' : `${detectedDelim} `;
         outputLines.push(parts.join(outDelim));
-      }
-
-      // Add errors
-      for (const inv of invalidRows) {
-        outputLines.push(`${inv.rawLine} # Error: ${inv.error}`);
       }
 
       this.outputText = outputLines.join('\n');
       this.lastTransformedItems = items;
+      this.lastMapPoints = mapPoints;
+      this.lastSummary = {
+        inGridCount: validCount,
+        outOfGridCount: outOfGridCount,
+        syntaxErrorCount: syntaxErrorRows.length,
+      };
 
-      // Plot markers on map
       this.callbacks.onPointsPlotted(mapPoints);
 
-      // Trigger summary report modal
-      this.callbacks.onOpenReport({
-        total: parsedRows.length,
-        valid: validCount,
-        outOfGrid: outOfGridCount,
-        invalid: invalidRows.length,
-        items,
-      });
-
-      showToast(`Batch completed: ${validCount} valid coordinates`, 'success');
+      showToast(t('batch.successToast', { count: validCount }), 'success');
     } catch (err: any) {
       showToast(err.message || 'Error processing batch', 'danger');
     } finally {
@@ -204,92 +294,125 @@ export class BatchConverter {
   }
 
   private render(): void {
-    const isS70 = this.op === 'Stereo70ToETRS89';
-
     this.container.innerHTML = `
       <div class="studio-card">
-        <div class="card-title">
-          <span>${t('batch.title')}</span>
-          <div style="display: flex; gap: 4px; align-items: center;">
-            <button class="btn btn-outline" id="batch-layout-toggle" style="padding: 3px 8px; font-size: 11px;">
-              ${this.viewLayout === 'stacked' ? '⬍ ' + (t('batch.layoutStacked') || 'Suprapus') : '⬄ ' + (t('batch.layoutSplit') || 'Alăturat')}
-            </button>
-          </div>
+        <!-- Vertical Stack: Input Textarea with Direction-Aware Dynamic Placeholder -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label">${t('batch.inputLabel')}</label>
+          <textarea 
+            class="form-input mono" 
+            id="batch-input-area" 
+            rows="6" 
+            placeholder="${this.getDynamicPlaceholder()}"
+            style="resize: vertical; font-size: 12px; line-height: 1.4;"
+          >${this.inputText}</textarea>
         </div>
 
-        <!-- Direction & Order Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('point.opLabel')}</label>
-            <div class="segmented-control">
-              <button class="segmented-btn ${isS70 ? 'active' : ''}" id="batch-op-s70">${t('point.opS70ToETRS')}</button>
-              <button class="segmented-btn ${!isS70 ? 'active' : ''}" id="batch-op-etrs">${t('point.opETRSToS70')}</button>
+        <!-- Transform Primary Button -->
+        <button class="btn btn-primary" id="batch-transform-btn" style="width: 100%; margin-bottom: ${this.outputText ? '16px' : '0'};">
+          <span>${this.isProcessing ? t('batch.calculating') : t('batch.transformBtn')}</span>
+        </button>
+
+        <!-- Output Results Area -->
+        ${
+          this.outputText
+            ? `
+          <div class="form-group" style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">${t('batch.outputLabel')}</label>
+              <button class="copy-code-btn" id="batch-copy-results-btn" title="${t('batch.copyAll')}" aria-label="${t('batch.copyAll')}">
+                <svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span class="copy-feedback hidden">✓ ${t('point.copiedTooltip')}</span>
+              </button>
+            </div>
+            <textarea 
+              class="form-input mono" 
+              id="batch-output-area" 
+              rows="6" 
+              readonly 
+              style="resize: vertical; font-size: 12px; line-height: 1.4; background-color: var(--bg-surface-elevated);"
+            >${this.outputText}</textarea>
+          </div>
+
+          <!-- Standardized Quality Report Widget -->
+          ${
+            this.lastSummary
+              ? `
+            <div class="quality-report-card" style="margin-bottom: 12px;">
+              <div class="quality-report-row">
+                <div class="quality-report-badges">
+                  <span class="status-pill success">✓ ${t('quality.inGrid')}: ${this.lastSummary.inGridCount}</span>
+                  ${
+                    this.lastSummary.outOfGridCount > 0
+                      ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}: ${this.lastSummary.outOfGridCount}</span>`
+                      : ''
+                  }
+                  ${
+                    this.lastSummary.syntaxErrorCount > 0
+                      ? `<span class="status-pill danger">✕ ${t('quality.syntaxErrors', { count: this.lastSummary.syntaxErrorCount })}</span>`
+                      : ''
+                  }
+                </div>
+              </div>
+            </div>
+          `
+              : ''
+          }
+
+          <!-- Relocated Export Buttons below Output -->
+          <div class="download-group">
+            <span class="download-group-label">${t('batch.downloadAs')}</span>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary" id="batch-export-csv" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''} style="padding: 6px 12px; font-size: 12px;">
+                ${t('batch.downloadCSV')}
+              </button>
+              <button class="btn btn-secondary" id="batch-export-geojson" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''} style="padding: 6px 12px; font-size: 12px;">
+                ${t('batch.downloadGeoJSON')}
+              </button>
+              <button class="btn btn-secondary" id="batch-export-dxf" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''} style="padding: 6px 12px; font-size: 12px;">
+                ${t('batch.downloadDXF')}
+              </button>
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('batch.orderLabel')}</label>
-            <div class="segmented-control">
-              <button class="segmented-btn ${this.order === 'NE' ? 'active' : ''}" id="batch-order-ne">${t('batch.orderNE')}</button>
-              <button class="segmented-btn ${this.order === 'EN' ? 'active' : ''}" id="batch-order-en">${t('batch.orderEN')}</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Delimiter & Units Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('batch.delimiterLabel')}</label>
-            <select class="form-input" id="batch-delim-select" style="padding: 7px 10px;">
-              <option value="auto" ${this.delimiter === 'auto' ? 'selected' : ''}>${t('batch.delimAuto')}</option>
-              <option value="," ${this.delimiter === ',' ? 'selected' : ''}>${t('batch.delimComma')}</option>
-              <option value=";" ${this.delimiter === ';' ? 'selected' : ''}>${t('batch.delimSemi')}</option>
-              <option value=" " ${this.delimiter === ' ' ? 'selected' : ''}>${t('batch.delimSpace')}</option>
-              <option value="\t" ${this.delimiter === '\t' ? 'selected' : ''}>${t('batch.delimTab')}</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('point.unitLabel')}</label>
-            <div class="segmented-control">
-              <button class="segmented-btn ${this.angularUnit === 'degrees' ? 'active' : ''}" id="batch-unit-deg">${t('point.unitDeg')}</button>
-              <button class="segmented-btn ${this.angularUnit === 'dms' ? 'active' : ''}" id="batch-unit-dms">${t('point.unitDMS')}</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Textareas (Stacked or Split) -->
-        <div style="display: grid; grid-template-columns: ${this.viewLayout === 'split' ? '1fr 1fr' : '1fr'}; gap: 12px;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('batch.inputLabel')}</label>
-            <textarea class="form-input mono" id="batch-input-area" rows="${this.viewLayout === 'split' ? '12' : '7'}" style="resize: vertical; font-size: 12px;">${this.inputText}</textarea>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${t('batch.outputLabel')}</label>
-            <textarea class="form-input mono" id="batch-output-area" rows="${this.viewLayout === 'split' ? '12' : '7'}" readonly style="resize: vertical; font-size: 12px; background-color: var(--bg-surface-elevated);">${this.outputText}</textarea>
-          </div>
-        </div>
-
-        <!-- Action Row -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
-          <button class="btn btn-primary" id="batch-transform-btn" style="min-width: 160px;">
-            <span>${this.isProcessing ? '⏳ ' + t('batch.calculating') : '⚡ ' + t('batch.transformBtn')}</span>
-          </button>
-
-          <!-- Export Suite -->
-          <div style="display: flex; gap: 6px;">
-            <button class="btn btn-secondary" id="batch-export-csv" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''}>
-              📥 CSV
+          <!-- Decoupled Map Navigation Actions on its own Bottom-Right Line -->
+          <div class="action-footer-right" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; margin-top: 10px;">
+            <button 
+              class="btn btn-outline center-map-btn" 
+              id="batch-center-map-btn" 
+              ${this.lastMapPoints.length === 0 ? 'disabled' : ''} 
+              style="padding: 4px 10px; font-size: 11.5px;"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="22" y1="12" x2="18" y2="12"></line>
+                <line x1="6" y1="12" x2="2" y2="12"></line>
+                <line x1="12" y1="6" x2="12" y2="2"></line>
+                <line x1="12" y1="22" x2="12" y2="18"></line>
+              </svg>
+              <span>${t('common.centerOnMap')}</span>
             </button>
-            <button class="btn btn-secondary" id="batch-export-geojson" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''}>
-              🗺️ GeoJSON
-            </button>
-            <button class="btn btn-secondary" id="batch-export-dxf" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''}>
-              📐 DXF
+            <button 
+              class="btn btn-outline zoom-extents-btn" 
+              id="batch-zoom-extents-btn" 
+              ${this.lastMapPoints.length === 0 ? 'disabled' : ''} 
+              style="padding: 4px 10px; font-size: 11.5px;"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+              <span>${t('common.zoomToExtents')}</span>
             </button>
           </div>
-        </div>
+        `
+            : ''
+        }
       </div>
     `;
 
@@ -297,48 +420,7 @@ export class BatchConverter {
   }
 
   private attachEventListeners(): void {
-    // Layout toggle
-    this.container.querySelector('#batch-layout-toggle')?.addEventListener('click', () => {
-      this.viewLayout = this.viewLayout === 'stacked' ? 'split' : 'stacked';
-      this.render();
-    });
-
-    // Op switches
-    this.container.querySelector('#batch-op-s70')?.addEventListener('click', () => {
-      this.op = 'Stereo70ToETRS89';
-      this.render();
-    });
-    this.container.querySelector('#batch-op-etrs')?.addEventListener('click', () => {
-      this.op = 'ETRS89ToStereo70';
-      this.render();
-    });
-
-    // Order switches
-    this.container.querySelector('#batch-order-ne')?.addEventListener('click', () => {
-      this.order = 'NE';
-      this.render();
-    });
-    this.container.querySelector('#batch-order-en')?.addEventListener('click', () => {
-      this.order = 'EN';
-      this.render();
-    });
-
-    // Delimiter select
-    this.container.querySelector('#batch-delim-select')?.addEventListener('change', (e) => {
-      this.delimiter = (e.target as HTMLSelectElement).value;
-    });
-
-    // Units
-    this.container.querySelector('#batch-unit-deg')?.addEventListener('click', () => {
-      this.angularUnit = 'degrees';
-      this.render();
-    });
-    this.container.querySelector('#batch-unit-dms')?.addEventListener('click', () => {
-      this.angularUnit = 'dms';
-      this.render();
-    });
-
-    // Textarea sync
+    // Input sync
     const inputArea = this.container.querySelector('#batch-input-area') as HTMLTextAreaElement;
     if (inputArea) {
       inputArea.addEventListener('input', () => {
@@ -346,26 +428,80 @@ export class BatchConverter {
       });
     }
 
-    // Transform
+    // Top-right Copy Results action button
+    const copyResultsBtn = this.container.querySelector('#batch-copy-results-btn');
+    if (copyResultsBtn) {
+      copyResultsBtn.addEventListener('click', async () => {
+        if (!this.outputText.trim()) return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(this.outputText);
+          } else {
+            throw new Error('Clipboard API unavailable');
+          }
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = this.outputText;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+
+        copyResultsBtn.classList.add('copied');
+        const feedback = copyResultsBtn.querySelector('.copy-feedback');
+        const icon = copyResultsBtn.querySelector('.copy-icon');
+        if (feedback && icon) {
+          feedback.classList.remove('hidden');
+          icon.classList.add('hidden');
+          setTimeout(() => {
+            copyResultsBtn.classList.remove('copied');
+            feedback.classList.add('hidden');
+            icon.classList.remove('hidden');
+          }, 2000);
+        }
+        showToast(t('batch.copySuccess'), 'success');
+      });
+    }
+
+    // Transform button
     this.container.querySelector('#batch-transform-btn')?.addEventListener('click', () => {
       if (inputArea) this.inputText = inputArea.value;
       this.processBatch();
     });
 
-    // Exports
+    // Center on Map button
+    this.container.querySelector('#batch-center-map-btn')?.addEventListener('click', () => {
+      if (this.lastMapPoints.length > 0) {
+        this.callbacks.onCenterOnMap?.(this.lastMapPoints);
+      }
+    });
+
+    // Zoom to Extents button
+    this.container.querySelector('#batch-zoom-extents-btn')?.addEventListener('click', () => {
+      if (this.lastMapPoints.length > 0) {
+        this.callbacks.onZoomToExtents?.(this.lastMapPoints);
+      }
+    });
+
+    // Export buttons
     this.container.querySelector('#batch-export-csv')?.addEventListener('click', () => {
-      exportToCSV(this.lastTransformedItems, ',', this.order);
-      showToast('CSV downloaded', 'success');
+      const detectedDelim = this.delimiter === 'auto' ? detectDelimiter(this.inputText.split(/\r?\n/)) : this.delimiter;
+      const csvSep = detectedDelim === ' ' ? ',' : detectedDelim;
+      exportToCSV(this.lastTransformedItems, csvSep, this.order);
+      showToast(t('batch.csvDownloaded'), 'success');
     });
 
     this.container.querySelector('#batch-export-geojson')?.addEventListener('click', () => {
       exportToGeoJSON(this.lastTransformedItems);
-      showToast('GeoJSON downloaded', 'success');
+      showToast(t('batch.geoJsonDownloaded'), 'success');
     });
 
     this.container.querySelector('#batch-export-dxf')?.addEventListener('click', () => {
       exportToDXF(this.lastTransformedItems);
-      showToast('AutoCAD DXF downloaded', 'success');
+      showToast(t('batch.dxfDownloaded'), 'success');
     });
   }
 }

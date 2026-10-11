@@ -21,6 +21,15 @@
   --color-metric-accent: #38bdf8;
   --color-metric-bg: rgba(56, 189, 248, 0.08);
 
+  /* Primary Button Default Fallbacks */
+  --btn-primary-bg: #f8fafc;
+  --btn-primary-text: #090d16;
+  --btn-primary-hover: #e2e8f0;
+
+  /* Metric Tokens Default Fallbacks */
+  --color-metric-text: #38bdf8;
+  --color-metric-border: rgba(56, 189, 248, 0.3);
+
   /* Cohesive Radii System */
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -60,6 +69,16 @@ html[data-theme="dark"] {
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
   --glass-bg: rgba(15, 23, 42, 0.88);
   --glass-border: rgba(255, 255, 255, 0.07);
+
+  /* High-Contrast Theme-Native Anchor Button */
+  --btn-primary-bg: #f8fafc;
+  --btn-primary-text: #090d16;
+  --btn-primary-hover: #e2e8f0;
+
+  /* Technical Metric Tokens */
+  --color-metric-text: #38bdf8;
+  --color-metric-border: rgba(56, 189, 248, 0.3);
+  --color-metric-bg: rgba(56, 189, 248, 0.06);
 }
 
 /* Light Theme - Clean Crisp Porcelain */
@@ -83,4 +102,14 @@ html[data-theme="light"] {
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
   --glass-bg: rgba(255, 255, 255, 0.92);
   --glass-border: rgba(0, 0, 0, 0.06);
+
+  /* High-Contrast Theme-Native Anchor Button */
+  --btn-primary-bg: #0f172a;
+  --btn-primary-text: #f8fafc;
+  --btn-primary-hover: #1e293b;
+
+  /* Technical Metric Tokens */
+  --color-metric-text: #0284c7;
+  --color-metric-border: rgba(2, 132, 199, 0.3);
+  --color-metric-bg: rgba(2, 132, 199, 0.06);
 }

@@ -2,6 +2,8 @@ import { t, getLanguage, toggleLanguage, onLanguageChange } from '../i18n';
 
 export interface HeaderCallbacks {
   onOpenFeedback: () => void;
+  onOpenGridInfo: () => void;
+  onOpenGeodeticHelp: () => void;
   onToggleMobileView: () => void;
 }
 
@@ -35,12 +37,16 @@ export class Header {
         </div>
       </div>
       <div class="header-actions">
+        <button class="btn btn-outline" id="header-grid-btn">
+          <span>${t('header.gridInfo')}</span>
+        </button>
+        <button class="btn btn-outline" id="header-help-btn">
+          <span>${t('header.geodeticHelp')}</span>
+        </button>
         <button class="btn btn-secondary btn-feedback" id="header-feedback-btn">
-          <span>💬</span>
           <span>${t('app.feedbackBtn')}</span>
         </button>
         <a href="/docs" target="_blank" rel="noopener noreferrer" class="btn btn-outline" title="${t('app.devDocsBtn')}">
-          <span>⚡</span>
           <span>API</span>
         </a>
         <button class="btn-icon" id="header-lang-btn" title="${t('app.langToggle')}">
@@ -50,12 +56,20 @@ export class Header {
           <span>${isDark ? '☀️' : '🌙'}</span>
         </button>
         <button class="btn btn-secondary mobile-only-btn" id="header-mobile-view-btn" style="display: none;">
-          <span>🗺️</span>
+          <span>Map</span>
         </button>
       </div>
     `;
 
     // Event Listeners
+    this.element.querySelector('#header-grid-btn')?.addEventListener('click', () => {
+      this.callbacks.onOpenGridInfo();
+    });
+
+    this.element.querySelector('#header-help-btn')?.addEventListener('click', () => {
+      this.callbacks.onOpenGeodeticHelp();
+    });
+
     this.element.querySelector('#header-feedback-btn')?.addEventListener('click', () => {
       this.callbacks.onOpenFeedback();
     });

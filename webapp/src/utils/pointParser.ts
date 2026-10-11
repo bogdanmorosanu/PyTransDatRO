@@ -1,13 +1,29 @@
-import { parseAngleToDeg } from './dmsParser';
+import { parseAngleToDeg, radToDeg } from './dmsParser';
 
 export type CoordinateOrder = 'NE' | 'EN';
 
 export interface ParsedPointRow {
+  lineIndex: number;
   rawLine: string;
   pointId: string | null;
   coords: number[]; // Normalized to [North/Lat, East/Long, (Elevation)]
   originalOrder: CoordinateOrder;
   error?: string;
+  isComment?: boolean;
+  isEmpty?: boolean;
+}
+
+export function isValidDecimal(s: string): boolean {
+  const trimmed = s.trim();
+  return /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(trimmed) && !isNaN(Number(trimmed));
+}
+
+export function parseStrictDecimal(s: string): number {
+  const trimmed = s.trim();
+  if (!isValidDecimal(trimmed)) {
+    throw new Error('Invalid numeric coordinate');
+  }
+  return Number(trimmed);
 }
 
 /**
@@ -31,7 +47,8 @@ export function parseInputLines(
   rawText: string,
   delimiterConfig: string = 'auto',
   order: CoordinateOrder = 'NE',
-  isSourceGeo: boolean = false
+  isSourceGeo: boolean = false,
+  angularUnit: 'degrees' | 'dms' | 'radians' = 'degrees'
 ): ParsedPointRow[] {
   const lines = rawText.split(/\r\n|\r|\n/);
   const rows: ParsedPointRow[] = [];
@@ -39,15 +56,37 @@ export function parseInputLines(
   const delimiter = delimiterConfig === 'auto' ? detectDelimiter(lines) : delimiterConfig;
   const splitRegex = delimiter === ' ' ? /\s+/ : new RegExp(delimiter === ';' ? ';+' : delimiter === ',' ? ',+' : '\\t+');
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
-    if (!trimmed) continue;
-    if (trimmed.startsWith('#')) continue; // Skip comments
+    if (!trimmed) {
+      rows.push({
+        lineIndex: i,
+        rawLine: line,
+        pointId: null,
+        coords: [],
+        originalOrder: order,
+        isEmpty: true,
+      });
+      continue;
+    }
+    if (trimmed.startsWith('#')) {
+      rows.push({
+        lineIndex: i,
+        rawLine: line,
+        pointId: null,
+        coords: [],
+        originalOrder: order,
+        isComment: true,
+      });
+      continue;
+    }
 
     const tokens = trimmed.split(splitRegex).map((t) => t.trim()).filter((t) => t.length > 0);
 
     if (tokens.length < 2) {
       rows.push({
+        lineIndex: i,
         rawLine: line,
         pointId: null,
         coords: [],
@@ -61,32 +100,80 @@ export function parseInputLines(
     let coordTokens: string[] = [];
 
     // Check if first column is Point ID:
-    // If we have 3 or 4 tokens, and token 0 is not easily parsed as a coordinate
-    // or if the line has 4 tokens (PointId, X, Y, Z)
     if (tokens.length === 4) {
       pointId = tokens[0];
       coordTokens = tokens.slice(1);
     } else if (tokens.length === 3) {
-      // Could be (X, Y, Z) or (PointId, X, Y)
-      const firstIsNumeric = !isNaN(Number(tokens[0])) && !isNaN(parseFloat(tokens[0]));
-      const secondIsNumeric = !isNaN(Number(tokens[1])) && !isNaN(parseFloat(tokens[1]));
-      const thirdIsNumeric = !isNaN(Number(tokens[2])) && !isNaN(parseFloat(tokens[2]));
+      const [t0, t1, t2] = tokens;
+      if (isSourceGeo) {
+        const hasAngleSymbol0 = /[°'"`dms]/i.test(t0);
+        let a0 = false;
+        let a1 = false;
+        let a2 = false;
+        try {
+          a0 = !isNaN(parseAngleToDeg(t0));
+        } catch {}
+        try {
+          a1 = !isNaN(parseAngleToDeg(t1));
+        } catch {}
+        try {
+          a2 = !isNaN(parseAngleToDeg(t2));
+        } catch {}
 
-      if (firstIsNumeric && secondIsNumeric && thirdIsNumeric) {
-        // All numeric -> 3D coordinates (X, Y, Z)
-        coordTokens = tokens;
+        let t0Deg = NaN;
+        try {
+          t0Deg = parseAngleToDeg(t0);
+        } catch {}
+
+        if (!hasAngleSymbol0 && a1 && a2 && (!a0 || (order === 'NE' && t0Deg > 90))) {
+          // t0 is a label (e.g. "P1" or numeric ID > 90) -> (PointId, Lat, Lon)
+          pointId = t0;
+          coordTokens = [t1, t2];
+        } else {
+          // 3D coordinates (Lat, Lon, Elevation)
+          coordTokens = tokens;
+        }
       } else {
-        // First is likely a label -> (PointId, X, Y)
-        pointId = tokens[0];
-        coordTokens = tokens.slice(1);
+        // Stereo 70
+        const t0Num = isValidDecimal(t0) ? Number(t0) : null;
+        const t1Num = isValidDecimal(t1) ? Number(t1) : null;
+        const t2Num = isValidDecimal(t2) ? Number(t2) : null;
+
+        if (t1Num !== null && t1Num > 50000) {
+          if (t2Num !== null && t2Num > 50000) {
+            // Both t1 and t2 are planimetric coordinates -> t0 is Point ID
+            pointId = t0;
+            coordTokens = [t1, t2];
+          } else {
+            // t2 is elevation or typo -> 3D coordinates
+            coordTokens = tokens;
+          }
+        } else if (t0Num !== null && t0Num > 50000) {
+          // t0 is planimetric coordinate -> 3D coordinates
+          coordTokens = tokens;
+        } else if (t0Num !== null && t1Num !== null && t2Num !== null) {
+          // All 3 are numbers (e.g. 5.0, 1.0, 0.0) -> 3D coordinates
+          coordTokens = tokens;
+        } else if (!isValidDecimal(t0) && isValidDecimal(t1) && isValidDecimal(t2)) {
+          // t0 is string label (e.g. "P1"), t1 and t2 are coordinates
+          pointId = t0;
+          coordTokens = [t1, t2];
+        } else {
+          coordTokens = tokens;
+        }
       }
-    } else {
+    } else if (tokens.length === 2) {
       // 2 tokens -> 2D coordinates (X, Y)
       coordTokens = tokens;
+    } else {
+      // More than 4 tokens
+      pointId = tokens[0];
+      coordTokens = tokens.slice(1);
     }
 
     if (coordTokens.length < 2 || coordTokens.length > 3) {
       rows.push({
+        lineIndex: i,
         rawLine: line,
         pointId,
         coords: [],
@@ -102,17 +189,26 @@ export function parseInputLines(
       let c3: number | undefined;
 
       if (isSourceGeo) {
-        c1 = parseAngleToDeg(coordTokens[0]);
-        c2 = parseAngleToDeg(coordTokens[1]);
+        const parseGeoToken = (tok: string): number => {
+          if (angularUnit === 'radians') {
+            if (tok.includes('°') || tok.includes("'") || tok.includes('"')) {
+              return parseAngleToDeg(tok);
+            }
+            const clean = tok.replace(/rad/gi, '').trim();
+            const num = Number(clean);
+            if (!isNaN(num)) return radToDeg(num);
+          }
+          return parseAngleToDeg(tok);
+        };
+        c1 = parseGeoToken(coordTokens[0]);
+        c2 = parseGeoToken(coordTokens[1]);
       } else {
-        c1 = parseFloat(coordTokens[0]);
-        c2 = parseFloat(coordTokens[1]);
-        if (isNaN(c1) || isNaN(c2)) throw new Error('Non-numeric coordinate value');
+        c1 = parseStrictDecimal(coordTokens[0]);
+        c2 = parseStrictDecimal(coordTokens[1]);
       }
 
       if (coordTokens.length === 3) {
-        c3 = parseFloat(coordTokens[2]);
-        if (isNaN(c3)) throw new Error('Non-numeric elevation value');
+        c3 = parseStrictDecimal(coordTokens[2]);
       }
 
       // Normalize to [North/Lat, East/Long, (Elev)]
@@ -126,6 +222,7 @@ export function parseInputLines(
       }
 
       rows.push({
+        lineIndex: i,
         rawLine: line,
         pointId,
         coords: normalizedCoords,
@@ -133,6 +230,7 @@ export function parseInputLines(
       });
     } catch (err: any) {
       rows.push({
+        lineIndex: i,
         rawLine: line,
         pointId,
         coords: [],

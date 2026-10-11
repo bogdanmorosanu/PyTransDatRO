@@ -1,5 +1,5 @@
 export type TransformationOp = 'Stereo70ToETRS89' | 'ETRS89ToStereo70';
-export type AngleUnit = 'radians' | 'degrees';
+export type AngleUnit = 'radians' | 'degrees' | 'dms';
 
 export interface PointTransformRequest {
   op: TransformationOp;

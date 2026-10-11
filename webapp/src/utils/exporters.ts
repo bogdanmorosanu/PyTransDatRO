@@ -33,6 +33,11 @@ export function exportToCSV(
   const lines: string[] = [];
 
   for (const item of items) {
+    if (item.warning === 'Out of grid') {
+      lines.push(item.pointId ? `${item.pointId}${sep} # Out of grid` : '# Out of grid');
+      continue;
+    }
+
     if (!item.coords || item.coords.length < 2) continue;
     const parts: string[] = [];
     if (item.pointId) parts.push(item.pointId);
