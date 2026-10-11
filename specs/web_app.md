@@ -94,11 +94,12 @@ mindmap
       Shareable URL Query Params
       Non-blocking Toast Warnings
     Geodetic Map Studio
-      Leaflet + Base Layer Switcher
-      TransDatRO .spg Bounding Polygon
+      Leaflet + Base Layer Switcher (OSM default with persistence)
+      Ergonomic Floating Controls Docks
       Interactive Click-to-Convert Pin
-      Threshold-guarded Marker Clustering
+      Synchronized Marker & Cluster Styling
       Future Raster Grid Shift Layers
+      Uniform Popups & Copy Attributes
     Batch Textarea Studio
       Multi-line paste up to 20,000 pts
       Optional Point ID / Name column
@@ -147,35 +148,37 @@ Designed for immediate coordinate verification by field surveyors, cadastral eng
 Provides visual spatial context and point dropping on Romanian territory.
 
 * **Map Engine**: **Leaflet.js** (`leaflet@^1.9.4`) with **Leaflet.markercluster** (`leaflet.markercluster@^1.5.3`).
-* **Official Grid Boundary Layer**:
-  - Fetches Romania's official `.spg` bounding box polygon from `GET /api/v1/grid/info` on startup.
-  - Rendered as a styled semi-transparent polygon outlining national geodetic coverage.
+* **Grid Boundary Policy**:
+  - The simplified boundary polygon overlay was intentionally removed from the map view to avoid misleading representations of Romania's exact border and the dual computational grid matrices.
+  - Out-of-grid coverage validation remains strictly active within the core calculation engine, non-blocking toast alerts, and point attribute popups.
+* **Ergonomic Map Controls & Custom Docks**:
+  - **Top-Left Controls Dock**: Grouped floating dock housing:
+    1. *Zoom In / Out* buttons.
+    2. *Zoom to Romania (Home)* extents button (`[43.5, 20.2]` to `[48.3, 29.8]`).
+    3. *Single-Distance Measurement Ruler*: Geodesic measurement tool calculating baseline distance in meters/kilometers, auto-resetting on subsequent clicks or on clicking the clear action.
+    4. *Fullscreen Toggle*: Synchronized with document `fullscreenchange` events (including Esc or browser shortcuts).
+  - **Top-Right Expandable Legend & GIS Graphic Scale**:
+    1. *Legend Widget*: Stateful expandable dock with a 32x32px icon toggle button and persistent open/collapsed state saved in `localStorage['pytransdat_legend_open']`. Displays active layers with synchronized color dots and live point counts. Embedded in normal flex flow above the scale bar so expanding the legend naturally pushes the scale bar down without overlapping.
+    2. *Custom Segmented GIS Graphic Scale Bar*: High-contrast monochrome cartographic scale bar (pure white/obsidian in dark mode, solid black/white in light mode) with division ticks (0, mid, max) and uncrowded start/end labels (`0` and `[max] m/km`).
+  - **Bottom-Left Layers Drawer**: Dedicated 32x32px icon-only button opening a structured drawer organized into:
+    1. *Data Layers*: Layer visibility toggles, point counts, and 6-color swatch popovers (Cyan, Cobalt, Emerald, Amber, Violet, Rose) with `localStorage` persistence.
+    2. *Shift Grids (Coming Soon)*: Preview cards for upcoming $\Delta E$, $\Delta N$, Total Vector, and $\zeta$ raster services.
+    3. *Base Maps*: Radio list items matching data layer styling (OpenStreetMap default, CartoDB Dark Matter, CartoDB Positron, ESRI World Imagery), with user selection saved to `localStorage['pytransdat_basemap']`.
+  - **Bottom-Center Coordinates Badge**: Abbreviated `Lat: [val]  Long: [val]` responsive to active angular units (Degrees, DMS, Radians), elevated on mobile viewports ($\le 768$px) to prevent collision with attribution or layer buttons.
+* **Marker & Cluster Swatch Color Synchronization**:
+  - Marker clusters (`custom-cluster-circle`) dynamically inherit their layer's active swatch color, fully synchronizing individual point pins, zoom cluster bubbles, Layers drawer swatches, and Legend dots.
 * **Interactive Click-to-Convert**:
   - Clicking anywhere on the map drops a geodetic marker pin and automatically populates the Point Studio inputs.
-  - If clicked outside the grid boundary, marker turns red and an alert toast is shown.
-* **Reverse Pan & Sync**:
-  - Typing or changing coordinates in the Point Studio smoothly centers and pans the map to the target location.
-* **Batch & Bulk Point Visualization with Pre-Warning**:
-  - Plots points on the map using **Leaflet.markercluster**.
-  - **High-Volume Threshold Pre-Warning**:
-    - When batch size exceeds **2,000 points**, the app displays an explicit pre-warning dialog before rendering markers:
-      > *"You are about to display [N] points on the interactive map. Depending on your device, rendering this many points simultaneously may cause the browser to freeze or become sluggish."*
-    - The user can select:
-      1. **Proceed with full display** (accepting browser load).
-      2. **Disable map display** for this batch (keeping results in table/export only).
-      3. **Display a reduced sample** (e.g., first 1,000 points).
-* **Base Map Switcher & Distortion Grid Raster Placeholders**:
-  - **Standard Base Layers**:
-    - OpenStreetMap (default).
-    - CartoDB Dark / Light (sleek geodetic theme).
-    - Satellite Ortho-imagery (ESRI World Imagery) for cadastral verification.
-  - **Geodetic Grid Shift Raster Layers (Placeholders for upcoming map services)**:
-    - Built into the map layer control as toggleable overlays:
-      1. *East Grid Shifts ($\Delta E$)*.
-      2. *North Grid Shifts ($\Delta N$)*.
-      3. *Total Horizontal Vector Shift ($\Delta E + \Delta N$)*.
-      4. *Quasigeoid Elevation Shifts ($\Delta H$ / $\zeta$)*.
-    - Initially rendered with a clean "Coming Soon / În curând" layer indicator until raster services are published.
+  - Map click capture is non-disruptive and strictly active when the Single Point tab is selected.
+* **Uniform Geodetic Popups Across All Layers**:
+  - Standardized attribute tables across Point, Text, and Files layers displaying: Layer Name, `Point Name/Number`, source `File` (for bulk files), Northing, Easting, Normal Altitude ($H$, Black Sea 1975), Latitude, Longitude, Ellipsoidal Height ($h$, GRS80), Quasigeoid height $\zeta$ in cyan, and bottom `Grid Coverage` status.
+  - **Copy Attributes Action**: 1-click clipboard button copying all point attributes in structured key-value pairs (`Key: Value`) with in-place `✓ Copied` feedback.
+* **High-Volume Threshold Pre-Warning (`VolumeWarningModal.ts`)**:
+  - Uncapped file ingestion without row truncation. When batch size exceeds **2,000 points**, the app displays an explicit pre-warning dialog before rendering markers:
+    1. *Render All Points* (with Marker Clustering).
+    2. *Sample Preview* (render first 1,000 points only).
+    3. *Skip Map* (display table/export results only to preserve responsiveness).
+  - Clearing the file upload queue or removing queued files automatically triggers `mapView.clearFilePoints()`.
 
 ---
 

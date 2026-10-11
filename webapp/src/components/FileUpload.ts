@@ -3,20 +3,15 @@ import { apiClient, type TransformationOp } from '../utils/apiClient';
 import { type CoordinateOrder } from '../utils/pointParser';
 import { parseAngleToDeg } from '../utils/dmsParser';
 import { showToast } from '../utils/toast';
-import { isInsideRomaniaGrid } from './MapView';
+import { type MapPointItem } from './MapView';
 
 export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
 export interface FileUploadCallbacks {
-  onPointsPlotted?: (
-    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
-  ) => void;
-  onCenterOnMap?: (
-    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
-  ) => void;
-  onZoomToExtents?: (
-    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
-  ) => void;
+  onPointsPlotted?: (points: MapPointItem[]) => void;
+  onCenterOnMap?: (points: MapPointItem[]) => void;
+  onZoomToExtents?: (points: MapPointItem[]) => void;
+  onClearFiles?: () => void;
 }
 
 interface QueuedFileItem {
@@ -30,7 +25,7 @@ interface QueuedFileItem {
   validRows?: number;
   outOfGridRows?: number;
   errorRows?: number;
-  points?: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>;
+  points?: MapPointItem[];
 }
 
 export class FileUpload {
@@ -102,64 +97,147 @@ export class FileUpload {
     const idx = this.fileQueue.findIndex((f) => f.id === id);
     if (idx === -1) return;
     this.fileQueue.splice(idx, 1);
+    if (this.fileQueue.length === 0) {
+      this.callbacks?.onClearFiles?.();
+    } else {
+      const remainingPoints = this.fileQueue.flatMap((f) => f.points || []);
+      if (remainingPoints.length > 0) {
+        this.callbacks?.onPointsPlotted?.(remainingPoints);
+      } else {
+        this.callbacks?.onClearFiles?.();
+      }
+    }
     this.render();
   }
 
 
-  private parsePointsFromText(
-    text: string,
-    isGeoOutput: boolean,
-    order: CoordinateOrder = 'NE'
-  ): Array<{ id: string | null; lat: number; lon: number; elev?: number }> {
-    const lines = text.split(/\r?\n/).slice(0, 2000);
-    const points: Array<{ id: string | null; lat: number; lon: number; elev?: number }> = [];
+  private parsePairedPoints(
+    inText: string,
+    outText: string,
+    fileName: string
+  ): MapPointItem[] {
+    const inLines = inText.split(/\r?\n/);
+    const outLines = outText.split(/\r?\n/);
+    const points: MapPointItem[] = [];
+    const maxRows = Math.min(inLines.length, outLines.length);
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-
-      const clean = trimmed.split('#')[0].trim();
+    const parseLineTokens = (raw: string): { pointId: string | null; tokens: string[] } => {
+      const clean = raw.split('#')[0].trim();
+      if (!clean) return { pointId: null, tokens: [] };
       const delim = clean.includes('\t') ? '\t' : clean.includes(';') ? ';' : clean.includes(',') ? ',' : /\s+/;
-      const tokens = clean.split(delim).map((t) => t.trim()).filter(Boolean);
-      if (tokens.length < 2) continue;
+      const allTokens = clean.split(delim).map((t) => t.trim()).filter(Boolean);
+      if (allTokens.length < 2) return { pointId: null, tokens: [] };
 
-      let pointId: string | null = null;
-      let coordTokens: string[] = tokens;
-
-      if (tokens.length >= 4) {
-        pointId = tokens[0];
-        coordTokens = tokens.slice(1, 4);
-      } else if (tokens.length === 3) {
-        const t0 = tokens[0];
-        const t1 = tokens[1];
-        const t2 = tokens[2];
+      if (allTokens.length >= 4) {
+        return { pointId: allTokens[0], tokens: allTokens.slice(1, 4) };
+      } else if (allTokens.length === 3) {
+        const t0 = allTokens[0];
+        const t1 = allTokens[1];
+        const t2 = allTokens[2];
         const hasAngle = (s: string) => /[°'"dms]/i.test(s);
         if (hasAngle(t1) || (!hasAngle(t0) && isNaN(Number(t0)))) {
-          pointId = t0;
-          coordTokens = [t1, t2];
+          return { pointId: t0, tokens: [t1, t2] };
         } else if (parseFloat(t0) < 50000 && parseFloat(t1) > 50000) {
-          pointId = t0;
-          coordTokens = [t1, t2];
-        } else {
-          coordTokens = tokens;
+          return { pointId: t0, tokens: [t1, t2] };
         }
       }
+      return { pointId: null, tokens: allTokens };
+    };
 
-      if (isGeoOutput) {
-        let latVal: number;
-        let lonVal: number;
+    let rowIdx = 0;
+    for (let i = 0; i < maxRows; i++) {
+      const inRaw = inLines[i]?.trim();
+      const outRaw = outLines[i]?.trim();
+      if (!inRaw || inRaw.startsWith('#')) continue;
+      rowIdx++;
+
+      const inParsed = parseLineTokens(inRaw);
+      const outParsed = parseLineTokens(outRaw || '');
+      if (inParsed.tokens.length < 2) continue;
+
+      const pointId = inParsed.pointId || outParsed.pointId || `Point ${rowIdx}`;
+      const isOutOfGrid = (outRaw || '').toLowerCase().includes('grid');
+
+      if (this.op === 'Stereo70ToETRS89') {
+        const inC1 = parseFloat(inParsed.tokens[0]);
+        const inC2 = parseFloat(inParsed.tokens[1]);
+        const inElev = inParsed.tokens[2] ? parseFloat(inParsed.tokens[2]) : undefined;
+
+        const stereoN = this.order === 'EN' ? inC2 : inC1;
+        const stereoE = this.order === 'EN' ? inC1 : inC2;
+
+        if (outParsed.tokens.length >= 2) {
+          let outLat: number;
+          let outLon: number;
+          try {
+            outLat = parseAngleToDeg(outParsed.tokens[0]);
+            outLon = parseAngleToDeg(outParsed.tokens[1]);
+          } catch {
+            continue;
+          }
+          const outH = outParsed.tokens[2] ? parseFloat(outParsed.tokens[2]) : inElev;
+          const alt = inElev;
+          const h = outH;
+          const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+
+          points.push({
+            id: pointId,
+            fileName,
+            lat: outLat,
+            lon: outLon,
+            stereoN,
+            stereoE,
+            elev: outH !== undefined ? outH : inElev,
+            altitude: alt,
+            ellipsoidalHeight: h,
+            zeta,
+            warning: isOutOfGrid ? 'Out of grid' : null,
+            angularUnit: this.angularUnit,
+          });
+        }
+      } else {
+        // ETRS89ToStereo70
+        let inLat: number;
+        let inLon: number;
         try {
-          latVal = parseAngleToDeg(coordTokens[order === 'EN' ? 1 : 0]);
-          lonVal = parseAngleToDeg(coordTokens[order === 'EN' ? 0 : 1]);
+          inLat = parseAngleToDeg(inParsed.tokens[this.order === 'EN' ? 1 : 0]);
+          inLon = parseAngleToDeg(inParsed.tokens[this.order === 'EN' ? 0 : 1]);
         } catch {
           continue;
         }
-        const elev = coordTokens[2] ? parseFloat(coordTokens[2]) : undefined;
-        if (isInsideRomaniaGrid(latVal, lonVal)) {
-          points.push({ id: pointId, lat: latVal, lon: lonVal, elev });
+        const inH = inParsed.tokens[2] ? parseFloat(inParsed.tokens[2]) : undefined;
+
+        let outN: number | undefined;
+        let outE: number | undefined;
+        let outElev: number | undefined;
+
+        if (outParsed.tokens.length >= 2) {
+          outN = parseFloat(outParsed.tokens[0]);
+          outE = parseFloat(outParsed.tokens[1]);
+          outElev = outParsed.tokens[2] ? parseFloat(outParsed.tokens[2]) : inH;
         }
+
+        const alt = outElev;
+        const h = inH;
+        const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+
+        points.push({
+          id: pointId,
+          fileName,
+          lat: inLat,
+          lon: inLon,
+          stereoN: outN,
+          stereoE: outE,
+          elev: outElev !== undefined ? outElev : inH,
+          altitude: alt,
+          ellipsoidalHeight: h,
+          zeta,
+          warning: isOutOfGrid ? 'Out of grid' : null,
+          angularUnit: this.angularUnit,
+        });
       }
     }
+
     return points;
   }
 
@@ -219,15 +297,11 @@ export class FileUpload {
         item.outOfGridRows = outGridCount;
         item.errorRows = errCount;
 
-        if (this.op === 'Stereo70ToETRS89') {
-          item.points = this.parsePointsFromText(text, true, 'NE');
-        } else {
-          try {
-            const inText = await item.file.text();
-            item.points = this.parsePointsFromText(inText, true, this.order);
-          } catch {
-            item.points = [];
-          }
+        try {
+          const inText = await item.file.text();
+          item.points = this.parsePairedPoints(inText, text, item.file.name);
+        } catch {
+          item.points = [];
         }
       } catch (err: any) {
         item.status = 'error';
@@ -483,6 +557,7 @@ export class FileUpload {
 
     this.container.querySelector('#file-clear-queue-btn')?.addEventListener('click', () => {
       this.fileQueue = [];
+      this.callbacks?.onClearFiles?.();
       this.render();
     });
 

@@ -47,6 +47,7 @@ class App {
     this.initTheme();
     this.initLayout();
     this.mapView.initMap();
+    this.mapView.setAngularUnit(this.currentAngularUnit);
 
     onLanguageChange(() => {
       this.renderSharedConfigBar();
@@ -103,7 +104,11 @@ class App {
     // Right Panel: Map
     this.mapView = new MapView({
       onMapPointClicked: async (lat, lon) => {
-        this.switchTab('point');
+        // Non-disruptive map click: only capture when Point tab is actively selected
+        if (this.activeTab !== 'point') {
+          return;
+        }
+
         if (this.currentOp === 'ETRS89ToStereo70') {
           this.pointConverter.setCoordinatesFromMap(lat, lon);
         } else {
@@ -134,8 +139,8 @@ class App {
 
     // 3. Child Components with 3-Layer Map Decoupled Centering & Zoom to Extents
     this.pointConverter = new PointConverter({
-      onPointTransformed: ({ lat, lon, outOfGrid }) => {
-        this.mapView.updateSinglePoint(lat, lon, outOfGrid);
+      onPointTransformed: (event) => {
+        this.mapView.updateSinglePoint(event);
       },
       onCenterOnMap: ({ lat, lon, outOfGrid }) => {
         if (!outOfGrid) {
@@ -193,6 +198,9 @@ class App {
           showToast(t('point.outOfGridWarn'), 'warning');
         }
       },
+      onClearFiles: () => {
+        this.mapView.clearFilePoints();
+      },
     });
 
     this.pointConverter.setCoordinateOrder(this.currentOrder);
@@ -218,6 +226,7 @@ class App {
     this.pointConverter.setAngularUnit(unit);
     this.batchConverter.setAngularUnit(unit);
     this.fileUpload.setAngularUnit(unit);
+    this.mapView.setAngularUnit(unit);
   }
 
   private setCoordinateOrder(order: CoordinateOrder): void {
@@ -370,6 +379,7 @@ class App {
     if (isUtilActive) {
       this.utilityPanel.classList.remove('mobile-active');
       mapPanel.classList.add('mobile-active');
+      setTimeout(() => this.mapView.invalidateSize(), 60);
     } else {
       this.utilityPanel.classList.add('mobile-active');
       mapPanel.classList.remove('mobile-active');

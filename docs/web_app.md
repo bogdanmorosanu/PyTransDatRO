@@ -57,13 +57,18 @@ flowchart TD
    - Strict TypeScript compilation (`tsconfig.json`) ensuring robust domain typing for coordinates, operations, units, and API payloads.
    - Bundled with Vite for instant Hot Module Replacement (HMR) during development and optimized tree-shaken production bundles (~78 KB gzipped).
 
-3. **Leaflet Web GIS Engine & 3-Layer Separation**:
+3. **Leaflet Web GIS Engine & 3-Layer Architecture**:
    - High-performance, lightweight mapping powered by `leaflet` and `leaflet.markercluster`.
-   - **3 Independent LayerGroups**: `pointLayer`, `textLayer`, and `filesLayer`, independently managed and toggleable in the layer control.
-   - **Decoupled Viewports**: Coordinate transformations never auto-pan or jump the map.
-   - **Dual Map Navigation Actions**: Dedicated `Center on Map` (pans to centroid at current zoom) and `Zoom to Extents` (fits bounds or zooms to level 14 for a single point) on every tab.
+   - **3 Independent LayerGroups**: `pointLayer`, `textLayer`, and `filesLayer`, independently managed with live point counters and 6-color customizable swatch pickers (Cyan, Cobalt, Emerald, Amber, Violet, Rose) with `localStorage` persistence.
+   - **Full Marker & Cluster Color Synchronization**: Dynamic cluster icons (`custom-cluster-circle`) inherit the exact active swatch color, synchronizing markers, zoom-out cluster bubbles, Layers drawer swatches, and Legend dots.
+   - **Decoupled Viewports & Dual Navigation**: Coordinate transformations never auto-pan or jump the map; dedicated `Center on Map` and `Zoom to Extents` actions are provided across Point, Text, and Files tabs.
    - **Boundary-Safe Guard**: Map centering and bounds fitting are strictly guarded within Romania's geographic grid envelope (`[43.5, 20.2]` to `[48.3, 29.8]`), preventing map jumps on invalid coordinates.
-   - Pre-configured basemaps: OpenStreetMap, CartoDB Positron, CartoDB Dark Matter, and ESRI World Imagery.
+   - **Custom Ergonomic Docks**:
+     - *Top-Left Controls Dock*: Grouped buttons for Zoom In/Out, **Zoom to Romania (Home)**, **Metric Distance Measurement Ruler**, and **Fullscreen Toggle** (with `fullscreenchange` synchronization).
+     - *Top-Right Expandable Legend & Scale Bar*: Stateful persistent Legend widget (persisted in `localStorage['pytransdat_legend_open']`) that automatically reflows above a high-contrast segmented **GIS Graphic Scale Bar** (with start `0` and end `[max] m/km` labels).
+     - *Bottom-Left Layers Drawer*: 32x32px icon-only button opening a structured drawer organized into Data Layers, Shift Grids (Coming Soon), and Base Maps (OpenStreetMap default, with user choice persisted in `localStorage['pytransdat_basemap']`).
+     - *Bottom-Center Coordinates Badge*: Abbreviated `Lat: [val]  Long: [val]` responsive to active angular units (Degrees, DMS, Radians), elevated on mobile screens.
+   - **Uniform Geodetic Popups**: Unified attribute tables across all layers distinguishing Stereo 70 Normal Altitude ($H$, Black Sea 1975) from ETRS89 Ellipsoidal Height ($h$, GRS80), Quasigeoid height $\zeta$ in cyan, and 1-click **Copy Attributes** (`Copiază atributele`) key-value clipboard action with in-place feedback.
 
 4. **Decoupled API Contract**:
    - The frontend communicates with the backend exclusively via standard REST endpoints (`/api/v1/...`).
@@ -111,18 +116,28 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 
 ### E. Interactive Web GIS Map (`MapView.ts`)
 - **Desktop Split-Screen**: Left-hand 480px workbench panel paired with a full-height interactive Leaflet map.
-- **3-Layer Visibility Management**: `pointLayer`, `textLayer`, and `filesLayer` allow users to toggle visibility independently.
+- **3-Layer Independent Architecture**: `pointLayer`, `textLayer`, and `filesLayer` allow users to toggle visibility independently, customize colors via 6-swatch popovers, and inspect live point counters.
+- **Full Cluster Synchronization**: Cluster grouping circles (`custom-cluster-circle`) dynamically inherit their layer's active swatch color, keeping individual markers, zoom clusters, drawer swatches, and legend dots in perfect visual synchronization.
 - **Decoupled Viewports & Dual Navigation**:
   - `Center on Map`: Pans to centroid of valid in-grid coordinates while preserving user zoom level.
   - `Zoom to Extents`: Pans and fits bounds to encompass all points (or zooms to level 14 for a single point).
 - **Smart Map Click**:
   - In `ETRS89ToStereo70`: Populates clicked lat/lon formatted in active angular units.
-  - In `Stereo 70ToETRS89`: Calls backend API to reverse-calculate clicked point into Stereo 70 projection meters.
+  - In `Stereo 70ToETRS89`: Calls backend API to reverse-calculate clicked point into Stereo 70 projection meters. Map clicks only capture coordinates when the Single Point tab is active.
+- **Ergonomic Map Controls**:
+  - *Top-Left Dock*: Zoom In/Out, **Zoom to Romania (Home)** extents button, **Single-Distance Measurement Tool** (with clear action), and **Fullscreen Toggle** (synchronized via `fullscreenchange`).
+  - *Top-Right Dock*: Stateful persistent Legend widget (persisted in `localStorage['pytransdat_legend_open']`) positioned above a high-contrast segmented **GIS Graphic Scale Bar** with start `0` and end `[max] m/km` labels.
+  - *Bottom-Left Drawer*: 32x32px icon-only button opening a structured drawer containing Data Layers, Shift Grids (Coming Soon), and Base Maps (persisting user choice to `localStorage['pytransdat_basemap']`).
+  - *Bottom-Center Badge*: Abbreviated coordinates readout (`Lat: [val]  Long: [val]`) responsive to active angular units, elevated on mobile viewports.
+- **Uniform Geodetic Popups**:
+  - Popups across Point, Text, and Files layers share a structured attribute table displaying: Layer Name, `Point Name/Number`, source `File` (for bulk files), Northing, Easting, Normal Altitude ($H$, Black Sea 1975), Latitude, Longitude, Ellipsoidal Height ($h$, GRS80), Quasigeoid height $\zeta$ in cyan, and bottom `Grid Coverage` status.
+  - **Copy Attributes Action**: 1-click clipboard button copying all point attributes in structured key-value pairs (`Key: Value`) with temporary `✓ Copied` feedback.
 - **High-Volume Guardrail Modal (`VolumeWarningModal.ts`)**:
-  - If a batch exceeds **2,000 points**, a warning modal prompts the user before plotting:
+  - Uncapped file ingestion without row truncation. Datasets exceeding **2,000 points** prompt the user before plotting:
     1. *Render All Points* (with Marker Clustering).
     2. *Sample Preview* (render first 1,000 points only).
     3. *Skip Map* (display table/export results only to preserve responsiveness).
+  - Clearing or removing files in the upload queue automatically invokes `mapView.clearFilePoints()` to keep map layers synchronized.
 
 ### F. Client-Side Multi-Format Exporters (`exporters.ts`)
 - **CSV**: Configurable delimiter (Comma, Semicolon, Tab) with clean header metadata, respecting active coordinate order (`NE` vs `EN`) and suppressing coordinates for out-of-grid points.
@@ -195,4 +210,4 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
   ```bash
   D:\anaconda3\envs\pytransdat\python.exe -m pytest tests/
   ```
-  Ensures all 73 core, API, streaming, and telemetry tests pass without regressions.
+  Ensures all 76 core, API, streaming, and telemetry tests pass without regressions.

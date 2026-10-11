@@ -30,6 +30,13 @@
   --color-metric-text: #38bdf8;
   --color-metric-border: rgba(56, 189, 248, 0.3);
 
+  /* GIS Scale Bar Tokens (Monochrome Cartographic Default) */
+  --scale-bar-border: #475569;
+  --scale-seg-1: #ffffff;
+  --scale-seg-2: #0f172a;
+  --scale-tick: #94a3b8;
+  --scale-text: #f8fafc;
+
   /* Cohesive Radii System */
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -43,6 +50,7 @@
 
   /* Z-index layers */
   --z-map: 1;
+  --z-map-controls: 500;
   --z-header: 100;
   --z-modal: 1000;
   --z-toast: 1100;
@@ -79,6 +87,13 @@ html[data-theme="dark"] {
   --color-metric-text: #38bdf8;
   --color-metric-border: rgba(56, 189, 248, 0.3);
   --color-metric-bg: rgba(56, 189, 248, 0.06);
+
+  /* GIS Scale Bar Tokens - Dark: Crisp White & Obsidian */
+  --scale-bar-border: rgba(255, 255, 255, 0.4);
+  --scale-seg-1: #ffffff;
+  --scale-seg-2: #090d16;
+  --scale-tick: #cbd5e1;
+  --scale-text: #f8fafc;
 }
 
 /* Light Theme - Clean Crisp Porcelain */
@@ -112,4 +127,11 @@ html[data-theme="light"] {
   --color-metric-text: #0284c7;
   --color-metric-border: rgba(2, 132, 199, 0.3);
   --color-metric-bg: rgba(2, 132, 199, 0.06);
+
+  /* GIS Scale Bar Tokens - Light: Solid Black & Pure White */
+  --scale-bar-border: #0f172a;
+  --scale-seg-1: #0f172a;
+  --scale-seg-2: #ffffff;
+  --scale-tick: #0f172a;
+  --scale-text: #0f172a;
 }

@@ -8,8 +8,22 @@ import { isInsideRomaniaGrid } from './MapView';
 
 export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
+export interface PointTransformedEvent {
+  lat: number;
+  lon: number;
+  outOfGrid: boolean;
+  pointId?: string;
+  stereoN?: number;
+  stereoE?: number;
+  elev?: number;
+  altitude?: number;
+  ellipsoidalHeight?: number;
+  zeta?: number | null;
+  angularUnit?: AngularUnitType;
+}
+
 export interface PointConverterCallbacks {
-  onPointTransformed: (coords: { lat: number; lon: number; outOfGrid: boolean }) => void;
+  onPointTransformed: (coords: PointTransformedEvent) => void;
   onCenterOnMap?: (coords: { lat: number; lon: number; outOfGrid: boolean }) => void;
   onZoomToExtents?: (coords: { lat: number; lon: number; outOfGrid: boolean }) => void;
   onDirectionChanged?: (op: TransformationOp) => void;
@@ -431,17 +445,47 @@ export class PointConverter {
       // Emit coordinates to map
       let mapLat = NaN;
       let mapLon = NaN;
+      let stereoN: number | undefined;
+      let stereoE: number | undefined;
+      let elev: number | undefined;
+      let altitude: number | undefined;
+      let ellipsoidalHeight: number | undefined;
+
       if (this.op === 'Stereo70ToETRS89') {
+        stereoN = this.order === 'EN' ? raw2 : raw1;
+        stereoE = this.order === 'EN' ? raw1 : raw2;
+        altitude = raw3;
         if (!isOutOfGrid && this.outputCoords) {
           mapLat = this.outputCoords[0];
           mapLon = this.outputCoords[1];
+          elev = this.outputCoords[2];
+          ellipsoidalHeight = this.outputCoords[2];
         }
       } else {
         mapLat = raw1;
         mapLon = raw2;
+        ellipsoidalHeight = raw3;
+        if (!isOutOfGrid && this.outputCoords) {
+          stereoN = this.outputCoords[0];
+          stereoE = this.outputCoords[1];
+          elev = this.outputCoords[2];
+          altitude = this.outputCoords[2];
+        }
       }
 
-      this.callbacks.onPointTransformed({ lat: mapLat, lon: mapLon, outOfGrid: isOutOfGrid });
+      this.callbacks.onPointTransformed({
+        lat: mapLat,
+        lon: mapLon,
+        outOfGrid: isOutOfGrid,
+        pointId: 'Single Point',
+        stereoN,
+        stereoE,
+        elev,
+        altitude,
+        ellipsoidalHeight,
+        zeta: this.quasigeoidZeta,
+        angularUnit: this.angularUnit,
+      });
 
       if (isOutOfGrid) {
         showToast(t('point.outOfGridWarn'), 'warning');

@@ -15,16 +15,24 @@ export interface BatchReportData {
   items: ExportPointItem[];
 }
 
+export interface BatchMapPoint {
+  id: string | null;
+  lat: number;
+  lon: number;
+  elev?: number;
+  altitude?: number;
+  ellipsoidalHeight?: number;
+  zeta?: number | null;
+  stereoN?: number;
+  stereoE?: number;
+  warning?: string | null;
+  angularUnit?: AngularUnitType;
+}
+
 export interface BatchConverterCallbacks {
-  onPointsPlotted: (
-    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
-  ) => void;
-  onCenterOnMap?: (
-    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
-  ) => void;
-  onZoomToExtents?: (
-    points: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }>
-  ) => void;
+  onPointsPlotted: (points: BatchMapPoint[]) => void;
+  onCenterOnMap?: (points: BatchMapPoint[]) => void;
+  onZoomToExtents?: (points: BatchMapPoint[]) => void;
 }
 
 export class BatchConverter {
@@ -41,7 +49,7 @@ export class BatchConverter {
   private inputText: string = '';
   private outputText: string = '';
   private lastTransformedItems: ExportPointItem[] = [];
-  private lastMapPoints: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }> = [];
+  private lastMapPoints: BatchMapPoint[] = [];
   private lastSummary: {
     inGridCount: number;
     outOfGridCount: number;
@@ -166,7 +174,7 @@ export class BatchConverter {
       // Assemble results strictly maintaining 1-to-1 input-to-output sequence
       const items: ExportPointItem[] = [];
       const outputLines: string[] = [];
-      const mapPoints: Array<{ id: string | null; lat: number; lon: number; elev?: number; warning?: string | null }> = [];
+      const mapPoints: BatchMapPoint[] = [];
 
       let validCount = 0;
       let outOfGridCount = 0;
@@ -245,7 +253,24 @@ export class BatchConverter {
 
           if (elev !== undefined) parts.push(elev.toFixed(3));
 
-          mapPoints.push({ id: pointLabel, lat, lon, elev, warning: apiRes.warning });
+          const stereoN = this.order === 'EN' ? row.coords[1] : row.coords[0];
+          const stereoE = this.order === 'EN' ? row.coords[0] : row.coords[1];
+          const alt = row.coords[2];
+          const h = elev;
+          const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+          mapPoints.push({
+            id: pointLabel,
+            lat,
+            lon,
+            elev,
+            altitude: alt,
+            ellipsoidalHeight: h,
+            zeta,
+            stereoN,
+            stereoE,
+            warning: apiRes.warning,
+            angularUnit: this.angularUnit,
+          });
         } else {
           const n = apiRes.coos[0];
           const e = apiRes.coos[1];
@@ -261,7 +286,22 @@ export class BatchConverter {
 
           const origLat = row.coords[0];
           const origLon = row.coords[1];
-          mapPoints.push({ id: pointLabel, lat: origLat, lon: origLon, elev: z, warning: apiRes.warning });
+          const h = row.coords[2];
+          const alt = z;
+          const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+          mapPoints.push({
+            id: pointLabel,
+            lat: origLat,
+            lon: origLon,
+            elev: z,
+            altitude: alt,
+            ellipsoidalHeight: h,
+            zeta,
+            stereoN: n,
+            stereoE: e,
+            warning: apiRes.warning,
+            angularUnit: this.angularUnit,
+          });
         }
 
         if (apiRes.warning) {

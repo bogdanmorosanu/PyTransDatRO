@@ -110,14 +110,26 @@ webapp/
    - User language preference is stored in browser `localStorage`.
    - UI re-renders reactively upon language change without full page reloads.
 
-5. **Map Performance & Guardrails**:
+5. **Map Performance, Controls & Geodetic Ergonomics**:
    - Built with **Leaflet** and **Leaflet.markercluster**.
-   - Three independent LayerGroups (`pointLayer`, `textLayer`, `filesLayer`) for granular visibility toggling.
-   - Transformations are decoupled from map viewports (no unwanted auto-panning).
-   - Dual explicit navigation buttons per tab: `Center on Map` (pans to centroid preserving current zoom) and `Zoom to Extents` (pans and fits bounds / zoom 14 for single point), strictly guarded within Romania envelope (`gridBounds.ts`).
-   - **Large volume guardrail**: When batch transformations exceed **2,000 points**, the user is prompted via `VolumeWarningModal` to choose between full rendering, a 1,000-point sample preview, or skipping map rendering to preserve browser responsiveness.
-   - Base maps: OpenStreetMap, CartoDB Positron, CartoDB Dark Matter, and ESRI World Imagery.
-   - Raster shift overlays: Placeholders prepared for forthcoming $\Delta E$, $\Delta N$, and quasigeoid $\zeta$ map services.
+   - **3 Independent LayerGroups**: `pointLayer`, `textLayer`, and `filesLayer` with live point counts and 6-swatch customizable color pickers (Cyan, Cobalt, Emerald, Amber, Violet, Rose) with `localStorage` persistence.
+   - **Full Marker & Cluster Color Synchronization**: Dynamic cluster icons (`custom-cluster-circle`) inherit the active swatch color, synchronizing individual dots, zoom-out cluster bubbles, Layers drawer swatches, and Legend dots.
+   - **Ergonomic Dock Layout**:
+     - **Top-Left Controls Dock**: Zoom In/Out, **Zoom to Romania (Home)** extents button, **Single-Distance Measurement Ruler** (`Distance: [value] km`), and **Fullscreen Toggle**.
+     - **Top-Right Expandable Legend & GIS Graphic Scale**:
+       - **Legend Widget**: Positioned top-right with an icon-only 32x32px toggle button and collapsible translucent panel displaying active layers with their synchronized color dots and live point counts. Operates as a persistent state dock that stays open during map navigation and automatically pushes the scale bar down without covering it.
+       - **Custom Segmented GIS Graphic Scale Bar**: Positioned immediately beneath the Legend, featuring an alternating high-contrast monochrome segmented bar (pure white/obsidian in dark mode, solid black/white in light mode) with top division ticks (0, mid, max) and uncrowded start/end labels (`0` and `[max] m/km`).
+     - **Bottom-Left Layers Drawer**: Dedicated 32x32px icon-only drawer button opening a structured panel organized as:
+       1. **Data Layers**: Layer visibility checkboxes, point counts, and 6-color swatch pickers.
+       2. **Shift Grids (Coming Soon)**: Preview cards for upcoming $\Delta E$, $\Delta N$, Total Vector, and $\zeta$ raster services.
+       3. **Base Maps**: Radio list items matching data layer styling (OpenStreetMap default, CartoDB Dark Matter, CartoDB Positron, ESRI World Imagery) with user selection saved to `localStorage['pytransdat_basemap']`.
+     - **Bottom-Center Coordinates Widget**: Unobtrusive live readout displaying compact abbreviations (`Lat: [val]  Long: [val]`) reactively formatted per the active `Angular Unit` (Degrees, DMS, Radians) without unit clutter or attribution overlap.
+   - **Uniform Themed Geodetic Popups**: Custom Dark Obsidian and Light Porcelain cards presenting consistent attribute tables across Point, Text, and Files layers: Layer Name header, `Point Name/Number`, source `File` (for bulk files), unified coordinates distinguishing Stereo 70 Normal Altitude ($H$, Black Sea 1975) and ETRS89 Ellipsoidal Height ($h$, GRS80), Quasigeoid height in cyan, bottom `Grid Coverage` status, and robust 1-click "Copy Attributes" (`Copiază atributele`) clipboard action formatting key-value pairs with in-place `✓ Copied` feedback.
+   - **CAD-Style Point Labels at High Zoom**: Subtle point ID labels rendered next to markers when zoomed in to level $\ge 15$.
+   - **Decoupled Non-Disruptive Viewports**: Transformations never auto-pan; map clicks only populate coordinates when the Single Point tab is active.
+   - **Large volume guardrail**: Prompts via `VolumeWarningModal` when transforms exceed 2,000 points.
+   - Base maps: OpenStreetMap (default), CartoDB Dark Matter, CartoDB Positron, and ESRI World Imagery.
+   - Min zoom reduced to 3 for full regional/global zoom range.
 
 5. **Client-Side Exporting**:
    - Results can be downloaded directly in the browser as:
