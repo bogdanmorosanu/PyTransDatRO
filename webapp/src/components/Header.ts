@@ -38,7 +38,7 @@ export class Header {
       </div>
       <div class="header-actions">
         <button class="btn btn-outline" id="header-grid-btn">
-          <span>${t('header.gridInfo')}</span>
+          <span>${t('header.usageData')}</span>
         </button>
         <button class="btn btn-outline" id="header-help-btn">
           <span>${t('header.geodeticHelp')}</span>

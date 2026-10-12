@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Interactive Usage Data & Telemetry Dashboard (`TelemetryDashboard.ts`, `TimelineChart.ts`, `noUiSlider`)**:
+  - **Draggable Time Window Slider (`noUiSlider`)**: Replaced date pickers with a dual-handle range slider with `behaviour: 'drag'`. Users can slide a custom time window across the entire timeline bounded between the earliest log timestamp and the current date, emulating GIS-style timeline scrubbers.
+  - **Dynamic Source Discovery**: Sources are discovered dynamically from the SQLite `sources` table via `/api/v1/telemetry/timeline`. Any new logging client source added to the database automatically appears as an interactive toggle checkbox without frontend code changes.
+  - **Dynamic Total & KPI Recalculation**: The Total line on the chart and the top KPI summary cards (Total Invocations, Total Coordinates, Batch Intensity) dynamically recalculate based strictly on the currently active/checked client sources.
+  - **Weekly Granularity (`Săptămânal`)**: Added a weekly aggregation button between Daily and Monthly on both backend (SQLite Monday week-start grouping) and frontend.
+  - **Accurate Period Count**: Switching between Daily, Weekly, and Monthly correctly recomputes the exact count (`X zile`, `X săptămâni`, `X luni`) corresponding to the active date interval.
+  - **Visual Distinction for Metrics**: Clean dual-metric visualization separating Invocations Count (solid primary line) and Coordinates Processed (lighter secondary line) alongside the dashed dynamic Total curve.
 - **Persistent Basemap Selection (`MapView.ts`)**: User-selected basemap is now saved to `localStorage['pytransdat_basemap']` and restored across page reloads (defaulting to OpenStreetMap on initial launch).
 - **Fullscreen Synchronization (`MapView.ts`)**: Added a global `fullscreenchange` listener on `document` to synchronize the controls dock button state and trigger Leaflet `invalidateSize()` whenever exiting or entering fullscreen mode (including via Escape key).
 - **Z-Index Layer Token (`variables.css`, `map.css`)**: Introduced `--z-map-controls: 500;` to ensure floating map docks and badges are consistently layered below application modals and dropdowns.

@@ -1174,3 +1174,812 @@ input.form-input[readonly]:focus,
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* ==========================================================================
+   Telemetry Visualization Dashboard Styles
+   ========================================================================== */
+
+.modal-dialog.telemetry-dialog {
+  max-width: 920px;
+  width: 95vw;
+}
+
+.telemetry-modal-header {
+  padding: 14px 20px;
+}
+
+.telemetry-header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.telemetry-subtabs {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 4px;
+}
+
+.telemetry-subtab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telemetry-subtab-btn:hover {
+  color: var(--text-main);
+}
+
+.telemetry-subtab-btn.active {
+  background-color: var(--bg-surface-hover);
+  color: var(--color-primary-light);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.telemetry-modal-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* KPI Banner */
+.telemetry-kpi-banner {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) 1.5fr;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .telemetry-kpi-banner {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.telemetry-kpi-card {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.telemetry-kpi-val {
+  font-size: 19px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.telemetry-kpi-val.blue {
+  color: var(--color-primary-light);
+}
+
+.telemetry-kpi-val.cyan {
+  color: #38bdf8;
+}
+
+.telemetry-kpi-val.emerald {
+  color: var(--color-success);
+}
+
+.telemetry-kpi-val.muted {
+  color: var(--text-main);
+}
+
+.telemetry-kpi-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 500;
+}
+
+/* Toolbar & Filters */
+.telemetry-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+
+.telemetry-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.telemetry-btn-toggle-group {
+  display: inline-flex;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.telemetry-toggle-btn {
+  background: transparent;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.telemetry-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+.telemetry-toggle-btn.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.telemetry-source-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.telemetry-chips-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-right: 2px;
+}
+
+.filter-chip {
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-chip:hover {
+  border-color: var(--border-focus);
+  color: var(--text-main);
+}
+
+.filter-chip.active {
+  background-color: var(--color-primary-glow);
+  border-color: var(--color-primary);
+  color: var(--color-primary-light);
+  font-weight: 600;
+}
+
+/* Chart Viewport & SVG */
+.telemetry-chart-viewport {
+  position: relative;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 330px;
+}
+
+.timeline-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary-light);
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 10;
+  border-radius: var(--radius-md);
+}
+
+.chart-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.legend-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-box.blue {
+  background-color: var(--color-primary-light);
+}
+
+.legend-box.cyan {
+  background-color: #38bdf8;
+}
+
+.timeline-chart-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.timeline-chart-inner {
+  width: 100%;
+  position: relative;
+}
+
+.timeline-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chart-grid-line {
+  stroke: var(--border-subtle);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+}
+
+.chart-axis-base {
+  stroke: var(--border-medium);
+  stroke-width: 1.5;
+}
+
+.chart-axis-text {
+  fill: var(--text-muted);
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+}
+
+.chart-axis-text.accent-cyan {
+  fill: #38bdf8;
+}
+
+.chart-bar {
+  fill: var(--color-primary-light);
+  opacity: 0.75;
+  transition: opacity var(--transition-fast);
+}
+
+.chart-bar:hover {
+  opacity: 1;
+}
+
+.chart-points-line {
+  stroke: #38bdf8;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-crosshair {
+  stroke: #f8fafc;
+  stroke-width: 1.2;
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+
+html[data-theme="light"] .chart-crosshair {
+  stroke: #090d16;
+}
+
+.chart-crosshair-dot {
+  fill: #38bdf8;
+  stroke: #ffffff;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+/* Tooltip */
+.timeline-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 9px 12px;
+  font-size: 12px;
+  z-index: 20;
+  min-width: 180px;
+}
+
+.tooltip-header {
+  font-weight: 700;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 5px;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tooltip-row.divider {
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: 4px;
+  margin-top: 4px;
+}
+
+.tooltip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.tooltip-dot.blue { background-color: var(--color-primary-light); }
+.tooltip-dot.cyan { background-color: #38bdf8; }
+
+.tooltip-breakdown {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltip-breakdown .muted {
+  color: var(--text-muted);
+}
+
+.timeline-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Full-Page Telemetry View & Facet Deck
+   ========================================================================== */
+
+.telemetry-page-view {
+  width: 100%;
+  height: calc(100vh - var(--header-height, 56px));
+  overflow-y: auto;
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.telemetry-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.telemetry-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.telemetry-title-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.telemetry-page-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.telemetry-page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Controls Deck */
+.telemetry-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.telemetry-deck-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.telemetry-deck-row.facet-row,
+.telemetry-deck-row.source-toggles-row {
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sources-label-col {
+  display: flex;
+  align-items: center;
+}
+
+.facet-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.sources-toggle-list {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.source-toggle-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.source-toggle-card:hover {
+  border-color: var(--border-focus);
+  color: var(--text-main);
+}
+
+.source-toggle-card.active {
+  border-color: var(--color-primary-light);
+  background-color: var(--bg-surface-hover);
+  color: var(--text-main);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.source-toggle-card.persistent-total {
+  border-style: dashed;
+  border-color: #64748b;
+  cursor: default;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-main);
+}
+
+.source-checkbox {
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.source-swatch-duo {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.swatch-bar {
+  width: 12px;
+  height: 6px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.swatch-bar.dashed {
+  border: 1px dashed #64748b;
+}
+
+.source-name-label {
+  font-weight: 500;
+}
+
+/* Graphical Dual Range Slider */
+.telemetry-range-slider-block {
+  width: 100%;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.range-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.range-slider-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.range-slider-readout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-date-pill {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  color: var(--color-primary-light);
+}
+
+.range-arrow {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* noUiSlider Styling for Telemetry Dashboard */
+.nouislider-container {
+  padding: 10px 4px;
+}
+
+.nouislider-container .noUi-target {
+  background: var(--bg-surface-elevated);
+  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  height: 8px;
+}
+
+.nouislider-container .noUi-connect {
+  background: linear-gradient(90deg, #6366f1, #38bdf8);
+  border-radius: 4px;
+  cursor: grab;
+}
+
+.nouislider-container .noUi-connect:active {
+  cursor: grabbing;
+}
+
+.nouislider-container .noUi-handle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+  cursor: ew-resize;
+  top: -6px;
+  right: -9px;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.nouislider-container .noUi-handle::before,
+.nouislider-container .noUi-handle::after {
+  display: none;
+}
+
+.nouislider-container .noUi-handle:hover,
+.nouislider-container .noUi-handle:focus {
+  transform: scale(1.15);
+  background-color: var(--color-primary-glow, #e0e7ff);
+  outline: none;
+}
+
+.range-slider-limits {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dual-metric-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.axis-calls {
+  fill: #818cf8;
+}
+
+.axis-points {
+  fill: #38bdf8;
+}
+
+.chart-series-line.line-calls {
+  stroke-dasharray: none;
+}
+
+.chart-series-line.line-points {
+  stroke-dasharray: 2 1;
+}
+
+.chart-total-line.total-calls {
+  stroke: #f8fafc;
+}
+
+.chart-total-line.total-points {
+  stroke: #38bdf8;
+}
+
+.tooltip-source-block {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tooltip-source-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.tooltip-source-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+
+.legend-indicator.dashed {
+  border: 1px dashed #64748b;
+}
+
+/* Full Page Chart Viewport */
+.telemetry-chart-viewport.full-page {
+  min-height: 400px;
+  padding: 18px 20px 14px 20px;
+}
+
+/* Grid Metadata Card in Full Page */
+.grid-metadata-card {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grid-info-table {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+}
+
+.grid-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13.5px;
+}
+
+.grid-info-row:last-child {
+  border-bottom: none;
+}
+
+.accuracy-callout {
+  padding: 14px 18px;
+  background-color: var(--bg-surface-input);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.accuracy-callout-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-primary-light);
+}
+
+.accuracy-callout-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.tooltip-row.total-row {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 5px;
+  margin-top: 5px;
+  font-weight: 600;
+}
+

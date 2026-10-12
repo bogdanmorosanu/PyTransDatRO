@@ -51,6 +51,57 @@ export interface TelemetryStatsResponse {
   }>;
 }
 
+export interface SourceItem {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export interface TimelineSeriesMetrics {
+  web_map?: number;
+  rest_api?: number;
+  desktop_cli?: number;
+  unknown?: number;
+  st70_to_etrs?: number;
+  etrs_to_st70?: number;
+  dim_2d?: number;
+  dim_3d?: number;
+  total: number;
+  sources?: Record<string, number>;
+  [key: string]: number | Record<string, number> | undefined;
+}
+
+export interface TimelineSeriesItem {
+  date: string;
+  calls: TimelineSeriesMetrics;
+  points: TimelineSeriesMetrics;
+}
+
+export interface TimelineSummary {
+  total_calls: number;
+  total_points: number;
+  avg_points_per_call: number;
+  from_date: string | null;
+  to_date: string | null;
+  days_count: number | null;
+  period_count?: number | null;
+}
+
+export interface TimelineResponse {
+  summary: TimelineSummary;
+  series: TimelineSeriesItem[];
+  available_sources?: SourceItem[];
+}
+
+export interface TimelineQueryParams {
+  from_date?: string;
+  to_date?: string;
+  granularity?: 'daily' | 'weekly' | 'monthly';
+  source?: number;
+  operation?: string;
+  is_3d?: number;
+}
+
 const COMMON_HEADERS = {
   'Content-Type': 'application/json',
   'X-Client-Source': 'web_app',
@@ -122,6 +173,26 @@ export const apiClient = {
     });
     if (!res.ok) {
       throw new Error(`Telemetry Error: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getTelemetryTimeline(params?: TimelineQueryParams): Promise<TimelineResponse> {
+    const query = new URLSearchParams();
+    if (params?.from_date) query.set('from_date', params.from_date);
+    if (params?.to_date) query.set('to_date', params.to_date);
+    if (params?.granularity) query.set('granularity', params.granularity);
+    if (params?.source !== undefined) query.set('source', String(params.source));
+    if (params?.operation) query.set('operation', params.operation);
+    if (params?.is_3d !== undefined) query.set('is_3d', String(params.is_3d));
+
+    const qs = query.toString();
+    const url = `/api/v1/telemetry/timeline${qs ? `?${qs}` : ''}`;
+    const res = await fetch(url, {
+      headers: { 'X-Client-Source': 'web_app' },
+    });
+    if (!res.ok) {
+      throw new Error(`Timeline Error: ${res.status}`);
     }
     return res.json();
   },

@@ -9,15 +9,16 @@ import { PointConverter, type AngularUnitType } from './components/PointConverte
 import { MapView } from './components/MapView';
 import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
-import { StatsView } from './components/StatsView';
 import { GeodeticHelpModal } from './components/GeodeticHelpModal';
 import { FeedbackModal } from './components/FeedbackModal';
+import { TelemetryDashboard } from './components/TelemetryDashboard';
 import { VolumeWarningModal } from './components/VolumeWarningModal';
 import { apiClient, type TransformationOp } from './utils/apiClient';
 import type { CoordinateOrder } from './utils/pointParser';
 import { showToast } from './utils/toast';
 
 type ActiveTab = 'point' | 'batch' | 'file';
+type AppPage = 'studio' | 'telemetry';
 
 class App {
   private activeTab: ActiveTab = 'point';
@@ -26,6 +27,8 @@ class App {
   private currentOrder: CoordinateOrder = 'NE';
 
   private rootElement: HTMLElement;
+  private workbenchLayout!: HTMLElement;
+  private telemetryDashboard!: TelemetryDashboard;
   private utilityPanel!: HTMLElement;
   private sharedConfigBar!: HTMLElement;
   private tabsBar!: HTMLElement;
@@ -35,7 +38,6 @@ class App {
   private pointConverter!: PointConverter;
   private batchConverter!: BatchConverter;
   private fileUpload!: FileUpload;
-  private statsView!: StatsView;
   private geodeticHelpModal = new GeodeticHelpModal();
   private mapView!: MapView;
 
@@ -61,20 +63,26 @@ class App {
   }
 
   private initLayout(): void {
-    this.statsView = new StatsView();
-
     // 1. Header
     this.header = new Header({
       onOpenFeedback: () => this.feedbackModal.open(),
-      onOpenGridInfo: () => this.statsView.open(),
+      onOpenGridInfo: () => this.navigateToPage('telemetry'),
       onOpenGeodeticHelp: () => this.geodeticHelpModal.open(),
       onToggleMobileView: () => this.toggleMobileView(),
     });
     this.rootElement.appendChild(this.header.getElement());
 
     // 2. Workbench Layout
-    const workbench = document.createElement('main');
-    workbench.className = 'workbench-layout';
+    this.workbenchLayout = document.createElement('main');
+    this.workbenchLayout.className = 'workbench-layout';
+    const workbench = this.workbenchLayout;
+
+    // 2b. Telemetry Dashboard (Full View)
+    this.telemetryDashboard = new TelemetryDashboard({
+      onBackToStudio: () => this.navigateToPage('studio'),
+    });
+    this.rootElement.appendChild(this.telemetryDashboard.getElement());
+    this.telemetryDashboard.getElement().style.display = 'none';
 
     // Left Panel
     this.utilityPanel = document.createElement('div');
@@ -383,6 +391,18 @@ class App {
     } else {
       this.utilityPanel.classList.add('mobile-active');
       mapPanel.classList.remove('mobile-active');
+    }
+  }
+
+  private navigateToPage(page: AppPage): void {
+    if (page === 'telemetry') {
+      this.workbenchLayout.style.display = 'none';
+      this.telemetryDashboard.getElement().style.display = 'block';
+      this.telemetryDashboard.refresh();
+    } else {
+      this.telemetryDashboard.getElement().style.display = 'none';
+      this.workbenchLayout.style.display = 'flex';
+      setTimeout(() => this.mapView.invalidateSize(), 60);
     }
   }
 }

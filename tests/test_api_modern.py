@@ -174,6 +174,12 @@ def test_telemetry_timeline_endpoint(client):
     assert "series" in data
     assert isinstance(data["series"], list)
 
+    # Weekly granularity
+    res_w = client.get("/api/v1/telemetry/timeline?granularity=weekly")
+    assert res_w.status_code == 200
+    data_w = res_w.json()
+    assert "series" in data_w
+
     # Monthly granularity
     res_m = client.get("/api/v1/telemetry/timeline?granularity=monthly")
     assert res_m.status_code == 200

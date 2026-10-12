@@ -55,12 +55,14 @@ webapp/
 └── src/
     ├── main.ts             # Application orchestrator & component lifecycle manager
     ├── components/         # Interactive UI workbench components
-    │   ├── Header.ts       # Branding, direct navbar links (Grid Info, Geodetic Help), lang & theme
+    │   ├── Header.ts       # Branding, direct navbar links (Usage Data, Geodetic Help), lang & theme
     │   ├── PointConverter.ts  # Single-point transformation workbench
     │   ├── BatchConverter.ts  # Multi-line text conversion workbench
     │   ├── FileUpload.ts      # Drag-and-drop file processor with streaming progress
     │   ├── MapView.ts         # Leaflet map, 3 independent layer groups, dual map navigation
-    │   ├── StatsView.ts       # Operational telemetry and active grid metadata
+    │   ├── StatsView.ts       # Active grid metadata and operational status modal
+    │   ├── TelemetryDashboard.ts # Full-page usage telemetry dashboard with noUiSlider time scrubber
+    │   ├── TimelineChart.ts   # Interactive SVG dual-metric timeline chart with dynamic source curves
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
     │   ├── GeodeticHelpModal.ts # Geodetic datum reference and parameter guide
     │   ├── ReportModal.ts     # Diagnostic calculation details modal
@@ -131,7 +133,14 @@ webapp/
    - Base maps: OpenStreetMap (default), CartoDB Dark Matter, CartoDB Positron, and ESRI World Imagery.
    - Min zoom reduced to 3 for full regional/global zoom range.
 
-5. **Client-Side Exporting**:
+6. **Telemetry & Usage Analytics Architecture (`TelemetryDashboard.ts`, `TimelineChart.ts`)**:
+   - Dedicated full-page view accessible via the header's **Usage Data** (`Date Utilizare`) button with a clean "← Back to Studio" return route.
+   - **Dynamic Source Discovery**: Queries `/api/v1/telemetry/timeline` to discover all client sources registered in `logs/usage.db`, dynamically creating interactive toggle checkboxes without hardcoded client identifiers.
+   - **Interactive Time Window Scrubber (`noUiSlider`)**: Dual-handle slider with `behaviour: 'drag'` that lets users slide a custom date interval window across the full historical timeline (bounded by earliest record and current day).
+   - **Dynamic Aggregation & Granularities**: Supports Daily, Weekly (Monday-start), and Monthly buckets with precise elapsed interval formatting (`X zile`, `X săptămâni`, `X luni`).
+   - **Live Metric Recalculation**: The Total line curve and the top KPI banner (Total Invocations, Total Points, Batch Intensity) dynamically recalculate based strictly on the user's active client source checkboxes.
+
+7. **Client-Side Exporting**:
    - Results can be downloaded directly in the browser as:
      - **CSV** (Comma, Semicolon, or Tab delimited)
      - **GeoJSON** (`Point` features with coordinate and height properties)
