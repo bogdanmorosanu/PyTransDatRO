@@ -125,7 +125,7 @@ class TransRO():
         if self._collector is not None:
             try:
                 is_3d = 1 if h is not None else 0
-                self._collector.record(0, lat, lon, is_3d=is_3d, source=source)
+                self._collector.record(2, lat, lon, is_3d=is_3d, source=source)
             except Exception:
                 pass
 

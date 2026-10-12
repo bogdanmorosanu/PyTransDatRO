@@ -162,6 +162,42 @@ def test_telemetry_stats(client):
     assert isinstance(data["daily_trend"], list)
 
 
+def test_telemetry_timeline_endpoint(client):
+    """Verifies /api/v1/telemetry/timeline returns structured time series with summary KPIs."""
+    res = client.get("/api/v1/telemetry/timeline?granularity=daily")
+    assert res.status_code == 200
+    data = res.json()
+    assert "summary" in data
+    assert "total_calls" in data["summary"]
+    assert "total_points" in data["summary"]
+    assert "avg_points_per_call" in data["summary"]
+    assert "series" in data
+    assert isinstance(data["series"], list)
+
+    # Monthly granularity
+    res_m = client.get("/api/v1/telemetry/timeline?granularity=monthly")
+    assert res_m.status_code == 200
+    data_m = res_m.json()
+    assert "series" in data_m
+
+    # Filtered by source
+    res_src = client.get("/api/v1/telemetry/timeline?source=1")
+    assert res_src.status_code == 200
+
+
+def test_client_source_header_propagation(client):
+    """Verifies X-Client-Source header is recognized by the API."""
+    payload = {
+        "op": "Stereo70ToETRS89",
+        "coos": [500000.0, 500000.0],
+        "unit": "degrees"
+    }
+    # Request from web_app
+    headers = {"X-Client-Source": "web_app"}
+    res = client.post("/api/v1/transform/point", json=payload, headers=headers)
+    assert res.status_code == 200
+
+
 def test_webapp_static_mount(client):
     """Verifies the root path / serves the built webapp index.html."""
     res = client.get("/")

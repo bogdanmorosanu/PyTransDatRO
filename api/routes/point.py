@@ -2,7 +2,7 @@
 """
 import math
 from fastapi import APIRouter, Depends
-from api.dependencies import get_trans_engine
+from api.dependencies import get_trans_engine, get_client_source
 from api.schemas.point import PointRequest, PointResponse, OperationEnum, AngleUnitEnum
 from pytransdatro.trans_ro import TransRO
 import pytransdatro.exceptions as exc
@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"
 @router.post("/point", response_model=PointResponse)
 async def transform_point(
     req: PointRequest,
-    trans: TransRO = Depends(get_trans_engine)
+    trans: TransRO = Depends(get_trans_engine),
+    source: int = Depends(get_client_source),
 ) -> PointResponse:
     """Transforms a single coordinate between Stereo 70 and ETRS89.
     
@@ -26,7 +27,7 @@ async def transform_point(
         if req.op == OperationEnum.STEREO70_TO_ETRS89:
             n, e = raw_coords[0], raw_coords[1]
             z = raw_coords[2] if dim >= 3 else None
-            res = trans.st70_to_etrs89(n, e, z=z, source=2)
+            res = trans.st70_to_etrs89(n, e, z=z, source=source)
 
             if req.unit == AngleUnitEnum.DEGREES:
                 lat_deg = math.degrees(res[0])
@@ -45,7 +46,7 @@ async def transform_point(
                 lon = math.radians(lon)
 
             h = raw_coords[2] if dim >= 3 else None
-            res = trans.etrs89_to_st70(lat, lon, h=h, source=2)
+            res = trans.etrs89_to_st70(lat, lon, h=h, source=source)
             return PointResponse(coos=list(res), warning=None)
 
     except exc.OutOfGridErr:

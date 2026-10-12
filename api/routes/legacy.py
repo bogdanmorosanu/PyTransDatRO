@@ -5,12 +5,13 @@ import json
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from api.dependencies import get_client_source
 import pytransdatro.exceptions as exc
 
 router = APIRouter(tags=["Legacy TransDatOnline Compatibility"])
 
 
-def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float]) -> Dict[str, Any]:
+def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float], source: int = 1) -> Dict[str, Any]:
     """Transforms a single coordinate according to legacy rules and warning strings."""
     dim = len(raw_coords)
     if dim < 2:
@@ -20,7 +21,7 @@ def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float]) -> Dict
         n, e = raw_coords[0], raw_coords[1]
         z = raw_coords[2] if dim >= 3 else None
         try:
-            res = trans.st70_to_etrs89(n, e, z=z, source=2)
+            res = trans.st70_to_etrs89(n, e, z=z, source=source)
             return {"coos": list(res)}
         except exc.OutOfGridErr:
             return {"coos": raw_coords, "warning": "Out of grid"}
@@ -31,7 +32,7 @@ def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float]) -> Dict
         lat, lon = raw_coords[0], raw_coords[1]
         h = raw_coords[2] if dim >= 3 else None
         try:
-            res = trans.etrs89_to_st70(lat, lon, h=h, source=2)
+            res = trans.etrs89_to_st70(lat, lon, h=h, source=source)
             return {"coos": list(res)}
         except exc.OutOfGridErr:
             return {"coos": raw_coords, "warning": "Out of grid"}
@@ -81,7 +82,8 @@ async def legacy_coo_op_get(
         return JSONResponse(content={"coos": parsed_coords, "warning": "Wrong dimension"})
 
     trans = request.app.state.trans
-    result = _transform_legacy_point(trans, cooOp, parsed_coords)
+    source = get_client_source(request)
+    result = _transform_legacy_point(trans, cooOp, parsed_coords, source=source)
     return JSONResponse(content=result)
 
 
@@ -126,6 +128,7 @@ async def legacy_coo_op_post(request: Request):
         raise HTTPException(status_code=400, detail="coosArray must be a list or JSON string array")
 
     trans = request.app.state.trans
+    source = get_client_source(request)
     results: List[Dict[str, Any]] = []
 
     for item in items:
@@ -144,7 +147,7 @@ async def legacy_coo_op_post(request: Request):
             results.append({"coos": [], "warning": "Invalid coordinate data"})
             continue
 
-        res = _transform_legacy_point(trans, coo_op, numeric_coords)
+        res = _transform_legacy_point(trans, coo_op, numeric_coords, source=source)
         results.append(res)
 
     return JSONResponse(content=results)

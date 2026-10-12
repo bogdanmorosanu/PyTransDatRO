@@ -8,7 +8,7 @@
 - **Asynchronous & Non-Blocking**: Coordinate calculation threads push pointer references to an in-memory queue (`< 0.001 ms`). All disk I/O, binning, and database writes occur in an independent background daemon thread.
 - **Failure Isolation (Non-Fatal)**: Coordinate mathematics will **never** fail or raise exceptions due to telemetry errors (e.g. disk full, permission denied, database locks).
 - **Privacy & Anonymization**: Exact cadastral coordinates are never stored on disk; they are binned into ~1 km geographic cells.
-- **Pure Python Standard Library**: Relies solely on Python standard library modules (`sqlite3`, `queue`, `threading`, `datetime`, `math`, `pathlib`, `atexit`). Zero third-party dependencies.
+- **Pure Python Standard Library**: Relies solely on Python standard library modules (`sqlite3`, `queue`, `threading`, `datetime`, `calendar`, `math`, `pathlib`, `atexit`). Zero third-party dependencies.
 
 ---
 
@@ -16,7 +16,7 @@
 
 All logging data is written to a single SQLite database: `logs/usage.db` configured with **Write-Ahead Logging (WAL)** and busy timeouts to ensure multi-process concurrency on web servers.
 
-The database contains three relational tables:
+The database contains five relational tables:
 
 ### 2.1 Sources Dimension Table (`sources`)
 Maps client source IDs to human-readable names.
@@ -29,42 +29,78 @@ CREATE TABLE IF NOT EXISTS sources (
 ```
 Predefined defaults:
 - `0`: `unknown` (Default / unspecified client or standalone script)
-- `1`: `web_map` (Web Map UI client)
-- `2`: `rest_api` (Direct REST API / backend microservice)
+- `1`: `rest_api` (Direct REST API / backend microservice)
+- `2`: `web_map` (Web Map UI client)
 - `3`: `desktop_cli` (Desktop GIS application / CLI plugin)
 
-### 2.2 Daily Volume Metrics Table (`daily_stats`)
-Tracks operational volume per calendar day grouped by client source:
+### 2.2 Operations Dimension Table (`operations`)
+Maps transformation direction IDs to standardized operation identifiers:
 ```sql
-CREATE TABLE IF NOT EXISTS daily_stats (
-    date TEXT NOT NULL,
-    source INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS operations (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT
+);
+```
+Predefined defaults:
+- `1`: `st70_to_etrs89` (Stereo 70 to ETRS89)
+- `2`: `etrs89_to_st70` (ETRS89 to Stereo 70)
+
+### 2.3 Window Configuration Registry Table (`telemetry_config`)
+Maintains dynamic time window definitions and their validity periods (SCD Type 2 interval registry):
+```sql
+CREATE TABLE IF NOT EXISTS telemetry_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    metric_type TEXT NOT NULL,
+    window_days INTEGER NOT NULL,
+    anchor_date TEXT NOT NULL,
+    valid_from TEXT NOT NULL,
+    valid_to TEXT,
+    description TEXT
+);
+```
+Default entries:
+- `computation`: `window_days = 1` (daily volume metrics).
+- `spatial`: `window_days = 30` (monthly approximated spatial heatmaps, or configurable to 7, 5, etc.).
+
+### 2.4 Computation Volume Metrics Table (`computation_usage`)
+Tracks operational volume (invocations and transformed coordinates) per time window, operation, dimensionality, and source:
+```sql
+CREATE TABLE IF NOT EXISTS computation_usage (
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    operation INTEGER NOT NULL,
+    is_3d INTEGER NOT NULL,
+    source INTEGER NOT NULL DEFAULT 0,
     count_calls INTEGER NOT NULL DEFAULT 1,
     count_points INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (date, source)
+    PRIMARY KEY (period_start, operation, is_3d, source)
 );
-CREATE INDEX IF NOT EXISTS idx_daily_stats_date ON daily_stats(date);
+CREATE INDEX IF NOT EXISTS idx_comp_usage_period ON computation_usage(period_start);
 ```
-- **`count_calls`**: Number of transformation function/API calls made that day.
-- **`count_points`**: Total number of individual coordinate points processed that day.
+- **`period_start` / `period_end`**: Inclusive ISO date boundaries (`YYYY-MM-DD`). For daily granularity, start and end dates are identical.
+- **`operation`**: Foreign key to `operations` (`1` or `2`).
+- **`is_3d`**: `0` (planimetric 2D) or `1` (3D elevation/quasigeoid height).
+- **`count_calls`**: Number of transformation function/API calls made during the window.
+- **`count_points`**: Total number of individual coordinate points processed during the window.
 
-### 2.3 Spatial Usage Table (`usage`)
-Stores geographic heatmap data grouped by year, month, ~1 km cell, direction, dimension, and source:
+### 2.5 Spatial Usage Table (`spatial_usage`)
+Stores geographic heatmap data grouped by dynamic period window, ~1 km cell, operation, dimension, and source:
 ```sql
-CREATE TABLE IF NOT EXISTS usage (
-    year INTEGER NOT NULL,
-    month INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS spatial_usage (
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
     lat_deg INTEGER NOT NULL,
     lat_grad INTEGER NOT NULL,
     lon_deg INTEGER NOT NULL,
     lon_grad INTEGER NOT NULL,
-    is_st70_to_etrs89 INTEGER NOT NULL,
+    operation INTEGER NOT NULL,
     is_3d INTEGER NOT NULL,
     source INTEGER NOT NULL DEFAULT 0,
     count INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (year, month, lat_deg, lat_grad, lon_deg, lon_grad, is_st70_to_etrs89, is_3d, source)
+    PRIMARY KEY (period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
 );
-CREATE INDEX IF NOT EXISTS idx_usage_year_month ON usage(year, month);
+CREATE INDEX IF NOT EXISTS idx_spatial_usage_period ON spatial_usage(period_start);
 ```
 
 #### Coordinate Splitting (Degrees & Grads)
@@ -75,20 +111,18 @@ To minimize disk space, coordinates are converted to degrees, rounded to 2 decim
 
 ---
 
-## 3. Storage Footprint & Disk Space Implications
+## 3. Storage Footprint & Dynamic Windows
 
 > [!NOTE]
-> **Storage Footprint Remark**:
-> A full month's worth of active usage data covering the entire territory of Romania across all transformation directions and operations requires approximately **3.2 MB** of disk space.
+> **Self-Describing Windows**:
+> By storing both `period_start` and `period_end` directly in the record, each row remains self-contained. Even if window granularity is adjusted from 30 days to 7 days or 5 days, historical rows preserve their exact duration and can be queried or normalized without ambiguity.
 
-### Why the Footprint is Minimal
-1. **In-Place Aggregation (UPSERT)**: Any additional transformation occurring in an already visited 1 km cell during the same month simply increments the `count` column in-place:
-   ```sql
-   ON CONFLICT(...) DO UPDATE SET count = count + excluded.count;
-   ```
-   It does **not** create a new row or consume additional disk space.
-2. **Compact All-Integer Schema**: Columns such as `is_st70_to_etrs89`, `is_3d`, `source`, `month`, and the split coordinate fields are stored as 0-byte or 1-byte variable-length integers.
-3. **No Heavy String Metadata**: Client identities are tracked via low-cardinality integer IDs rather than repeated JSON strings.
+### In-Place Aggregation (UPSERT)
+Any additional transformation occurring in an already visited 1 km cell during the same active window increments `count` in-place:
+```sql
+ON CONFLICT(period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
+DO UPDATE SET count = count + excluded.count;
+```
 
 ---
 
@@ -127,28 +161,22 @@ logger.close()
 
 ## 5. Inspecting the Database
 
-A built-in inspection tool is provided in `tools/inspect_telemetry_db.py`:
-```bash
-python tools/inspect_telemetry_db.py
-```
-
 ### Useful SQL Queries
 
-#### Monthly Traffic by Client Source
+#### Period Traffic by Client Source and Operation
 ```sql
-SELECT s.name AS source_name, SUM(u.count) AS total_coordinates
-FROM usage u
-LEFT JOIN sources s ON u.source = s.id
-WHERE u.year = 2026 AND u.month = 10
-GROUP BY u.source;
-```
-
-#### Daily Call & Point Volumes
-```sql
-SELECT date, s.name AS source_name, count_calls, count_points
-FROM daily_stats d
-LEFT JOIN sources s ON d.source = s.id
-ORDER BY date DESC, source;
+SELECT 
+    c.period_start,
+    c.period_end,
+    o.name AS operation_name,
+    s.name AS source_name,
+    c.is_3d,
+    c.count_calls,
+    c.count_points
+FROM computation_usage c
+LEFT JOIN operations o ON c.operation = o.id
+LEFT JOIN sources s ON c.source = s.id
+ORDER BY c.period_start DESC, c.source;
 ```
 
 #### Top Geographic Hotspots (~1 km Cells)
@@ -156,8 +184,12 @@ ORDER BY date DESC, source;
 SELECT 
     printf('%02d.%02d', lat_deg, lat_grad) AS lat,
     printf('%02d.%02d', lon_deg, lon_grad) AS lon,
+    o.name AS operation_name,
+    u.period_start,
+    u.period_end,
     count
-FROM usage
+FROM spatial_usage u
+LEFT JOIN operations o ON u.operation = o.id
 ORDER BY count DESC
 LIMIT 10;
 ```

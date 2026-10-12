@@ -3,7 +3,7 @@
 import math
 from typing import List
 from fastapi import APIRouter, Depends
-from api.dependencies import get_trans_engine
+from api.dependencies import get_trans_engine, get_client_source
 from api.schemas.batch import BatchRequest, BatchResponse
 from api.schemas.point import OperationEnum, AngleUnitEnum, PointResponse
 from pytransdatro.trans_ro import TransRO
@@ -15,7 +15,8 @@ router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"
 @router.post("/batch", response_model=BatchResponse)
 async def transform_batch(
     req: BatchRequest,
-    trans: TransRO = Depends(get_trans_engine)
+    trans: TransRO = Depends(get_trans_engine),
+    source: int = Depends(get_client_source),
 ) -> BatchResponse:
     """Batch processes a list of coordinates in memory (up to 20,000 points).
     
@@ -35,7 +36,7 @@ async def transform_batch(
             if req.op == OperationEnum.STEREO70_TO_ETRS89:
                 n, e = pt[0], pt[1]
                 z = pt[2] if dim >= 3 else None
-                res = trans.st70_to_etrs89(n, e, z=z, source=2)
+                res = trans.st70_to_etrs89(n, e, z=z, source=source)
 
                 if is_degrees:
                     lat_deg = math.degrees(res[0])
@@ -54,7 +55,7 @@ async def transform_batch(
                     lon = math.radians(lon)
 
                 h = pt[2] if dim >= 3 else None
-                res = trans.etrs89_to_st70(lat, lon, h=h, source=2)
+                res = trans.etrs89_to_st70(lat, lon, h=h, source=source)
                 results.append(PointResponse(coos=list(res), warning=None))
 
         except exc.OutOfGridErr:

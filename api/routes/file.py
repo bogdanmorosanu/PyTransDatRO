@@ -5,7 +5,7 @@ import math
 from typing import AsyncGenerator, Optional, Tuple, List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
-from api.dependencies import get_trans_engine
+from api.dependencies import get_trans_engine, get_client_source
 from api.schemas.point import OperationEnum, AngleUnitEnum
 from pytransdatro.trans_ro import TransRO
 import pytransdatro.exceptions as exc
@@ -67,6 +67,7 @@ def _transform_line(
     op: OperationEnum,
     unit: AngleUnitEnum,
     trans: TransRO,
+    source: int = 1,
 ) -> str:
     # Split tokens
     tokens = [t.strip() for t in (line.split() if delim_char == " " else line.split(delim_char))]
@@ -123,7 +124,7 @@ def _transform_line(
 
     try:
         if op == OperationEnum.STEREO70_TO_ETRS89:
-            res = trans.st70_to_etrs89(c1, c2, z=c3, source=2)
+            res = trans.st70_to_etrs89(c1, c2, z=c3, source=source)
             if unit == AngleUnitEnum.DMS:
                 lat_str = rad_to_dms_str(res[0])
                 lon_str = rad_to_dms_str(res[1])
@@ -137,7 +138,7 @@ def _transform_line(
                 out_coords += f"{delim_char}{res[2]:.4f}"
 
         else:
-            res = trans.etrs89_to_st70(c1, c2, h=c3, source=2)
+            res = trans.etrs89_to_st70(c1, c2, h=c3, source=source)
             out_coords = f"{res[0]:.4f}{delim_char}{res[1]:.4f}"
             if dim >= 3:
                 out_coords += f"{delim_char}{res[2]:.4f}"
@@ -158,7 +159,8 @@ async def transform_file(
     op: OperationEnum = Form(..., description="Transformation direction"),
     unit: AngleUnitEnum = Form(default=AngleUnitEnum.RADIANS, description="Angular unit for ETRS89 coordinates"),
     delimiter: str = Form(default="auto", description="Delimiter: auto, comma, semicolon, tab, or space"),
-    trans: TransRO = Depends(get_trans_engine)
+    trans: TransRO = Depends(get_trans_engine),
+    source: int = Depends(get_client_source),
 ):
     """Transforms a delimited file (CSV, TXT) streaming results back using chunked HTTP transfer.
     
@@ -204,7 +206,7 @@ async def transform_file(
                         yield b"# Limit exceeded: maximum 100,000 points allowed\n"
                         return
 
-                    out = _transform_line(line, delim_char, op, unit, trans)
+                    out = _transform_line(line, delim_char, op, unit, trans, source=source)
                     yield out.encode("utf-8")
 
         # Process any remaining line in buffer
@@ -214,7 +216,7 @@ async def transform_file(
                 yield (line + "\n").encode("utf-8")
             else:
                 delim_char = chosen_delim or ","
-                out = _transform_line(line, delim_char, op, unit, trans)
+                out = _transform_line(line, delim_char, op, unit, trans, source=source)
                 yield out.encode("utf-8")
 
     return StreamingResponse(

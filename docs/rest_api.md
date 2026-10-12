@@ -180,7 +180,8 @@ Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies:
 
 * **`GET /health`**: Returns health probe `{status: "healthy", grid_loaded: true, telemetry_active: true}`.
 * **`GET /api/v1/grid/info`**: Returns active SPG file metadata, bounding box coordinates, and CRS definitions.
-* **`GET /api/v1/telemetry/stats`**: Returns high-level daily call/point volume metrics from `logs/usage.db`.
+* **`GET /api/v1/telemetry/stats`**: Returns high-level call/point volume metrics from `logs/usage.db`.
+* **`GET /api/v1/telemetry/timeline`**: Returns queryable time series with summary KPIs, daily/monthly rollups, and breakdown by client source (`web_map`, `rest_api`, `desktop_cli`). Supports query filters (`from_date`, `to_date`, `granularity`, `source`, `operation`, `is_3d`).
 
 ---
 
