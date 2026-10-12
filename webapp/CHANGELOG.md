@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Spatial Overview Matrix Visual (`SpatialMatrixChart.ts`, `TelemetryDashboard.ts`, `apiClient.ts`, `components.css`)**:
+  - **Macroscopic $0.1^\circ$ Punchcard Canvas**: Renders a fixed, non-zoomed macroscopic grid of Romania on HTML5 canvas (~10 km bins), featuring faint ghost cells for unvisited coordinates and a high-contrast 5-tier discrete color ramp.
+  - **Mathematical Quadrant Summary Cards**: Four dynamic summary cards (**NW**, **NE**, **SW**, **SE**) calculated around the national center ($45.9^\circ\text{ N}, 24.9^\circ\text{ E}$), displaying absolute volumes and relative percentage shares without administrative boundary bias.
+  - **Subtle Quadrant Divider Grid Lines**: Rendered subtle dashed crosshair lines along Latitude $45.9^\circ\text{ N}$ and Longitude $24.9^\circ\text{ E}$ across the heatmap canvas, directly visualizing the 4 quadrants.
+  - **Physical Cell Area Indicator**: Integrated an informational badge calculating average cell coverage at projection center ($46^\circ\text{ N}, 25^\circ\text{ E}$): $\approx 86\text{ km}^2$ ($11.1 \times 7.7\text{ km}$).
+  - **Vanilla Graphical Date Window Scrubber**: Added dependency-free date range controls with synchronized start and end dates bound between earliest database history (`2023-11-01`) and the current date.
+  - **Design System Alignment & Strict English i18n**: Eliminated all decorative emojis from tabs and action buttons adhering to `design_guide.md`, and completed 100% pure English localization across all labels, quadrant shares, notes, and discrete legend steps.
+  - **Metric Selection & Scale Mode Toggles**: Live toggling between **Coordinates Transformed (Points)** and **Service Invocations (Calls)**, as well as **Logarithmic (default)** vs. **Linear** scaling with an interactive color ramp legend.
+  - **Independent Temporal & Source Filtering**: Dedicated time horizon presets (`All Time`, `12M`, `YTD`, `30D`, `7D`) and dynamic source filter chips decoupled from the timeline visual.
+  - **High-Contrast Cell Inspection Tooltip**: Highlighting hovered cells with exact coordinates, bounds, quadrant, and volume breakdown.
 - **Interactive Usage Data & Telemetry Dashboard (`TelemetryDashboard.ts`, `TimelineChart.ts`, `noUiSlider`)**:
   - **Draggable Time Window Slider (`noUiSlider`)**: Replaced date pickers with a dual-handle range slider with `behaviour: 'drag'`. Users can slide a custom time window across the entire timeline bounded between the earliest log timestamp and the current date, emulating GIS-style timeline scrubbers.
   - **Dynamic Source Discovery**: Sources are discovered dynamically from the SQLite `sources` table via `/api/v1/telemetry/timeline`. Any new logging client source added to the database automatically appears as an interactive toggle checkbox without frontend code changes.
@@ -32,6 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Mobile Responsive Coordinates Badge (`map.css`)**: Elevated the bottom-center coordinates badge on mobile screens ($\le 768$px) to prevent collision with the bottom-left Layers button and map attribution.
 
 ### Fixed
+- **Workbench Panel Fixed Width Stabilization (`base.css`)**: Imposed strict `480px` dimensions (`width: 480px; min-width: 480px; max-width: 480px; box-sizing: border-box;`) on `.utility-panel` and constrained the split workbench grid column (`grid-template-columns: 480px minmax(0, 1fr)`). This eliminates column stretching and prevents control overlap or UI shifting when switching between the Point, Text, and Files tabs.
 - **Layers Drawer Event Listener Leak (`MapView.ts`)**: Moved the global document click listener for `#map-layers-panel` and color popovers into one-time initialization (`initCustomDocks()`), preventing listener accumulation on layer renders.
 - **File Upload Queue Reset Map Synchronization (`FileUpload.ts`, `main.ts`)**: Clearing the file queue or removing individual queued files now invokes `onClearFiles` / `mapView.clearFilePoints()`, keeping the map layers and cluster groups synchronized with the file list.
 - **File Upload 2,000-Point Truncation Fix (`FileUpload.ts`)**: Removed a hardcoded `Math.min(..., 2000)` limit in `parsePairedPoints` that prematurely truncated uploaded coordinate sets before map plotting. All points are now fully parsed and passed to `MapView.plotFilePoints`, properly triggering the `VolumeWarningModal` guardrail when datasets exceed 2,000 points and enabling full rendering of large datasets (e.g. 9,000+ points).

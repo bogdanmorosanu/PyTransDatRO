@@ -84,3 +84,47 @@ class TimelineResponse(BaseModel):
     series: List[TimelineSeriesItem]
     available_sources: List[SourceItem] = Field(default_factory=list)
 
+
+# Spatial Matrix schemas adhering to specs/telemetry_visualization.md
+class SpatialCellItem(BaseModel):
+    lat: float
+    lon: float
+    hits: int
+
+
+class QuadrantItem(BaseModel):
+    value: int
+    percentage: float
+
+
+class QuadrantSummary(BaseModel):
+    center: Dict[str, float] = Field(default_factory=lambda: {"lat": 45.9, "lon": 24.9})
+    NW: QuadrantItem
+    NE: QuadrantItem
+    SW: QuadrantItem
+    SE: QuadrantItem
+
+
+class SpatialBounds(BaseModel):
+    min_lat: float
+    max_lat: float
+    min_lon: float
+    max_lon: float
+
+
+class SpatialMatrixSummary(BaseModel):
+    active_cells_count: int
+    total_metric_value: int
+    max_cell_hits: int
+    metric: str
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    quadrants: QuadrantSummary
+
+
+class SpatialMatrixResponse(BaseModel):
+    resolution: float = 0.1
+    bounds: SpatialBounds
+    summary: SpatialMatrixSummary
+    cells: List[SpatialCellItem]
+

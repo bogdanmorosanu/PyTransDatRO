@@ -182,6 +182,7 @@ Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies:
 * **`GET /api/v1/grid/info`**: Returns active SPG file metadata, bounding box coordinates, and CRS definitions.
 * **`GET /api/v1/telemetry/stats`**: Returns high-level call/point volume metrics from `logs/usage.db`.
 * **`GET /api/v1/telemetry/timeline`**: Returns queryable time series with summary KPIs, daily/monthly rollups, and breakdown by client source (`web_map`, `rest_api`, `desktop_cli`). Supports query filters (`from_date`, `to_date`, `granularity`, `source`, `operation`, `is_3d`).
+* **`GET /api/v1/telemetry/spatial-matrix`**: Returns aggregated $0.1^\circ$ (~10 km) macroscopic spatial density cells and mathematical quadrant volume distributions (NW, NE, SW, SE around $45.9^\circ\text{ N}, 24.9^\circ\text{ E}$). Supports filters (`from_date`, `to_date`, `metric`=`points`|`calls`, `sources`, `operation`, `is_3d`).
 
 ---
 

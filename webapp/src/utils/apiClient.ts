@@ -102,6 +102,58 @@ export interface TimelineQueryParams {
   is_3d?: number;
 }
 
+export interface SpatialCellItem {
+  lat: number;
+  lon: number;
+  hits: number;
+}
+
+export interface QuadrantItem {
+  value: number;
+  percentage: number;
+}
+
+export interface QuadrantSummary {
+  center: { lat: number; lon: number };
+  NW: QuadrantItem;
+  NE: QuadrantItem;
+  SW: QuadrantItem;
+  SE: QuadrantItem;
+}
+
+export interface SpatialBounds {
+  min_lat: number;
+  max_lat: number;
+  min_lon: number;
+  max_lon: number;
+}
+
+export interface SpatialMatrixSummary {
+  active_cells_count: number;
+  total_metric_value: number;
+  max_cell_hits: number;
+  metric: 'points' | 'calls';
+  from_date?: string | null;
+  to_date?: string | null;
+  quadrants: QuadrantSummary;
+}
+
+export interface SpatialMatrixResponse {
+  resolution: number;
+  bounds: SpatialBounds;
+  summary: SpatialMatrixSummary;
+  cells: SpatialCellItem[];
+}
+
+export interface SpatialMatrixQueryParams {
+  from_date?: string;
+  to_date?: string;
+  metric?: 'points' | 'calls';
+  sources?: string;
+  operation?: number;
+  is_3d?: number;
+}
+
 const COMMON_HEADERS = {
   'Content-Type': 'application/json',
   'X-Client-Source': 'web_app',
@@ -193,6 +245,26 @@ export const apiClient = {
     });
     if (!res.ok) {
       throw new Error(`Timeline Error: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getSpatialMatrix(params?: SpatialMatrixQueryParams): Promise<SpatialMatrixResponse> {
+    const query = new URLSearchParams();
+    if (params?.from_date) query.set('from_date', params.from_date);
+    if (params?.to_date) query.set('to_date', params.to_date);
+    if (params?.metric) query.set('metric', params.metric);
+    if (params?.sources) query.set('sources', params.sources);
+    if (params?.operation !== undefined) query.set('operation', String(params.operation));
+    if (params?.is_3d !== undefined) query.set('is_3d', String(params.is_3d));
+
+    const qs = query.toString();
+    const url = `/api/v1/telemetry/spatial-matrix${qs ? `?${qs}` : ''}`;
+    const res = await fetch(url, {
+      headers: { 'X-Client-Source': 'web_app' },
+    });
+    if (!res.ok) {
+      throw new Error(`Spatial Matrix Error: ${res.status}`);
     }
     return res.json();
   },

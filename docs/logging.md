@@ -109,6 +109,9 @@ To minimize disk space, coordinates are converted to degrees, rounded to 2 decim
 - Reconstructing decimal degrees: `lat = lat_deg + (lat_grad / 100.0)`
 - In SQLite, small integers ($\le 127$) consume only **1 byte** per value, compared to 8 bytes for standard IEEE floating-point numbers.
 
+#### Macroscopic $0.1^\circ$ Aggregation & Visual Access
+The REST API endpoint `GET /api/v1/telemetry/spatial-matrix` dynamically aggregates the ~1 km stored bins (`FLOOR(lat_grad / 10)`, `FLOOR(lon_grad / 10)`) into macroscopic $0.1^\circ$ ($\approx 10\text{ km} \times 7.5\text{ km}$) tiles for punchcard heatmaps and calculates mathematical quadrant volumes (NW, NE, SW, SE).
+
 ---
 
 ## 3. Storage Footprint & Dynamic Windows

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Specification Status: IN PROGRESS (Draft)**
-> This document currently details **Component 1: Usage Timeline Visual**. It is deliberately incomplete as further visual components (Spatial Heatmap, Modality Matrix, Overall Analytical Dashboard) are being designed and will be added in subsequent iterations.
+> This document details **Component 1: Usage Timeline Visual** and **Component 2: Spatial Overview Matrix Visual**. It will continue to expand as subsequent visual components (Modality Matrix, Overall Analytical Dashboard) are designed.
 
 ---
 
@@ -51,7 +51,7 @@ The chart must support grouping, stacking, and filtering by the following dimens
    - `point` (Single coordinate conversion)
    - `batch` (Array/list of coordinates)
    - `file` (Multipart file conversion: CSV, TXT, etc.)
-   *(Note: Requires upcoming logging logic enhancement to record `service_name` in SQLite)*.
+   *(Note: Planned logging schema addition)*.
 
 3. **Operation Parameter (`operation` / Transformation Direction)**:
    - `Stereo70ToETRS89` (Forward transformation)
@@ -117,46 +117,135 @@ Whenever the user changes the time window or toggles categories on/off, these fi
 
 ---
 
-## 3. Backend REST API Contract Requirements (Draft)
+## 3. Component Specification: Spatial Overview Matrix Visual
 
-To support this visual, the backend API should expose a dedicated timeline query endpoint:
+The Spatial Overview Matrix is the primary geographical visual of the dashboard. It conveys a clear macroscopic picture of where transformations occur across Romania without claiming false sub-kilometer precision or requiring map-navigation overhead.
 
-### Endpoint: `GET /api/v1/telemetry/timeline`
+### 3.1 Core Principles: GitHub Punchcard Style Macroscopic Matrix
+- **Standalone Matrix (No Map Required)**: The visual is strictly an informative, punchcard-style overview inspired by GitHub activity grids. It does not require basemaps, administrative boundaries, or vector overlays; as usage accumulates over time, the silhouette and regional activity clusters naturally emerge from the populated cells.
+- **Reduced Resolution ($0.1^\circ$ Decimal Degrees)**:
+  - Raw database records ($0.01^\circ$ / ~1 km) are aggregated via integer division (`FLOOR(lat_grad / 10)`, `FLOOR(lon_grad / 10)`) to **1 decimal place** ($\approx 10\text{ km} \times 7.5\text{ km}$ bins).
+  - High enough resolution to distinguish regional clusters and corridors; broad enough to remain fast, compact, and macro-oriented.
+  - Romania's bounding box spans roughly $43.6^\circ - 48.3^\circ\text{ N}$ by $20.2^\circ - 29.7^\circ\text{ E}$.
+- **Matrix Cell Appearance (Uniform Square Tiles)**:
+  - Cells are rendered as uniform **square tiles** across the matrix layout.
+  - **Faint Ghost Cells**: Empty/unvisited cells are explicitly rendered as subtle ghost squares (`rgba(..., 0.04)` / faint outline). This ensures clear structure even during early rollout stages or narrow date filters where only few cells are populated, preventing visual ambiguity between unvisited areas and rendering errors.
+  - Populated cells take a color shade/intensity based on the aggregate hit count.
+- **Independence from Component 1 (Timeline Visual)**:
+  - The Spatial Overview Matrix is completely decoupled and independent from the Usage Timeline visual. It maintains its own independent temporal controls and filter state.
+
+---
+
+### 3.2 Coordinate Axes & Layout
+- **X-Axis (Horizontal)**: Longitude in Decimal Degrees (span $20.0^\circ\text{ E}$ to $30.0^\circ\text{ E}$ with labels at $1.0^\circ$ or $0.5^\circ$ intervals).
+- **Y-Axis (Vertical)**: Latitude in Decimal Degrees (span $43.5^\circ\text{ N}$ to $48.5^\circ\text{ N}$ with labels at $0.5^\circ$ intervals).
+- **Cell Geometry**: Uniform square grid cells.
+
+---
+
+### 3.3 Metric Toggle & Scaling Modes
+
+1. **Metric Selection Toggle**:
+   - A toggle control allowing the user to select what metric the matrix displays:
+     - **`[ Coordinates Transformed (Points) ]`**: Shading reflects cumulated count of transformed coordinates (`count_points`).
+     - **`[ Service Invocations (Calls) ]`**: Shading reflects cumulated count of transformation calls (`count_calls`).
+   - Switching the toggle instantly updates cell values and recalibrates color intensity.
+
+2. **Scale Mode Toggle (Logarithmic vs. Linear)**:
+   - **Logarithmic (Default)**: Normalizes extreme variations between high-density metropolitan/infrastructure hubs and rural cadastre cells.
+   - **Linear**: Direct proportional scaling, useful for uniform inspection or balanced activity periods.
+   - Both modes map values onto a clean 5-tier discrete color intensity scale (Level 0 = ghost empty, Levels 1–4 = increasing saturation).
+
+3. **Accompanying Color Legend**: A clean 5-step discrete legend adjacent to the matrix indicating value intervals corresponding to each intensity tier.
+
+---
+
+### 3.4 Mathematical Quadrant Macro-Aggregator (Header Cards)
+
+Directly above or alongside the matrix, four summary cards display aggregated metrics partitioned strictly by **mathematical quadrants**:
+- **Reference Center**: Defined by the midpoint coordinates of the national bounding envelope (approx. $45.9^\circ\text{ N}, 24.9^\circ\text{ E}$).
+- **Quadrants**:
+  - **NW**: $\text{Lat} \ge 45.9^\circ\text{ N}, \text{Lon} < 24.9^\circ\text{ E}$
+  - **NE**: $\text{Lat} \ge 45.9^\circ\text{ N}, \text{Lon} \ge 24.9^\circ\text{ E}$
+  - **SW**: $\text{Lat} < 45.9^\circ\text{ N}, \text{Lon} < 24.9^\circ\text{ E}$
+  - **SE**: $\text{Lat} < 45.9^\circ\text{ N}, \text{Lon} \ge 24.9^\circ\text{ E}$
+- **Card Content**: Displays total volume for the active metric (Points or Calls) and its relative percentage of national volume (e.g. `NW: 342,100 pts (28%)`).
+- **Rationale**: Strict mathematical notation avoids confusion or false correlation with administrative/county boundaries while providing immediate regional balance insights.
+
+---
+
+### 3.5 Dynamic Source Toggles & Filters
+
+1. **Dynamic Source Toggle Buttons**:
+   - Available client sources are retrieved dynamically from the backend/database (e.g., `web_map`, `rest_api`, `desktop_cli`).
+   - Rendered as interactive toggle buttons/chips.
+   - Users can toggle sources on/off; matrix and quadrant cards recalculate dynamically.
+
+2. **Independent Temporal Controls**:
+   - Own independent time horizon selector (Presets: `All-Time`, `Past 12 Months`, `Year to Date`, or custom date bounds).
+   - Aggregates records whose `period_start` and `period_end` intersect the active filter.
+
+3. **Operation & Dimensionality Filters**:
+   - Filter by **Operation**: All, `Stereo70ToETRS89`, or `ETRS89ToStereo70`.
+   - Filter by **Dimension**: All, `2D (Planimetric)`, or `3D (Elevation)`.
+
+---
+
+### 3.6 Hover Inspection
+- Hovering the mouse over any cell highlights its border and reveals a lightweight tooltip:
+  - **Coordinates**: e.g., `45.6° N, 25.6° E` (Center of the $0.1^\circ$ cell).
+  - **Cell Bounds**: e.g., `[45.6° – 45.7° N, 25.6° – 25.7° E]`.
+  - **Selected Metric Value**: e.g., `4,820 points` (or `142 calls`).
+  - **Quadrant**: e.g., `SW`.
+  - **Breakdown by Active Sources**: e.g., `web_map: 320 | rest_api: 2,100 | desktop_cli: 2,400`.
+  - **Dominant Mode**: e.g., `3D (78%) | Stereo70 -> ETRS89 (64%)`.
+
+---
+
+## 4. Backend REST API Contract Requirements (Draft)
+
+### Endpoint: `GET /api/v1/telemetry/spatial-matrix`
 
 #### Query Parameters:
-- `from_date` (optional, `YYYY-MM-DD`): Start date filter.
-- `to_date` (optional, `YYYY-MM-DD`): End date filter.
-- `granularity` (`daily` | `monthly`, default `daily`): Aggregation bucket.
-- `source` (optional, list of integers): Filter by client source IDs (`1`, `2`, `3`).
-- `service` (optional, string): Filter by service (`point`, `batch`, `file`).
-- `operation` (optional, string): Filter by operation (`Stereo70ToETRS89`, `ETRS89ToStereo70`).
+- `from_date` (optional, `YYYY-MM-DD`): Start date boundary.
+- `to_date` (optional, `YYYY-MM-DD`): End date boundary.
+- `metric` (`points` | `calls`, default `points`): Metric to aggregate per cell.
+- `sources` (optional, comma-separated integer list): Active client source IDs (e.g., `1,2,3`).
+- `operation` (optional, integer): `1` (st70_to_etrs89) or `2` (etrs89_to_st70).
+- `is_3d` (optional, integer): `0` or `1`.
 
 #### Response Schema:
 ```json
 {
-  "summary": {
-    "total_calls": 142500,
-    "total_points": 4820100,
-    "avg_points_per_call": 33.8,
-    "from_date": "2025-01-01",
-    "to_date": "2025-06-30",
-    "days_count": 181
+  "resolution": 0.1,
+  "bounds": {
+    "min_lat": 43.6,
+    "max_lat": 48.3,
+    "min_lon": 20.2,
+    "max_lon": 29.7
   },
-  "series": [
+  "summary": {
+    "active_cells_count": 1845,
+    "total_metric_value": 49200000,
+    "max_cell_hits": 352000,
+    "quadrants": {
+      "center": {"lat": 45.9, "lon": 24.9},
+      "NW": {"value": 13776000, "percentage": 28.0},
+      "NE": {"value": 9840000, "percentage": 20.0},
+      "SW": {"value": 8856000, "percentage": 18.0},
+      "SE": {"value": 16728000, "percentage": 34.0}
+    }
+  },
+  "cells": [
     {
-      "date": "2025-01-01",
-      "calls": {
-        "web_map": 12,
-        "rest_api": 45,
-        "desktop_cli": 18,
-        "total": 75
-      },
-      "points": {
-        "web_map": 28,
-        "rest_api": 840,
-        "desktop_cli": 4200,
-        "total": 5068
-      }
+      "lat": 44.4,
+      "lon": 26.1,
+      "hits": 352000
+    },
+    {
+      "lat": 46.7,
+      "lon": 23.6,
+      "hits": 128500
     }
   ]
 }
@@ -164,17 +253,14 @@ To support this visual, the backend API should expose a dedicated timeline query
 
 ---
 
-## 4. Upcoming Visual Components (To Be Defined)
+## 5. Upcoming Visual Components (To Be Defined)
 
-The following components will be specified in upcoming revisions:
+The following components will be specified in upcoming iterations:
 
-- **Component 2: Spatial Density & Romanian Geographic Heatmap**
-  - Full-canvas Leaflet/Mapbox rendering of ~1 km binned cells (`lat_deg + lat_grad/100.0`, `lon_deg + lon_grad/100.0`).
-  - Top hotspots ranking table (Bucharest, Cluj, Timișoara, Iași, Constanța, etc.).
 - **Component 3: Transformation Modality & Operations Matrix**
   - Forward vs. Reverse distribution.
   - 2D vs. 3D height usage distribution.
-  - Cross-tabulation by client platform.
+  - Cross-tabulation by client platform and service type.
 - **Component 4: Overall Analysis & Trends Dashboard**
   - Workday vs. weekend distribution ratios.
   - Romanian seasonal cadastral variation indices.

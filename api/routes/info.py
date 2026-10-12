@@ -18,6 +18,12 @@ from api.schemas.info import (
     TimelineSeriesItem,
     TimelineSeriesMetrics,
     SourceItem,
+    SpatialCellItem,
+    QuadrantItem,
+    QuadrantSummary,
+    SpatialBounds,
+    SpatialMatrixSummary,
+    SpatialMatrixResponse,
 )
 from pytransdatro.trans_ro import TransRO
 
@@ -335,3 +341,181 @@ async def get_telemetry_timeline(
             ),
             series=[]
         )
+
+
+@router.get("/telemetry/spatial-matrix", response_model=SpatialMatrixResponse)
+async def get_telemetry_spatial_matrix(
+    from_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
+    metric: str = Query("points", pattern="^(points|calls)$", description="Metric to aggregate: 'points' or 'calls'"),
+    sources: Optional[str] = Query(None, description="Comma-separated client source IDs e.g. '1,2'"),
+    operation: Optional[int] = Query(None, description="Operation ID (1: st70_to_etrs89, 2: etrs89_to_st70)"),
+    is_3d: Optional[int] = Query(None, description="0 for 2D, 1 for 3D"),
+) -> SpatialMatrixResponse:
+    """Returns aggregated 0.1 degree spatial density cells and mathematical quadrant totals."""
+    log_dir = Path("./logs")
+    db_path = log_dir / "usage.db"
+
+    # Default bounding box for Romania
+    default_bounds = SpatialBounds(min_lat=43.6, max_lat=48.3, min_lon=20.2, max_lon=29.7)
+    center_lat = 45.9
+    center_lon = 24.9
+
+    default_quadrants = QuadrantSummary(
+        center={"lat": center_lat, "lon": center_lon},
+        NW=QuadrantItem(value=0, percentage=0.0),
+        NE=QuadrantItem(value=0, percentage=0.0),
+        SW=QuadrantItem(value=0, percentage=0.0),
+        SE=QuadrantItem(value=0, percentage=0.0),
+    )
+
+    empty_response = SpatialMatrixResponse(
+        resolution=0.1,
+        bounds=default_bounds,
+        summary=SpatialMatrixSummary(
+            active_cells_count=0,
+            total_metric_value=0,
+            max_cell_hits=0,
+            metric=metric,
+            from_date=from_date,
+            to_date=to_date,
+            quadrants=default_quadrants,
+        ),
+        cells=[],
+    )
+
+    if not db_path.exists():
+        return empty_response
+
+    try:
+        conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
+        cursor = conn.cursor()
+
+        # Build dynamic SQL query
+        where_clauses = []
+        params = []
+
+        if from_date:
+            where_clauses.append("period_end >= ?")
+            params.append(from_date)
+        if to_date:
+            where_clauses.append("period_start <= ?")
+            params.append(to_date)
+        if sources:
+            src_ids = [int(s.strip()) for s in sources.split(",") if s.strip().isdigit()]
+            if src_ids:
+                placeholders = ",".join("?" for _ in src_ids)
+                where_clauses.append(f"source IN ({placeholders})")
+                params.extend(src_ids)
+        if operation is not None:
+            where_clauses.append("operation = ?")
+            params.append(operation)
+        if is_3d is not None:
+            where_clauses.append("is_3d = ?")
+            params.append(is_3d)
+
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        # Metric aggregation expression
+        # 'points' aggregates coordinate count; 'calls' aggregates cell transformation event occurrences
+        metric_expr = "SUM(count)" if metric == "points" else "COUNT(*)"
+
+        # Query aggregating ~1km (lat_deg, lat_grad) to 0.1 degree bins
+        query = f"""
+            SELECT 
+                ROUND(lat_deg + (CAST(lat_grad / 10 AS INTEGER) * 0.1), 1) AS bin_lat,
+                ROUND(lon_deg + (CAST(lon_grad / 10 AS INTEGER) * 0.1), 1) AS bin_lon,
+                {metric_expr} AS hits
+            FROM spatial_usage
+            {where_sql}
+            GROUP BY bin_lat, bin_lon
+            HAVING hits > 0
+            ORDER BY bin_lat ASC, bin_lon ASC
+        """
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        if not rows:
+            return empty_response
+
+        cells: List[SpatialCellItem] = []
+        total_val = 0
+        max_hits = 0
+        min_lat_found = 90.0
+        max_lat_found = -90.0
+        min_lon_found = 180.0
+        max_lon_found = -180.0
+
+        quad_nw = 0
+        quad_ne = 0
+        quad_sw = 0
+        quad_se = 0
+
+        for r_lat, r_lon, r_hits in rows:
+            c_lat = round(float(r_lat), 1)
+            c_lon = round(float(r_lon), 1)
+            hits_int = int(r_hits)
+
+            cells.append(SpatialCellItem(lat=c_lat, lon=c_lon, hits=hits_int))
+            total_val += hits_int
+            if hits_int > max_hits:
+                max_hits = hits_int
+
+            if c_lat < min_lat_found:
+                min_lat_found = c_lat
+            if c_lat > max_lat_found:
+                max_lat_found = c_lat
+            if c_lon < min_lon_found:
+                min_lon_found = c_lon
+            if c_lon > max_lon_found:
+                max_lon_found = c_lon
+
+            # Mathematical Quadrant partitioning around center (45.9, 24.9)
+            if c_lat >= center_lat:
+                if c_lon < center_lon:
+                    quad_nw += hits_int
+                else:
+                    quad_ne += hits_int
+            else:
+                if c_lon < center_lon:
+                    quad_sw += hits_int
+                else:
+                    quad_se += hits_int
+
+        # Calculate percentages
+        def calc_pct(val: int, tot: int) -> float:
+            return round((val / tot) * 100.0, 1) if tot > 0 else 0.0
+
+        quadrants = QuadrantSummary(
+            center={"lat": center_lat, "lon": center_lon},
+            NW=QuadrantItem(value=quad_nw, percentage=calc_pct(quad_nw, total_val)),
+            NE=QuadrantItem(value=quad_ne, percentage=calc_pct(quad_ne, total_val)),
+            SW=QuadrantItem(value=quad_sw, percentage=calc_pct(quad_sw, total_val)),
+            SE=QuadrantItem(value=quad_se, percentage=calc_pct(quad_se, total_val)),
+        )
+
+        bounds = SpatialBounds(
+            min_lat=min_lat_found if min_lat_found <= max_lat_found else default_bounds.min_lat,
+            max_lat=max_lat_found if min_lat_found <= max_lat_found else default_bounds.max_lat,
+            min_lon=min_lon_found if min_lon_found <= max_lon_found else default_bounds.min_lon,
+            max_lon=max_lon_found if min_lon_found <= max_lon_found else default_bounds.max_lon,
+        )
+
+        return SpatialMatrixResponse(
+            resolution=0.1,
+            bounds=bounds,
+            summary=SpatialMatrixSummary(
+                active_cells_count=len(cells),
+                total_metric_value=total_val,
+                max_cell_hits=max_hits,
+                metric=metric,
+                from_date=from_date,
+                to_date=to_date,
+                quadrants=quadrants,
+            ),
+            cells=cells,
+        )
+
+    except Exception:
+        return empty_response

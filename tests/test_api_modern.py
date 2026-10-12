@@ -256,3 +256,58 @@ def test_modern_file_streaming_200_points_etrs89_to_st70_dms(client):
     assert math.isclose(e, 434283.040, abs_tol=0.01)
     assert " # Invalid" not in first_line
 
+
+def test_telemetry_spatial_matrix_endpoint_points(client):
+    """Verifies /api/v1/telemetry/spatial-matrix returns valid macroscopic grid and quadrants for points."""
+    res = client.get("/api/v1/telemetry/spatial-matrix?metric=points")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["resolution"] == 0.1
+    assert "bounds" in data
+    assert "summary" in data
+    assert "cells" in data
+
+    summary = data["summary"]
+    assert summary["metric"] == "points"
+    assert summary["total_metric_value"] >= 0
+    assert "quadrants" in summary
+
+    quads = summary["quadrants"]
+    assert quads["center"] == {"lat": 45.9, "lon": 24.9}
+    for q in ["NW", "NE", "SW", "SE"]:
+        assert q in quads
+        assert "value" in quads[q]
+        assert "percentage" in quads[q]
+
+    if data["cells"]:
+        first_cell = data["cells"][0]
+        assert "lat" in first_cell
+        assert "lon" in first_cell
+        assert "hits" in first_cell
+        assert first_cell["hits"] > 0
+
+
+def test_telemetry_spatial_matrix_endpoint_calls(client):
+    """Verifies /api/v1/telemetry/spatial-matrix works with metric=calls."""
+    res = client.get("/api/v1/telemetry/spatial-matrix?metric=calls")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["summary"]["metric"] == "calls"
+
+
+def test_telemetry_spatial_matrix_filters(client):
+    """Verifies spatial-matrix filters (dates, sources, operation, 3d)."""
+    res = client.get(
+        "/api/v1/telemetry/spatial-matrix?from_date=2026-01-01&to_date=2026-12-31&sources=1,2&operation=1&is_3d=1"
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["summary"]["from_date"] == "2026-01-01"
+    assert data["summary"]["to_date"] == "2026-12-31"
+
+
+def test_telemetry_spatial_matrix_invalid_metric(client):
+    """Verifies error on invalid metric parameter."""
+    res = client.get("/api/v1/telemetry/spatial-matrix?metric=invalid")
+    assert res.status_code == 422
+

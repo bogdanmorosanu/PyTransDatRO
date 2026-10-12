@@ -63,6 +63,7 @@ webapp/
     │   ├── StatsView.ts       # Active grid metadata and operational status modal
     │   ├── TelemetryDashboard.ts # Full-page usage telemetry dashboard with noUiSlider time scrubber
     │   ├── TimelineChart.ts   # Interactive SVG dual-metric timeline chart with dynamic source curves
+    │   ├── SpatialMatrixChart.ts # 0.1° punchcard canvas matrix with quadrant lines and ghost cells
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
     │   ├── GeodeticHelpModal.ts # Geodetic datum reference and parameter guide
     │   ├── ReportModal.ts     # Diagnostic calculation details modal

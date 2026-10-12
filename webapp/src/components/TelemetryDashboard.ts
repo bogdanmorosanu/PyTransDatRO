@@ -7,11 +7,13 @@ import {
   type TelemetryStatsResponse,
   type TimelineResponse,
   type SourceItem,
+  type SpatialMatrixResponse,
 } from '../utils/apiClient';
 import {
   TimelineChart,
   TOTAL_SERIES_CONFIG,
 } from './TimelineChart';
+import { SpatialMatrixChart } from './SpatialMatrixChart';
 
 export type TelemetryPreset = 'all' | '12m' | 'ytd' | '30d' | '7d';
 export type Granularity = 'daily' | 'weekly' | 'monthly';
@@ -27,11 +29,22 @@ export class TelemetryDashboard {
   private gridInfo: GridInfoResponse | null = null;
   private telemetry: TelemetryStatsResponse | null = null;
   private timelineData: TimelineResponse | null = null;
+  private spatialData: SpatialMatrixResponse | null = null;
 
   // View state
-  private activeSubTab: 'timeline' | 'grid' = 'timeline';
+  private activeSubTab: 'timeline' | 'spatial' | 'grid' = 'timeline';
   private activePreset: TelemetryPreset = 'all';
   private activeGranularity: Granularity = 'daily';
+
+  // Spatial view state
+  private spatialMetric: 'points' | 'calls' = 'points';
+  private spatialScaleMode: 'log' | 'linear' = 'log';
+  private spatialPreset: TelemetryPreset = 'all';
+  private spatialActiveSourceKeys: Set<string> = new Set();
+  private isSpatialLoading: boolean = false;
+  private spatialHasCustomRange: boolean = false;
+  private spatialCustomStartDate: string = '2023-11-01';
+  private spatialCustomEndDate: string = new Date().toISOString().slice(0, 10);
 
   // Dynamic sources list and selected toggle set
   private availableSources: SourceItem[] = [];
@@ -51,18 +64,21 @@ export class TelemetryDashboard {
   private sliderInstance: NoUiSliderAPI | null = null;
 
   private chart: TimelineChart;
+  private spatialChart: SpatialMatrixChart;
 
   constructor(callbacks: TelemetryDashboardCallbacks) {
     this.callbacks = callbacks;
     this.element = document.createElement('div');
     this.element.className = 'telemetry-page-view';
     this.chart = new TimelineChart();
+    this.spatialChart = new SpatialMatrixChart();
 
     this.render();
 
     onLanguageChange(() => {
       this.render();
-      this.mountChart();
+      if (this.activeSubTab === 'timeline') this.mountChart();
+      if (this.activeSubTab === 'spatial') this.mountSpatialChart();
     });
 
     this.initData();
@@ -216,17 +232,22 @@ export class TelemetryDashboard {
 
           <div class="telemetry-subtabs">
             <button class="telemetry-subtab-btn ${this.activeSubTab === 'timeline' ? 'active' : ''}" id="tab-timeline-btn">
-              📊 ${t('stats.tabTimeline')}
+              ${t('stats.tabTimeline')}
+            </button>
+            <button class="telemetry-subtab-btn ${this.activeSubTab === 'spatial' ? 'active' : ''}" id="tab-spatial-btn">
+              ${t('stats.tabSpatial')}
             </button>
             <button class="telemetry-subtab-btn ${this.activeSubTab === 'grid' ? 'active' : ''}" id="tab-grid-btn">
-              🌐 ${t('stats.tabGrid')}
+              ${t('stats.tabGridInfo')}
             </button>
           </div>
         </div>
 
         <!-- Main Body -->
         <div class="telemetry-page-content">
-          ${this.activeSubTab === 'timeline' ? this.renderTimelineHtml() : this.renderGridHtml()}
+          ${this.activeSubTab === 'timeline'
+            ? this.renderTimelineHtml()
+            : (this.activeSubTab === 'spatial' ? this.renderSpatialHtml() : this.renderGridHtml())}
         </div>
       </div>
     `;
@@ -242,6 +263,15 @@ export class TelemetryDashboard {
       this.mountChart();
     });
 
+    this.element.querySelector('#tab-spatial-btn')?.addEventListener('click', () => {
+      this.activeSubTab = 'spatial';
+      this.render();
+      this.mountSpatialChart();
+      if (!this.spatialData) {
+        this.fetchSpatialMatrix();
+      }
+    });
+
     this.element.querySelector('#tab-grid-btn')?.addEventListener('click', () => {
       this.activeSubTab = 'grid';
       this.render();
@@ -249,6 +279,8 @@ export class TelemetryDashboard {
 
     if (this.activeSubTab === 'timeline') {
       this.attachTimelineEventListeners();
+    } else if (this.activeSubTab === 'spatial') {
+      this.attachSpatialEventListeners();
     }
   }
 
@@ -547,6 +579,383 @@ export class TelemetryDashboard {
         activeSourceKeys: this.activeSourceKeys,
         availableSources: this.availableSources,
         showTotal: true,
+      });
+    }
+  }
+
+  // ==========================================
+  // Spatial Matrix Visual Logic
+  // ==========================================
+
+  private async fetchSpatialMatrix(): Promise<void> {
+    this.isSpatialLoading = true;
+    this.render();
+
+    try {
+      const params: Parameters<typeof apiClient.getSpatialMatrix>[0] = {
+        metric: this.spatialMetric,
+      };
+
+      // Date range filter
+      if (this.spatialHasCustomRange) {
+        params.from_date = this.spatialCustomStartDate;
+        params.to_date = this.spatialCustomEndDate;
+      } else {
+        const now = new Date();
+        if (this.spatialPreset === '7d') {
+          const d = new Date();
+          d.setDate(d.getDate() - 7);
+          params.from_date = d.toISOString().slice(0, 10);
+        } else if (this.spatialPreset === '30d') {
+          const d = new Date();
+          d.setDate(d.getDate() - 30);
+          params.from_date = d.toISOString().slice(0, 10);
+        } else if (this.spatialPreset === 'ytd') {
+          params.from_date = `${now.getFullYear()}-01-01`;
+        } else if (this.spatialPreset === '12m') {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() - 1);
+          params.from_date = d.toISOString().slice(0, 10);
+        }
+      }
+
+      // Map active source keys to source IDs
+      if (this.spatialActiveSourceKeys.size > 0 && this.availableSources.length > 0) {
+        const ids = this.availableSources
+          .filter((s) => this.spatialActiveSourceKeys.has(s.name))
+          .map((s) => s.id);
+        if (ids.length > 0 && ids.length < this.availableSources.length) {
+          params.sources = ids.join(',');
+        }
+      }
+
+      const res = await apiClient.getSpatialMatrix(params);
+      this.spatialData = res;
+    } catch (err) {
+      console.warn('Failed to fetch spatial matrix telemetry:', err);
+    } finally {
+      this.isSpatialLoading = false;
+      this.render();
+      this.mountSpatialChart();
+    }
+  }
+
+  private applySpatialPreset(preset: TelemetryPreset): void {
+    this.spatialPreset = preset;
+    this.spatialHasCustomRange = false;
+    const now = new Date();
+    this.spatialCustomEndDate = now.toISOString().slice(0, 10);
+
+    if (preset === '7d') {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      this.spatialCustomStartDate = d.toISOString().slice(0, 10);
+    } else if (preset === '30d') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      this.spatialCustomStartDate = d.toISOString().slice(0, 10);
+    } else if (preset === 'ytd') {
+      this.spatialCustomStartDate = `${now.getFullYear()}-01-01`;
+    } else if (preset === '12m') {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      this.spatialCustomStartDate = d.toISOString().slice(0, 10);
+    } else if (preset === 'all') {
+      this.spatialCustomStartDate = this.minHistoryDate;
+    }
+
+    this.fetchSpatialMatrix();
+  }
+
+  private renderSpatialHtml(): string {
+    const quadrants = this.spatialData?.summary.quadrants;
+    const totalVal = this.spatialData?.summary.total_metric_value || 0;
+    const activeCells = this.spatialData?.summary.active_cells_count || 0;
+    const maxCellHits = this.spatialData?.summary.max_cell_hits || 0;
+
+    // Default quadrant items if not yet loaded
+    const qNW = quadrants?.NW || { value: 0, percentage: 0 };
+    const qNE = quadrants?.NE || { value: 0, percentage: 0 };
+    const qSW = quadrants?.SW || { value: 0, percentage: 0 };
+    const qSE = quadrants?.SE || { value: 0, percentage: 0 };
+
+    // Source toggle chips
+    const sourceChipsHtml = this.availableSources
+      .filter((s) => s.name !== 'unknown')
+      .map((s) => {
+        const isActive = this.spatialActiveSourceKeys.size === 0 || this.spatialActiveSourceKeys.has(s.name);
+        return `
+          <button class="spatial-source-chip ${isActive ? 'active' : ''}" data-spatial-source="${s.name}">
+            <span class="chip-check">${isActive ? '✓' : ''}</span>
+            <span>${t(`stats.source${s.name.charAt(0).toUpperCase() + s.name.slice(1)}`) || s.name}</span>
+          </button>
+        `;
+      })
+      .join('');
+
+    return `
+      <!-- Top Deck: 4 Mathematical Quadrant Cards -->
+      <div class="spatial-quadrants-deck">
+        <div class="quadrant-card nw">
+          <div class="quadrant-header">
+            <span class="quadrant-code">NW</span>
+            <span class="quadrant-name">${t('stats.quadrantNW')}</span>
+          </div>
+          <div class="quadrant-value mono">${qNW.value.toLocaleString()}</div>
+          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qNW.percentage })}</div>
+        </div>
+
+        <div class="quadrant-card ne">
+          <div class="quadrant-header">
+            <span class="quadrant-code">NE</span>
+            <span class="quadrant-name">${t('stats.quadrantNE')}</span>
+          </div>
+          <div class="quadrant-value mono">${qNE.value.toLocaleString()}</div>
+          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qNE.percentage })}</div>
+        </div>
+
+        <div class="quadrant-card sw">
+          <div class="quadrant-header">
+            <span class="quadrant-code">SW</span>
+            <span class="quadrant-name">${t('stats.quadrantSW')}</span>
+          </div>
+          <div class="quadrant-value mono">${qSW.value.toLocaleString()}</div>
+          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qSW.percentage })}</div>
+        </div>
+
+        <div class="quadrant-card se">
+          <div class="quadrant-header">
+            <span class="quadrant-code">SE</span>
+            <span class="quadrant-name">${t('stats.quadrantSE')}</span>
+          </div>
+          <div class="quadrant-value mono">${qSE.value.toLocaleString()}</div>
+          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qSE.percentage })}</div>
+        </div>
+      </div>
+
+      <!-- Controls Deck -->
+      <div class="telemetry-deck spatial-controls-deck">
+        <!-- Row 1: Time Horizon Presets -->
+        <div class="telemetry-deck-row">
+          <div class="telemetry-facet-group">
+            <span class="facet-label">${t('stats.activePeriod')}:</span>
+            <div class="btn-group">
+              <button class="btn btn-sm ${this.spatialPreset === 'all' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="all">
+                ${t('stats.presetAll')}
+              </button>
+              <button class="btn btn-sm ${this.spatialPreset === '12m' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="12m">
+                ${t('stats.preset12M')}
+              </button>
+              <button class="btn btn-sm ${this.spatialPreset === 'ytd' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="ytd">
+                ${t('stats.presetYTD')}
+              </button>
+              <button class="btn btn-sm ${this.spatialPreset === '30d' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="30d">
+                ${t('stats.preset30D')}
+              </button>
+              <button class="btn btn-sm ${this.spatialPreset === '7d' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="7d">
+                ${t('stats.preset7D')}
+              </button>
+            </div>
+          </div>
+
+          <!-- Total Count & Cell Area Badges -->
+          <div class="spatial-overview-badges">
+            <span class="stat-pill">
+              <span class="muted">${t('stats.activeCellsCount', { count: activeCells.toLocaleString() })}</span>
+            </span>
+            <span class="stat-pill cell-area-pill">
+              <span class="muted">${t('stats.cellAreaNote')}</span>
+            </span>
+            <span class="stat-pill highlight">
+              <strong>${totalVal.toLocaleString()}</strong> ${this.spatialMetric === 'points' ? t('stats.metricPoints') : t('stats.metricCalls')}
+            </span>
+          </div>
+        </div>
+
+        <!-- Row 2: Vanilla Date Range Scrubber -->
+        <div class="telemetry-deck-row spatial-date-scrubber-row">
+          <div class="spatial-date-scrubber-label">
+            <span class="facet-label">${t('stats.rangeSliderLabel')}</span>
+            <span class="mono primary-light font-bold" id="spatial-range-display">
+              ${this.spatialCustomStartDate} — ${this.spatialCustomEndDate}
+            </span>
+          </div>
+          <div class="spatial-date-inputs">
+            <input type="date" class="form-control form-control-sm" id="spatial-date-start"
+              min="${this.minHistoryDate}" max="${this.maxHistoryDate}" value="${this.spatialCustomStartDate}" />
+            <span class="muted">➔</span>
+            <input type="date" class="form-control form-control-sm" id="spatial-date-end"
+              min="${this.minHistoryDate}" max="${this.maxHistoryDate}" value="${this.spatialCustomEndDate}" />
+          </div>
+        </div>
+
+        <!-- Row 3: Metric Toggle & Scale Mode Toggle (Zero Emojis) -->
+        <div class="telemetry-deck-row facet-row">
+          <div class="telemetry-facet-group">
+            <span class="facet-label">${t('stats.metricToggleLabel')}</span>
+            <div class="btn-group">
+              <button class="btn btn-sm ${this.spatialMetric === 'points' ? 'btn-primary' : 'btn-outline'}" id="spatial-metric-points-btn">
+                ${t('stats.metricPoints')}
+              </button>
+              <button class="btn btn-sm ${this.spatialMetric === 'calls' ? 'btn-primary' : 'btn-outline'}" id="spatial-metric-calls-btn">
+                ${t('stats.metricCalls')}
+              </button>
+            </div>
+          </div>
+
+          <div class="telemetry-facet-group">
+            <span class="facet-label">${t('stats.scaleToggleLabel')}</span>
+            <div class="btn-group">
+              <button class="btn btn-sm ${this.spatialScaleMode === 'log' ? 'btn-primary' : 'btn-outline'}" id="spatial-scale-log-btn">
+                ${t('stats.scaleLog')}
+              </button>
+              <button class="btn btn-sm ${this.spatialScaleMode === 'linear' ? 'btn-primary' : 'btn-outline'}" id="spatial-scale-linear-btn">
+                ${t('stats.scaleLinear')}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Client Sources Filter Chips -->
+        <div class="telemetry-deck-row source-toggles-row">
+          <div class="sources-label-col">
+            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
+          </div>
+          <div class="spatial-source-chips-list">
+            ${sourceChipsHtml}
+          </div>
+        </div>
+      </div>
+
+      <!-- Spatial Matrix Viewport -->
+      <div class="telemetry-chart-viewport spatial-matrix-viewport">
+        ${this.isSpatialLoading ? `<div class="timeline-loading-overlay">${t('stats.loadingTimeline')}</div>` : ''}
+        
+        <!-- Top Info Header & 5-Step Discrete Color Legend (Strict i18n) -->
+        <div class="spatial-viewport-legend-row">
+          <div class="spatial-legend-bar">
+            <span class="legend-bar-label">${t('stats.scaleToggleLabel')}</span>
+            <div class="legend-color-step">
+              <span class="step-swatch ghost"></span>
+              <span class="step-label">${t('stats.levelEmpty')}</span>
+            </div>
+            <div class="legend-color-step">
+              <span class="step-swatch level-1"></span>
+              <span class="step-label">${t('stats.levelLow')}</span>
+            </div>
+            <div class="legend-color-step">
+              <span class="step-swatch level-2"></span>
+              <span class="step-label">${t('stats.levelMedium')}</span>
+            </div>
+            <div class="legend-color-step">
+              <span class="step-swatch level-3"></span>
+              <span class="step-label">${t('stats.levelHigh')}</span>
+            </div>
+            <div class="legend-color-step">
+              <span class="step-swatch level-4"></span>
+              <span class="step-label">${t('stats.levelPeak', { count: maxCellHits.toLocaleString() })}</span>
+            </div>
+          </div>
+
+          <div class="spatial-legend-notes">
+            <span class="spatial-ghost-note">${t('stats.ghostCellsNote')}</span>
+            <span class="spatial-quadrant-note">${t('stats.quadrantLinesNote')}</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container Slot -->
+        <div id="spatial-matrix-slot"></div>
+      </div>
+    `;
+  }
+
+  private attachSpatialEventListeners(): void {
+    // Preset buttons
+    this.element.querySelectorAll('[data-spatial-preset]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const p = (e.currentTarget as HTMLElement).getAttribute('data-spatial-preset') as TelemetryPreset;
+        if (p) {
+          this.applySpatialPreset(p);
+        }
+      });
+    });
+
+    // Date range inputs
+    const startInput = this.element.querySelector('#spatial-date-start') as HTMLInputElement | null;
+    const endInput = this.element.querySelector('#spatial-date-end') as HTMLInputElement | null;
+
+    const onDateInputChange = () => {
+      if (startInput && endInput) {
+        if (startInput.value && endInput.value && startInput.value <= endInput.value) {
+          this.spatialHasCustomRange = true;
+          this.spatialCustomStartDate = startInput.value;
+          this.spatialCustomEndDate = endInput.value;
+          this.fetchSpatialMatrix();
+        }
+      }
+    };
+
+    startInput?.addEventListener('change', onDateInputChange);
+    endInput?.addEventListener('change', onDateInputChange);
+
+    // Metric toggle
+    this.element.querySelector('#spatial-metric-points-btn')?.addEventListener('click', () => {
+      if (this.spatialMetric !== 'points') {
+        this.spatialMetric = 'points';
+        this.fetchSpatialMatrix();
+      }
+    });
+
+    this.element.querySelector('#spatial-metric-calls-btn')?.addEventListener('click', () => {
+      if (this.spatialMetric !== 'calls') {
+        this.spatialMetric = 'calls';
+        this.fetchSpatialMatrix();
+      }
+    });
+
+    // Scale toggle
+    this.element.querySelector('#spatial-scale-log-btn')?.addEventListener('click', () => {
+      if (this.spatialScaleMode !== 'log') {
+        this.spatialScaleMode = 'log';
+        this.render();
+        this.mountSpatialChart();
+      }
+    });
+
+    this.element.querySelector('#spatial-scale-linear-btn')?.addEventListener('click', () => {
+      if (this.spatialScaleMode !== 'linear') {
+        this.spatialScaleMode = 'linear';
+        this.render();
+        this.mountSpatialChart();
+      }
+    });
+
+    // Source chips
+    this.element.querySelectorAll('[data-spatial-source]').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        const srcName = (e.currentTarget as HTMLElement).getAttribute('data-spatial-source');
+        if (srcName) {
+          if (this.spatialActiveSourceKeys.has(srcName)) {
+            this.spatialActiveSourceKeys.delete(srcName);
+          } else {
+            this.spatialActiveSourceKeys.add(srcName);
+          }
+          this.fetchSpatialMatrix();
+        }
+      });
+    });
+  }
+
+  private mountSpatialChart(): void {
+    const slot = this.element.querySelector('#spatial-matrix-slot');
+    if (!slot) return;
+    slot.innerHTML = '';
+    slot.appendChild(this.spatialChart.getElement());
+
+    if (this.spatialData) {
+      this.spatialChart.update(this.spatialData, {
+        metric: this.spatialMetric,
+        scaleMode: this.spatialScaleMode,
       });
     }
   }

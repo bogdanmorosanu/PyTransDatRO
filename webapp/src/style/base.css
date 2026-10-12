@@ -48,7 +48,7 @@ html, body {
 /* Main Split Workbench Layout */
 .workbench-layout {
   display: grid;
-  grid-template-columns: 480px 1fr;
+  grid-template-columns: 480px minmax(0, 1fr);
   flex: 1;
   min-height: 0;
   height: calc(100vh - 64px);
@@ -59,6 +59,9 @@ html, body {
 .utility-panel {
   display: flex;
   flex-direction: column;
+  width: 480px;
+  min-width: 480px;
+  max-width: 480px;
   height: 100%;
   background-color: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
@@ -66,6 +69,7 @@ html, body {
   overflow-x: hidden;
   position: relative;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 /* Right Map Panel */
