@@ -124,7 +124,7 @@ Rather than relying on generic saturated blue, the primary action button uses a 
 - **Seamless Physical Continuity**: Folder bookmark tabs must seamlessly connect with the active card container below. Zero 16px background gap; the active tab visually and physically merges with the top border of the card surface below.
 - **Prefix Label**: Subtle prefix `Transform:` (`Transformă:`) precedes tab buttons.
 - **Concise Labels**: Text-only, title case: `Point`, `Text`, `Files` (RO: `Punct`, `Text`, `Fișiere`).
-- **Header Direct Links**: `Grid Info` and `Geodetic Help` are direct text links in the top navbar (`Header.ts`), keeping the transformation tabs strictly focused on input modes.
+- **Decoupled Application Header**: Top navbar (`Header.ts`) manages high-level views (`Transform` vs. `Usage`), Help & Grid documentation dialogs, and official external resources, keeping workbench tabs strictly focused on transformation modes.
 
 ### 4.2 3-Tier Shared Transformation Configuration Bar
 Located at the top of the left workbench panel, unifying configuration across all tabs:
@@ -209,12 +209,66 @@ Concise, bilingual status badges across all tabs:
 - `No Grid Data` (`Fără date în grid`)
 - `Syntax Error` (`Eroare sintaxă`)
 
+### 4.8 Header Architecture & Global Navigation Invariants (`Header.ts`)
+The top navigation bar (`52px` fixed height) functions as the unified application chrome and system dock:
+
+1. **Space Economy & Vertical Density (Single-Line Compactness)**:
+   - Header bars and fixed chrome must strictly preserve a **single-line profile** (`height: 52px`).
+   - Avoid multi-line wrapping or vertically stacked navigation tiers by organizing controls into three distinct horizontal clusters:
+     - **Zone 1 (Left)**: Brand Identity & Primary Views.
+     - **Zone 2 (Divider)**: Vertical divider line separating brand/app context from secondary tools.
+     - **Zone 3 (Right)**: Attribution, Help, API, Feedback, and System Utilities (Lang & Theme).
+
+2. **Spatial Distribution & Alignment Balance**:
+   - In vertically stacked micro-clusters (e.g. the brand title and metadata subrow), child elements on the lower line must visually balance the width of the primary element above.
+   - Example: The title `PyTransDatRO` sits above a metadata subrow styled with `width: 100%; justify-content: space-between;`. The release stage badge (`v1.0.0-beta`) is anchored on the left, while the live health indicator dot (`7.5px`) is anchored on the right, matching the exact width boundary of the title text.
+
+3. **Primary View Switcher (GitHub-Style Underline Tabs)**:
+   - Top-level application view switchers (`Transform` vs. `Usage`) must be styled as clean text tabs rather than heavy pills or buttons.
+   - Feature an active underline indicator (`.header-tab-indicator`, a 2px primary accent bar pinned to the bottom border) with smooth hover transitions, clearly signaling that selecting a tab switches the primary canvas below.
+
+4. **External Navigation Indicator Rule**:
+   - Every hyperlink or navigation button pointing to an external destination (e.g., GitHub repository, Rompos download portal, external API documentation) must feature a trailing external link indicator (`↗` SVG icon, 10–11px, `class="ext-icon"`).
+   - Internal app actions (such as modal dialog triggers or view switches) must **never** include this indicator.
+
+5. **Uppercase Micro-Section Headers (`text-transform: uppercase`)**:
+   - Discrete sub-group titles and category labels across flyouts, dropdowns, and workbench cards must be styled in uppercase typography with compact letter-spacing (`0.5px`) and muted technical colors (`--text-dim`):
+     - Examples: `COMPUTED COORDINATES`, `ANCPI / ROMPOS RESOURCES`, `INPUT COORDINATES (OR CLICK ON MAP)`.
+   - Creates crisp visual hierarchy distinguishing structural category containers from interactive options.
+
+6. **Native HTML5 Disclosure for Flyouts (`<details><summary>`)**:
+   - Header dropdowns and disclosure popovers must use native HTML5 `<details class="header-dropdown-wrap">` with `<summary class="header-dropdown-trigger">`.
+   - Native browser engine handling guarantees 100% reliable opening/expansion across all devices and input methods without JavaScript click-listener race conditions or event cancellation glitches.
+   - JavaScript is reserved strictly for dismissal: closing on click-outside (`details.open = false`), on menu item selection, or on <kbd>Escape</kbd> keypress.
+
+7. **Uniform Action Button Hierarchy (`.btn-outline`)**:
+   - Secondary action triggers sharing the same visual hierarchy (`Help`, `API`, `Feedback`) must use uniform styling:
+     - Standardized height (`32px`), padding (`0 12px`), border (`1px solid var(--border-medium)`), and elevated surface background (`var(--bg-surface-elevated)`).
+     - Explicit `text-decoration: none !important;` to ensure anchor tags (`<a>`) never render default browser underlines.
+
+8. **Semantic Health Indicator Dot**:
+   - System health is displayed as an enlarged `7.5px` circular indicator with an elevated glow (`box-shadow: 0 0 7px ...`).
+   - Strictly semantic colors: `#10b981` (green) for healthy/online and `#ef4444` (red) for offline.
+   - Omits the redundant text word "Online" to preserve layout cleanliness, providing rich status information via cursor pointer and hover tooltip.
+
+9. **Unified Informational Metric & Technical Neutral Accents**:
+   - Technical metadata tags (`v1.0.0-beta`), example format badges (`45.84123450`), and non-status annotations must use uniform theme-native neutral tokens (`--color-primary-light`, `--bg-surface-elevated`, `--border-medium`, `--font-mono`).
+
+10. **Vector Brand Identity & Favicon Synchronization**:
+    - The official vector logo (Concept 1: Geodetic Shift Lattice, `webapp/src/assets/logo.svg`) is sized to `36px × 36px` in the header.
+    - The browser tab favicon (`webapp/public/favicon.svg`) must always remain in 1:1 synchronization with the application brand SVG.
+
 ---
 
 ## 5. Checklist for Future UI & Map Changes
 
 Before committing any frontend UI or map changes, verify:
 - [ ] Are all tabs, buttons, and segmented options free of informal emojis and decorative icons?
+- [ ] Is the top header height maintained at `52px` without multi-line wrapping?
+- [ ] Do primary view switchers use text tabs with the bottom active underline indicator?
+- [ ] Do all external links feature the trailing `↗` (`.ext-icon`) indicator?
+- [ ] Are flyout dropdowns implemented with semantic `<details><summary>` disclosure?
+- [ ] Are sub-group section headers styled in uppercase with letter-spacing?
 - [ ] Is the left workbench panel width maintained at `480px`?
 - [ ] Do folder bookmark tabs merge seamlessly with the card container below (zero gap)?
 - [ ] Does the primary action button use the high-contrast theme-native anchor style (`.btn-primary`)?
@@ -225,3 +279,4 @@ Before committing any frontend UI or map changes, verify:
 - [ ] Are map viewports decoupled from coordinate transforms (no auto-panning)?
 - [ ] Do all tabs provide separate `Center on Map` and `Zoom to Extents` actions, strictly guarded within Romania's envelope?
 - [ ] Does `npm --prefix webapp run build` compile cleanly with 0 TypeScript/bundler errors?
+
