@@ -1,0 +1,18 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+  <!-- Interpolation grid lattice lines -->
+  <path d="M10 20H30M20 10V30" stroke="#334155" stroke-width="1.2" stroke-dasharray="2 2"/>
+  <!-- Corner grid matrix nodes -->
+  <circle cx="12" cy="12" r="2" fill="#64748b"/>
+  <circle cx="28" cy="12" r="2" fill="#64748b"/>
+  <circle cx="12" cy="28" r="2" fill="#64748b"/>
+  <circle cx="28" cy="28" r="2" fill="#64748b"/>
+  <!-- Origin coordinate node (Cobalt) -->
+  <circle cx="17" cy="23" r="3" fill="#3b82f6"/>
+  <!-- Shift vector line (Cyan) -->
+  <path d="M17 23L25 15" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+  <!-- Vector arrowhead -->
+  <polygon points="26,14 21,15 25,19" fill="#38bdf8"/>
+  <!-- Target transformed coordinate node (Porcelain white) -->
+  <circle cx="25" cy="15" r="2.5" fill="#f8fafc"/>
+</svg>

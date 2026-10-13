@@ -54,8 +54,12 @@ webapp/
 ├── vite.config.ts          # Vite build options and dev server API proxy
 └── src/
     ├── main.ts             # Application orchestrator & component lifecycle manager
+    ├── assets/             # Vector graphic assets and brand icons
+    │   └── logo.svg        # Official Geodetic Shift Lattice application logo
     ├── components/         # Interactive UI workbench components
-    │   ├── Header.ts       # Branding, direct navbar links (Usage Data, Geodetic Help), lang & theme
+    │   ├── Header.ts       # 3-Zone Header (Brand, Navigation, Native Details Help Dropdown, Health)
+    │   ├── GridInfoModal.ts   # Dedicated binary grid (transdat.spg) model & metadata modal
+    │   ├── GeodeticHelpModal.ts # Dedicated Help and reference documentation modal
     │   ├── PointConverter.ts  # Single-point transformation workbench
     │   ├── BatchConverter.ts  # Multi-line text conversion workbench
     │   ├── FileUpload.ts      # Drag-and-drop file processor with streaming progress
@@ -65,7 +69,6 @@ webapp/
     │   ├── TimelineChart.ts   # Interactive SVG dual-metric timeline chart with dynamic source curves
     │   ├── SpatialMatrixChart.ts # 0.1° punchcard canvas matrix with quadrant lines and ghost cells
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
-    │   ├── GeodeticHelpModal.ts # Geodetic datum reference and parameter guide
     │   ├── ReportModal.ts     # Diagnostic calculation details modal
     │   └── FeedbackModal.ts   # Discrepancy reporting and user feedback modal
     ├── i18n/               # Internationalization system

@@ -10,6 +10,7 @@ import { MapView } from './components/MapView';
 import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
 import { GeodeticHelpModal } from './components/GeodeticHelpModal';
+import { GridInfoModal } from './components/GridInfoModal';
 import { FeedbackModal } from './components/FeedbackModal';
 import { TelemetryDashboard } from './components/TelemetryDashboard';
 import { VolumeWarningModal } from './components/VolumeWarningModal';
@@ -39,6 +40,7 @@ class App {
   private batchConverter!: BatchConverter;
   private fileUpload!: FileUpload;
   private geodeticHelpModal = new GeodeticHelpModal();
+  private gridInfoModal = new GridInfoModal();
   private mapView!: MapView;
 
   private feedbackModal = new FeedbackModal();
@@ -65,8 +67,9 @@ class App {
   private initLayout(): void {
     // 1. Header
     this.header = new Header({
+      onNavigate: (page) => this.navigateToPage(page),
       onOpenFeedback: () => this.feedbackModal.open(),
-      onOpenGridInfo: () => this.navigateToPage('telemetry'),
+      onOpenGridInfo: () => this.gridInfoModal.open(),
       onOpenGeodeticHelp: () => this.geodeticHelpModal.open(),
       onToggleMobileView: () => this.toggleMobileView(),
     });
@@ -395,6 +398,7 @@ class App {
   }
 
   private navigateToPage(page: AppPage): void {
+    this.header.setActivePage(page);
     if (page === 'telemetry') {
       this.workbenchLayout.style.display = 'none';
       this.telemetryDashboard.getElement().style.display = 'block';

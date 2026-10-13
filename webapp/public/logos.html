@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PyTransDatRO - Logo Concepts Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #090d16;
+      --bg-card: #0f172a;
+      --bg-card-hover: #162036;
+      --border-subtle: #1e293b;
+      --border-medium: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --cyan: #38bdf8;
+      --blue: #3b82f6;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --emerald: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      padding: 40px 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 36px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 24px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .card:hover {
+      border-color: var(--border-medium);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .card-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--cyan);
+      background: rgba(56, 189, 248, 0.1);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .preview-box {
+      background: #060910;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .preview-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(#1e293b 1px, transparent 1px);
+      background-size: 14px 14px;
+      opacity: 0.5;
+    }
+
+    .header-mockup {
+      background: #0a0f1d;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .mock-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mock-badge {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      background: #1e293b;
+      color: var(--cyan);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      flex-grow: 1;
+    }
+
+    .symbol {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PyTransDatRO - Logo Concept Showcase</h1>
+      <p class="subtitle">5 geodetic, precision-engineered vector SVG concepts for PyTransDatRO. Designed for dark & light UI compatibility, 28px header heights, and favicon scaling.</p>
+    </header>
+
+    <div class="grid">
+      <!-- CONCEPT 1 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">1. The Geodetic Shift Lattice</div>
+          <div class="card-tag">Concept 1</div>
+        </div>
+        <div class="preview-box">
+          <svg class="symbol" width="72" height="72" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <!-- Grid nodes -->
+            <path d="M10 20H30M20 10V30" stroke="#334155" stroke-width="1.2" stroke-dasharray="2 2"/>
+            <circle cx="12" cy="12" r="2" fill="#64748b"/>
+            <circle cx="28" cy="12" r="2" fill="#64748b"/>
+            <circle cx="12" cy="28" r="2" fill="#64748b"/>
+            <circle cx="28" cy="28" r="2" fill="#64748b"/>
+            <!-- Dual datum shift vector -->
+            <circle cx="17" cy="23" r="3" fill="#3b82f6"/>
+            <path d="M17 23L25 15" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+            <polygon points="26,14 21,15 25,19" fill="#38bdf8"/>
+            <circle cx="25" cy="15" r="2.5" fill="#f8fafc"/>
+          </svg>
+        </div>
+        <div class="header-mockup">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <path d="M10 20H30M20 10V30" stroke="#334155" stroke-width="1.2" stroke-dasharray="2 2"/>
+            <circle cx="17" cy="23" r="3" fill="#3b82f6"/>
+            <path d="M17 23L25 15" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+            <polygon points="26,14 21,15 25,19" fill="#38bdf8"/>
+          </svg>
+          <div class="mock-title">
+            PyTransDatRO <span class="mock-badge">v1.0.0-beta</span>
+          </div>
+        </div>
+        <div class="card-desc">
+          <strong>Symbolism:</strong> Represents the 2D grid interpolation matrix ($\Delta E, \Delta N$). Shows a coordinate node in one datum transforming across the grid to its target position with a precision vector.
+        </div>
+      </div>
+
+      <!-- CONCEPT 2 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">2. Stereographic Crosshair (Δ)</div>
+          <div class="card-tag">Concept 2</div>
+        </div>
+        <div class="preview-box">
+          <svg class="symbol" width="72" height="72" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <!-- Target concentric rings -->
+            <circle cx="20" cy="20" r="11" stroke="#334155" stroke-width="1.5"/>
+            <path d="M20 6V11M20 29V34M6 20H11M29 20H34" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- Delta / Transformation symbol -->
+            <path d="M20 13L26 24H14L20 13Z" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="20" cy="20.5" r="2" fill="#f8fafc"/>
+          </svg>
+        </div>
+        <div class="header-mockup">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="11" stroke="#334155" stroke-width="1.5"/>
+            <path d="M20 6V11M20 29V34M6 20H11M29 20H34" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M20 13L26 24H14L20 13Z" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <div class="mock-title">
+            PyTransDatRO <span class="mock-badge">v1.0.0-beta</span>
+          </div>
+        </div>
+        <div class="card-desc">
+          <strong>Symbolism:</strong> Combines the geodetic surveyor's theodolite reticle / crosshair with the Greek letter <strong>Delta ($\Delta$)</strong>, representing coordinate differences and geodetic triangulation.
+        </div>
+      </div>
+
+      <!-- CONCEPT 3 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">3. Ellipsoid-to-Plane Dual Helix</div>
+          <div class="card-tag">Concept 3</div>
+        </div>
+        <div class="preview-box">
+          <svg class="symbol" width="72" height="72" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <!-- Ellipsoidal meridians -->
+            <ellipse cx="20" cy="20" rx="12" ry="7" stroke="#334155" stroke-width="1.5" transform="rotate(-25 20 20)"/>
+            <!-- Dual transforming dynamic arrows -->
+            <path d="M12 16C14 11 22 10 26 14" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+            <path d="M28 24C26 29 18 30 14 26" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+            <polygon points="27,15 26,11 22,13" fill="#38bdf8"/>
+            <polygon points="13,25 14,29 18,27" fill="#3b82f6"/>
+            <!-- Center anchor -->
+            <circle cx="20" cy="20" r="2.5" fill="#f8fafc"/>
+          </svg>
+        </div>
+        <div class="header-mockup">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <ellipse cx="20" cy="20" rx="12" ry="7" stroke="#334155" stroke-width="1.5" transform="rotate(-25 20 20)"/>
+            <path d="M12 16C14 11 22 10 26 14" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+            <path d="M28 24C26 29 18 30 14 26" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="mock-title">
+            PyTransDatRO <span class="mock-badge">v1.0.0-beta</span>
+          </div>
+        </div>
+        <div class="card-desc">
+          <strong>Symbolism:</strong> Represents the continuous bidirectional mathematical cycle between the 3D GRS80 curved ellipsoid and the 2D Romanian Stereo 70 projection secant plane.
+        </div>
+      </div>
+
+      <!-- CONCEPT 4 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">4. Minimalist "RO" Projection Monogram</div>
+          <div class="card-tag">Concept 4</div>
+        </div>
+        <div class="preview-box">
+          <svg class="symbol" width="72" height="72" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <!-- Letter R precision path -->
+            <path d="M12 28V12H18.5C21 12 22.5 13.5 22.5 15.5C22.5 17.5 21 19 18.5 19H12M17.5 19L23 28" stroke="#f8fafc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Geodetic target point circle as 'O' or coordinate node -->
+            <circle cx="28" cy="20" r="4.5" stroke="#38bdf8" stroke-width="2"/>
+            <circle cx="28" cy="20" r="1.5" fill="#38bdf8"/>
+            <!-- Subtly placed tricolor accent on border -->
+            <line x1="8" y1="36" x2="16" y2="36" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+            <line x1="16" y1="36" x2="24" y2="36" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="36" x2="32" y2="36" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="header-mockup">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <path d="M12 28V12H18.5C21 12 22.5 13.5 22.5 15.5C22.5 17.5 21 19 18.5 19H12M17.5 19L23 28" stroke="#f8fafc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="28" cy="20" r="4" stroke="#38bdf8" stroke-width="2"/>
+            <line x1="8" y1="36" x2="16" y2="36" stroke="#3b82f6" stroke-width="2"/>
+            <line x1="16" y1="36" x2="24" y2="36" stroke="#f59e0b" stroke-width="2"/>
+            <line x1="24" y1="36" x2="32" y2="36" stroke="#ef4444" stroke-width="2"/>
+          </svg>
+          <div class="mock-title">
+            PyTransDatRO <span class="mock-badge">v1.0.0-beta</span>
+          </div>
+        </div>
+        <div class="card-desc">
+          <strong>Symbolism:</strong> Clean typographic monogram combining the letter **R** with a coordinate bullseye node as **O**, finished with a tasteful micro-triribbon (Blue/Yellow/Red) celebrating Romanian national geodesy.
+        </div>
+      </div>
+
+      <!-- CONCEPT 5 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">5. Python Snake Meets Geodetic Pin</div>
+          <div class="card-tag">Concept 5</div>
+        </div>
+        <div class="preview-box">
+          <svg class="symbol" width="72" height="72" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <!-- Cleaned stylized Python interlocking shapes configured as a compass/pin -->
+            <!-- Top curve (Cyan) -->
+            <path d="M19 10C14 10 12 12 12 16V18H20V20H10C10 24 12 26 16 26H18V23C18 20.5 20.5 18 23 18H27V16C27 12 24 10 19 10Z" fill="#38bdf8" fill-opacity="0.85"/>
+            <circle cx="16" cy="14" r="1.2" fill="#090d16"/>
+            <!-- Bottom curve (Cobalt) -->
+            <path d="M21 30C26 30 28 28 28 24V22H20V20H30C30 16 28 14 24 14H22V17C22 19.5 19.5 22 17 22H13V24C13 28 16 30 21 30Z" fill="#3b82f6"/>
+            <circle cx="24" cy="26" r="1.2" fill="#090d16"/>
+          </svg>
+        </div>
+        <div class="header-mockup">
+          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+            <rect width="40" height="40" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+            <path d="M19 10C14 10 12 12 12 16V18H20V20H10C10 24 12 26 16 26H18V23C18 20.5 20.5 18 23 18H27V16C27 12 24 10 19 10Z" fill="#38bdf8" fill-opacity="0.85"/>
+            <circle cx="16" cy="14" r="1.2" fill="#090d16"/>
+            <path d="M21 30C26 30 28 28 28 24V22H20V20H30C30 16 28 14 24 14H22V17C22 19.5 19.5 22 17 22H13V24C13 28 16 30 21 30Z" fill="#3b82f6"/>
+            <circle cx="24" cy="26" r="1.2" fill="#090d16"/>
+          </svg>
+          <div class="mock-title">
+            PyTransDatRO <span class="mock-badge">v1.0.0-beta</span>
+          </div>
+        </div>
+        <div class="card-desc">
+          <strong>Symbolism:</strong> Directly honors the pure-Python foundation of the library. Reimagines the classic dual-snake Python emblem in our technical cyan & deep cobalt precision palette.
+        </div>
+      </div>
+
+    </div>
+
+    <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; font-size: 13px; color: var(--text-muted);">
+      <strong style="color: var(--text-main);">How to test & review live:</strong> Open your browser at <code style="color: var(--cyan); background: #060910; padding: 2px 6px; border-radius: 4px;">http://localhost:5173/logos.html</code> to inspect all 5 concepts in dark mode, zoom in, and test against different screen sizes.
+    </div>
+  </div>
+</body>
+</html>

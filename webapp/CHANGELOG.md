@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Refactored 3-Zone Application Header (`Header.ts`, `GridInfoModal.ts`, `logo.svg`, `components.css`, `ro.ts`, `en.ts`)**:
+  - **Zone 1: Brand Cluster Hierarchy & Favicon**:
+    - Enlarged vector logo to `36px × 36px` to harmonize with a two-line text cluster.
+    - Title `PyTransDatRO` stacked above a balanced metadata subrow: `v1.0.0-beta` left-aligned and the glowing API health indicator dot (`7.5px`) right-aligned to match the title boundary, omitting the redundant word "Online".
+    - Updated `webapp/public/favicon.svg` to match the geodetic shift lattice logo in the browser tab.
+  - **Zone 2: GitHub-Style Underline App Navigation**:
+    - Relocated `Transform` and `Usage` directly adjacent to the brand cluster, delimited by a subtle vertical separator.
+    - Converted buttons into clean text tabs featuring an active underline indicator highlight and hover transitions.
+  - **Zone 3: Consolidated Help Dropdown, Repository Attribution & Uniform Buttons**:
+    - **Native `<details><summary>` Disclosure Menu**: Replaced fragile JavaScript event listener class toggling with the browser's native HTML5 `<details><summary>` disclosure pattern, guaranteeing 100% reliable opening/expansion on click across all devices and input methods with seamless click-outside, item click, and Escape-key closure.
+    - Moved `by PyTransDatRO` external repository link (`https://github.com/bogdanmorosanu/PyTransDatRO`) into the right action cluster.
+    - Standardized outline button appearance across `Help`, `API`, and `Feedback`, removing the text underline glitch on the `API` link.
+  - **Zone 4: Zero-Emoji System Utilities**:
+    - Replaced emoji theme toggle with clean SVG geometric icons (sun / moon) adhering to `design_guide.md`.
+    - Added clean `RO` / `EN` segmented language toggle with full reactive i18n support.
 - **Spatial Overview Matrix Visual (`SpatialMatrixChart.ts`, `TelemetryDashboard.ts`, `apiClient.ts`, `components.css`)**:
   - **Macroscopic $0.1^\circ$ Punchcard Canvas**: Renders a fixed, non-zoomed macroscopic grid of Romania on HTML5 canvas (~10 km bins), featuring faint ghost cells for unvisited coordinates and a high-contrast 5-tier discrete color ramp.
   - **Mathematical Quadrant Summary Cards**: Four dynamic summary cards (**NW**, **NE**, **SW**, **SE**) calculated around the national center ($45.9^\circ\text{ N}, 24.9^\circ\text{ E}$), displaying absolute volumes and relative percentage shares without administrative boundary bias.

@@ -51,7 +51,7 @@
   /* Z-index layers */
   --z-map: 1;
   --z-map-controls: 500;
-  --z-header: 100;
+  --z-header: 600;
   --z-modal: 1000;
   --z-toast: 1100;
 }

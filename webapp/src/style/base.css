@@ -51,7 +51,7 @@ html, body {
   grid-template-columns: 480px minmax(0, 1fr);
   flex: 1;
   min-height: 0;
-  height: calc(100vh - 64px);
+  height: calc(100vh - 52px);
   overflow: hidden;
 }
 
