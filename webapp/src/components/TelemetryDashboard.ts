@@ -1,9 +1,6 @@
-import noUiSlider, { type API as NoUiSliderAPI } from 'nouislider';
-import 'nouislider/dist/nouislider.css';
 import { t, onLanguageChange } from '../i18n';
 import {
   apiClient,
-  type GridInfoResponse,
   type TelemetryStatsResponse,
   type TimelineResponse,
   type SourceItem,
@@ -11,7 +8,7 @@ import {
 } from '../utils/apiClient';
 import {
   TimelineChart,
-  TOTAL_SERIES_CONFIG,
+  type TimelineMetricFilter,
 } from './TimelineChart';
 import { SpatialMatrixChart } from './SpatialMatrixChart';
 
@@ -19,22 +16,37 @@ export type TelemetryPreset = 'all' | '12m' | 'ytd' | '30d' | '7d';
 export type Granularity = 'daily' | 'weekly' | 'monthly';
 
 export interface TelemetryDashboardCallbacks {
-  onBackToStudio: () => void;
+  onBackToStudio?: () => void;
 }
+
+// Canonical lookup dictionary for source display names
+export const SOURCE_LABEL_LOOKUP: Record<string, string> = {
+  rest_api: 'REST API',
+  web_app: 'Web App',
+  web_map: 'Web App', // backward compatibility alias
+  desktop_cli: 'Desktop / CLI',
+};
 
 export class TelemetryDashboard {
   private element: HTMLElement;
-  private callbacks: TelemetryDashboardCallbacks;
 
-  private gridInfo: GridInfoResponse | null = null;
   private telemetry: TelemetryStatsResponse | null = null;
   private timelineData: TimelineResponse | null = null;
   private spatialData: SpatialMatrixResponse | null = null;
 
   // View state
-  private activeSubTab: 'timeline' | 'spatial' | 'grid' = 'timeline';
+  private activeSubTab: 'timeline' | 'spatial' = 'timeline';
   private activePreset: TelemetryPreset = 'all';
   private activeGranularity: Granularity = 'daily';
+  private compShowPoints: boolean = true;
+  private compShowCalls: boolean = true;
+
+  public get computationMetricFilter(): TimelineMetricFilter {
+    if (this.compShowPoints && this.compShowCalls) return 'both';
+    if (this.compShowPoints) return 'points';
+    if (this.compShowCalls) return 'calls';
+    return 'both';
+  }
 
   // Spatial view state
   private spatialMetric: 'points' | 'calls' = 'points';
@@ -56,18 +68,16 @@ export class TelemetryDashboard {
   private minHistoryDate: string = '2023-11-01';
   private maxHistoryDate: string = new Date().toISOString().slice(0, 10);
 
-  // Current selected range
+  // Current selected range for computation
   private hasCustomRange: boolean = false;
   private customStartDate: string = '2023-11-01';
   private customEndDate: string = new Date().toISOString().slice(0, 10);
 
-  private sliderInstance: NoUiSliderAPI | null = null;
-
   private chart: TimelineChart;
   private spatialChart: SpatialMatrixChart;
 
-  constructor(callbacks: TelemetryDashboardCallbacks) {
-    this.callbacks = callbacks;
+  constructor(_callbacks?: TelemetryDashboardCallbacks) {
+    void _callbacks;
     this.element = document.createElement('div');
     this.element.className = 'telemetry-page-view';
     this.chart = new TimelineChart();
@@ -92,14 +102,18 @@ export class TelemetryDashboard {
     await this.initData();
   }
 
+  public getSourceDisplayName(sourceName: string): string {
+    if (SOURCE_LABEL_LOOKUP[sourceName]) {
+      return SOURCE_LABEL_LOOKUP[sourceName];
+    }
+    // Return exact DB text without transformation
+    return sourceName;
+  }
+
   private async initData(): Promise<void> {
     this.isLoading = true;
     try {
-      const [gridRes, teleRes] = await Promise.all([
-        apiClient.getGridInfo(),
-        apiClient.getTelemetryStats(),
-      ]);
-      this.gridInfo = gridRes;
+      const teleRes = await apiClient.getTelemetryStats();
       this.telemetry = teleRes;
 
       await this.fetchTimeline();
@@ -124,14 +138,12 @@ export class TelemetryDashboard {
       }
 
       const res = await apiClient.getTelemetryTimeline(params);
-
       this.timelineData = res;
 
       // Extract available sources dynamically from response
       if (res.available_sources && res.available_sources.length > 0) {
         this.availableSources = res.available_sources;
       } else {
-        // Fallback discovery from series items if available_sources empty
         const discovered = new Set<string>();
         for (const item of res.series) {
           if (item.calls.sources) {
@@ -147,13 +159,13 @@ export class TelemetryDashboard {
         } else if (this.availableSources.length === 0) {
           this.availableSources = [
             { id: 1, name: 'rest_api', description: 'REST API' },
-            { id: 2, name: 'web_map', description: 'Web Map' },
+            { id: 2, name: 'web_app', description: 'Web App' },
             { id: 3, name: 'desktop_cli', description: 'Desktop / CLI' },
           ];
         }
       }
 
-      // Initialize active toggles on first load: activate all non-zero/known sources
+      // Initialize active toggles: activate all non-unknown sources
       if (this.activeSourceKeys.size === 0) {
         this.availableSources.forEach((s) => {
           if (s.name !== 'unknown') {
@@ -165,11 +177,25 @@ export class TelemetryDashboard {
         }
       }
 
+      if (this.spatialActiveSourceKeys.size === 0) {
+        this.availableSources.forEach((s) => {
+          if (s.name !== 'unknown') {
+            this.spatialActiveSourceKeys.add(s.name);
+          }
+        });
+        if (this.spatialActiveSourceKeys.size === 0 && this.availableSources.length > 0) {
+          this.spatialActiveSourceKeys.add(this.availableSources[0].name);
+        }
+      }
+
       // Track earliest available date from database
       if (res.summary.from_date && this.activePreset === 'all') {
         this.minHistoryDate = res.summary.from_date;
         if (!this.hasCustomRange) {
           this.customStartDate = this.minHistoryDate;
+        }
+        if (!this.spatialHasCustomRange && this.spatialPreset === 'all') {
+          this.spatialCustomStartDate = this.minHistoryDate;
         }
       }
     } catch (err) {
@@ -210,12 +236,25 @@ export class TelemetryDashboard {
 
   private toggleSource(sourceKey: string): void {
     if (this.activeSourceKeys.has(sourceKey)) {
-      this.activeSourceKeys.delete(sourceKey);
+      if (this.activeSourceKeys.size > 1) {
+        this.activeSourceKeys.delete(sourceKey);
+      }
     } else {
       this.activeSourceKeys.add(sourceKey);
     }
     this.render();
     this.mountChart();
+  }
+
+  private toggleSpatialSource(sourceKey: string): void {
+    if (this.spatialActiveSourceKeys.has(sourceKey)) {
+      if (this.spatialActiveSourceKeys.size > 1) {
+        this.spatialActiveSourceKeys.delete(sourceKey);
+      }
+    } else {
+      this.spatialActiveSourceKeys.add(sourceKey);
+    }
+    this.fetchSpatialMatrix();
   }
 
   private render(): void {
@@ -224,38 +263,39 @@ export class TelemetryDashboard {
         <!-- Top Navigation Bar -->
         <div class="telemetry-page-header">
           <div class="telemetry-title-block">
-            <button class="btn btn-outline" id="btn-back-to-studio">
-              ${t('stats.backToStudio')}
-            </button>
             <div class="telemetry-page-title">${t('stats.title')}</div>
-          </div>
-
-          <div class="telemetry-subtabs">
-            <button class="telemetry-subtab-btn ${this.activeSubTab === 'timeline' ? 'active' : ''}" id="tab-timeline-btn">
-              ${t('stats.tabTimeline')}
-            </button>
-            <button class="telemetry-subtab-btn ${this.activeSubTab === 'spatial' ? 'active' : ''}" id="tab-spatial-btn">
-              ${t('stats.tabSpatial')}
-            </button>
-            <button class="telemetry-subtab-btn ${this.activeSubTab === 'grid' ? 'active' : ''}" id="tab-grid-btn">
-              ${t('stats.tabGridInfo')}
-            </button>
+            <div class="header-brand-nav-divider"></div>
+            <nav class="telemetry-nav-tabs" role="tablist">
+              <button 
+                type="button" 
+                class="telemetry-nav-tab-btn ${this.activeSubTab === 'timeline' ? 'active' : ''}" 
+                id="tab-timeline-btn"
+                role="tab"
+                aria-selected="${this.activeSubTab === 'timeline'}"
+              >
+                <span>${t('stats.tabComputation')}</span>
+                <span class="telemetry-tab-indicator"></span>
+              </button>
+              <button 
+                type="button" 
+                class="telemetry-nav-tab-btn ${this.activeSubTab === 'spatial' ? 'active' : ''}" 
+                id="tab-spatial-btn"
+                role="tab"
+                aria-selected="${this.activeSubTab === 'spatial'}"
+              >
+                <span>${t('stats.tabSpatial')}</span>
+                <span class="telemetry-tab-indicator"></span>
+              </button>
+            </nav>
           </div>
         </div>
 
         <!-- Main Body -->
         <div class="telemetry-page-content">
-          ${this.activeSubTab === 'timeline'
-            ? this.renderTimelineHtml()
-            : (this.activeSubTab === 'spatial' ? this.renderSpatialHtml() : this.renderGridHtml())}
+          ${this.activeSubTab === 'timeline' ? this.renderTimelineHtml() : this.renderSpatialHtml()}
         </div>
       </div>
     `;
-
-    // Top Navigation Listeners
-    this.element.querySelector('#btn-back-to-studio')?.addEventListener('click', () => {
-      this.callbacks.onBackToStudio();
-    });
 
     this.element.querySelector('#tab-timeline-btn')?.addEventListener('click', () => {
       this.activeSubTab = 'timeline';
@@ -272,14 +312,9 @@ export class TelemetryDashboard {
       }
     });
 
-    this.element.querySelector('#tab-grid-btn')?.addEventListener('click', () => {
-      this.activeSubTab = 'grid';
-      this.render();
-    });
-
     if (this.activeSubTab === 'timeline') {
       this.attachTimelineEventListeners();
-    } else if (this.activeSubTab === 'spatial') {
+    } else {
       this.attachSpatialEventListeners();
     }
   }
@@ -303,184 +338,199 @@ export class TelemetryDashboard {
 
     const avgRatio = totalCalls > 0 ? (totalPoints / totalCalls).toFixed(1) : '0';
 
-    let periodText = 'All Logged History';
-    const summary = this.timelineData?.summary;
-    const startStr = summary?.from_date ?? this.customStartDate;
-    const endStr = summary?.to_date ?? this.customEndDate;
+    // Filter out unknown source from UI
+    const displaySources = this.availableSources.filter((s) => s.name !== 'unknown');
 
-    if (startStr && endStr) {
-      const d1 = new Date(startStr);
-      const d2 = new Date(endStr);
-      const daysDiff = Math.max(0, Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1);
-
-      let countLabel = '';
-      if (this.activeGranularity === 'monthly') {
-        const monthsCount = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1);
-        countLabel = t('stats.monthsCount', { count: monthsCount });
-      } else if (this.activeGranularity === 'weekly') {
-        const weeksCount = Math.max(1, Math.ceil(daysDiff / 7));
-        countLabel = t('stats.weeksCount', { count: weeksCount });
-      } else {
-        countLabel = t('stats.daysCount', { count: daysDiff });
-      }
-      periodText = `${startStr} → ${endStr} (${countLabel})`;
-    }
-
-    // Dynamic Source Toggles with dual-color indicators (Count & Coordinates)
-    const sourceTogglesHtml = this.availableSources
-      .map((s, idx) => {
+    // Dynamic Source Toggles (Individual toggle buttons styled like theme-native toggle buttons)
+    const sourceTogglesHtml = displaySources
+      .map((s) => {
         const isActive = this.activeSourceKeys.has(s.name);
-        const cfg = this.chart.getSourceConfig(s.name, idx);
+        const displayName = this.getSourceDisplayName(s.name);
         return `
-          <label class="source-toggle-card ${isActive ? 'active' : ''}" data-source-toggle="${s.name}">
-            <input type="checkbox" class="source-checkbox" ${isActive ? 'checked' : ''} data-source-name="${s.name}" />
-            <div class="source-swatch-duo">
-              <span class="swatch-bar swatch-calls" style="background-color: ${cfg.callsColor};" title="${t('stats.metricTypeCalls')}"></span>
-              <span class="swatch-bar swatch-points" style="background-color: ${cfg.pointsColor};" title="${t('stats.metricTypePoints')}"></span>
-            </div>
-            <span class="source-name-label">${cfg.label}</span>
-          </label>
+          <button type="button" class="telemetry-toggle-btn individual ${isActive ? 'active' : ''}" data-source-name="${s.name}">
+            ${displayName}
+          </button>
         `;
       })
       .join('');
 
-    // Persistent Total indicator legend card
-    const totalLegendCardHtml = `
-      <div class="source-toggle-card persistent-total" title="${t('stats.seriesTotal')}">
-        <div class="source-swatch-duo">
-          <span class="swatch-bar swatch-calls dashed" style="background-color: ${TOTAL_SERIES_CONFIG.callsColor};"></span>
-          <span class="swatch-bar swatch-points dashed" style="background-color: ${TOTAL_SERIES_CONFIG.pointsColor};"></span>
-        </div>
-        <span class="source-name-label font-bold">${t('stats.seriesTotal')}</span>
-      </div>
-    `;
-
     return `
-      <!-- KPI Banner -->
+      <!-- KPI Banner: Neutral Theme Colors, Clean Info Presentation -->
       <div class="telemetry-kpi-banner">
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val blue">${totalCalls.toLocaleString()}</div>
-          <div class="telemetry-kpi-label">${t('stats.totalCalls')}</div>
-        </div>
-        <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val cyan">${totalPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${totalPoints.toLocaleString()}</div>
           <div class="telemetry-kpi-label">${t('stats.totalPoints')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val emerald">${avgRatio}</div>
-          <div class="telemetry-kpi-label">${t('stats.batchIntensity')}</div>
+          <div class="telemetry-kpi-val neutral-val">${totalCalls.toLocaleString()}</div>
+          <div class="telemetry-kpi-label">${t('stats.totalCalls')}</div>
         </div>
-        <div class="telemetry-kpi-card wide">
-          <div class="telemetry-kpi-val muted" style="font-size: 13.5px;">${periodText}</div>
-          <div class="telemetry-kpi-label">${t('stats.activePeriod')}</div>
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${avgRatio}</div>
+          <div class="telemetry-kpi-label">${t('stats.batchIntensity')}</div>
         </div>
       </div>
 
       <!-- Controls Deck -->
       <div class="telemetry-deck">
-        <!-- Row 1: Presets & Granularity -->
-        <div class="telemetry-deck-row">
-          <div class="telemetry-btn-toggle-group">
-            <button class="telemetry-toggle-btn ${this.activePreset === '7d' ? 'active' : ''}" data-preset="7d">${t('stats.preset7D')}</button>
-            <button class="telemetry-toggle-btn ${this.activePreset === '30d' ? 'active' : ''}" data-preset="30d">${t('stats.preset30D')}</button>
-            <button class="telemetry-toggle-btn ${this.activePreset === 'ytd' ? 'active' : ''}" data-preset="ytd">${t('stats.presetYTD')}</button>
-            <button class="telemetry-toggle-btn ${this.activePreset === '12m' ? 'active' : ''}" data-preset="12m">${t('stats.preset12M')}</button>
-            <button class="telemetry-toggle-btn ${this.activePreset === 'all' ? 'active' : ''}" data-preset="all">${t('stats.presetAll')}</button>
-          </div>
-
-          <div class="telemetry-btn-toggle-group">
-            <button class="telemetry-toggle-btn ${this.activeGranularity === 'daily' ? 'active' : ''}" data-granularity="daily">${t('stats.granularityDaily')}</button>
-            <button class="telemetry-toggle-btn ${this.activeGranularity === 'weekly' ? 'active' : ''}" data-granularity="weekly">${t('stats.granularityWeekly')}</button>
-            <button class="telemetry-toggle-btn ${this.activeGranularity === 'monthly' ? 'active' : ''}" data-granularity="monthly">${t('stats.granularityMonthly')}</button>
-          </div>
-        </div>
-
-        <!-- Row 2: noUiSlider Graphical Time Window Slider -->
-        <div class="telemetry-range-slider-block">
-          <div class="range-slider-header">
-            <span class="range-slider-title">${t('stats.rangeSliderLabel')}</span>
-            <div class="range-slider-readout">
-              <span class="range-date-pill" id="range-start-label">${this.customStartDate}</span>
-              <span class="range-arrow">→</span>
-              <span class="range-date-pill" id="range-end-label">${this.customEndDate}</span>
+        <!-- Row 1: Unified Single Bar Presets (Left) & Granularity (Right) -->
+        <div class="telemetry-deck-row unified-controls-row" style="justify-content: space-between;">
+          <div class="telemetry-facet-group">
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.activePreset === 'all' && !this.hasCustomRange ? 'active' : ''}" data-preset="all">${t('stats.presetAll')}</button>
+              <button class="telemetry-toggle-btn ${this.activePreset === '12m' && !this.hasCustomRange ? 'active' : ''}" data-preset="12m">${t('stats.preset12M')}</button>
+              <button class="telemetry-toggle-btn ${this.activePreset === 'ytd' && !this.hasCustomRange ? 'active' : ''}" data-preset="ytd">${t('stats.presetYTD')}</button>
+              <button class="telemetry-toggle-btn ${this.activePreset === '30d' && !this.hasCustomRange ? 'active' : ''}" data-preset="30d">${t('stats.preset30D')}</button>
+              <button class="telemetry-toggle-btn ${this.activePreset === '7d' && !this.hasCustomRange ? 'active' : ''}" data-preset="7d">${t('stats.preset7D')}</button>
             </div>
           </div>
 
-          <div class="nouislider-container">
-            <div id="nouislider-time-window"></div>
-          </div>
-
-          <div class="range-slider-limits">
-            <span class="slider-limit-label">${t('stats.sliderEarliest', { date: this.minHistoryDate })}</span>
-            <span class="slider-limit-label">${t('stats.sliderToday', { date: this.maxHistoryDate })}</span>
+          <div class="telemetry-facet-group">
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.activeGranularity === 'daily' ? 'active' : ''}" data-granularity="daily">${t('stats.granularityDaily')}</button>
+              <button class="telemetry-toggle-btn ${this.activeGranularity === 'weekly' ? 'active' : ''}" data-granularity="weekly">${t('stats.granularityWeekly')}</button>
+              <button class="telemetry-toggle-btn ${this.activeGranularity === 'monthly' ? 'active' : ''}" data-granularity="monthly">${t('stats.granularityMonthly')}</button>
+            </div>
           </div>
         </div>
 
-        <!-- Row 3: Dynamic Sources Toggle Boxes -->
-        <div class="telemetry-deck-row source-toggles-row">
-          <div class="sources-label-col">
-            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
+        <!-- Row 2: Native Themed Calendar Range Controls & Range Limits Info -->
+        <div class="telemetry-deck-row telemetry-date-controls-row">
+          <div class="telemetry-date-inputs-cluster">
+            <div class="date-input-group">
+              <input 
+                type="date" 
+                class="telemetry-date-input" 
+                id="comp-date-start"
+                min="${this.minHistoryDate}" 
+                max="${this.maxHistoryDate}" 
+                value="${this.customStartDate}" 
+              />
+            </div>
+            <span class="range-arrow">→</span>
+            <div class="date-input-group">
+              <input 
+                type="date" 
+                class="telemetry-date-input" 
+                id="comp-date-end"
+                min="${this.minHistoryDate}" 
+                max="${this.maxHistoryDate}" 
+                value="${this.customEndDate}" 
+              />
+            </div>
           </div>
-          <div class="sources-toggle-list">
-            ${sourceTogglesHtml}
-            ${totalLegendCardHtml}
+
+          <div class="telemetry-range-limits-pill">
+            <span class="limit-subtle">${t('stats.sliderEarliest', { date: this.minHistoryDate })}</span>
+            <span class="limit-divider">•</span>
+            <span class="limit-subtle">${t('stats.sliderToday', { date: this.maxHistoryDate })}</span>
+          </div>
+        </div>
+
+        <!-- Row 3: Merged SOURCES (Left) & METRIC (Right) -->
+        <div class="telemetry-deck-row merged-filters-row">
+          <div class="filters-left-group">
+            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
+            <div class="sources-toggle-list">
+              ${sourceTogglesHtml}
+            </div>
+          </div>
+          <div class="filters-right-group">
+            <span class="facet-label">${t('stats.metricFilterLabel')}</span>
+            <div class="telemetry-individual-toggle-group">
+              <button class="telemetry-toggle-btn individual ${this.compShowPoints ? 'active' : ''}" id="comp-metric-points-btn">
+                ${t('stats.metricPoints')}
+              </button>
+              <button class="telemetry-toggle-btn individual ${this.compShowCalls ? 'active' : ''}" id="comp-metric-calls-btn">
+                ${t('stats.metricCalls')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Chart Viewport -->
+      <!-- Chart Viewport with Dedicated Graph Symbology Legend -->
       <div class="telemetry-chart-viewport full-page">
         ${this.isLoading ? `<div class="timeline-loading-overlay">${t('stats.loadingTimeline')}</div>` : ''}
-        <div class="chart-legend-row dual-metric-legend">
-          <div class="legend-badge">
-            <span class="legend-box" style="background-color: #6366f1;"></span>
-            <strong>${t('stats.metricTypeCalls')}</strong>
-            <span class="muted font-normal">(${t('stats.callsLegend') || 'Calls'})</span>
-          </div>
-          <div class="legend-badge">
-            <span class="legend-box" style="background-color: #38bdf8;"></span>
-            <strong>${t('stats.metricTypePoints')}</strong>
-            <span class="muted font-normal">(${t('stats.pointsLegend') || 'Coordinates'})</span>
-          </div>
-        </div>
+        
+        <!-- Dedicated Graph Symbology Legend (2-Line Grouped: Line 1 = Sources, Line 2 = Total) -->
+        ${this.renderTimelineLegendHtml()}
+
         <div id="timeline-chart-slot"></div>
       </div>
     `;
   }
 
-  private renderGridHtml(): string {
-    return `
-      <div class="grid-metadata-card">
-        <div class="card-title">${t('stats.activeGridTitle')}</div>
-        <div class="grid-info-table">
-          <div class="grid-info-row">
-            <span class="muted">${t('stats.gridFile')}</span>
-            <span class="mono primary-light font-bold">${this.gridInfo?.grid_file || 'transdat.spg'}</span>
-          </div>
-          <div class="grid-info-row">
-            <span class="muted">${t('stats.quasigeoid')}</span>
-            <span>${this.gridInfo?.quasigeoid_model || 'Model Cvasigeoid 2008'}</span>
-          </div>
-          <div class="grid-info-row">
-            <span class="muted">${t('stats.projCRS')}</span>
-            <span class="mono">${this.gridInfo?.crs.projected || 'EPSG:31700 (Stereo 70)'}</span>
-          </div>
-          <div class="grid-info-row">
-            <span class="muted">${t('stats.geoCRS')}</span>
-            <span class="mono">${this.gridInfo?.crs.geographic || 'EPSG:4258 (ETRS89)'}</span>
-          </div>
-        </div>
+  private renderTimelineLegendHtml(): string {
+    const showCalls = this.compShowCalls;
+    const showPoints = this.compShowPoints;
 
-        <div class="accuracy-callout">
-          <div class="accuracy-callout-title">${t('stats.accuracyNoteTitle')}</div>
-          <div class="accuracy-callout-text">${t('stats.accuracyNoteText')}</div>
+    const sourceGroups: string[] = [];
+
+    // Active source lines grouped by source name
+    let idx = 0;
+    for (const srcKey of this.activeSourceKeys) {
+      if (srcKey === 'unknown') continue;
+      const config = this.chart.getSourceConfig(srcKey, idx++);
+      const displayName = this.getSourceDisplayName(srcKey);
+
+      sourceGroups.push(`
+        <div class="legend-source-group">
+          <span class="legend-group-title">${displayName}:</span>
+          <div class="legend-group-items">
+            ${showCalls ? `
+              <span class="legend-sub-item">
+                <span class="legend-line-sample" style="background-color: ${config.callsColor};"></span>
+                <span>${t('stats.metricTypeCalls')}</span>
+              </span>
+            ` : ''}
+            ${showPoints ? `
+              <span class="legend-sub-item">
+                <span class="legend-line-sample" style="background-color: ${config.pointsColor};"></span>
+                <span>${t('stats.metricTypePoints')}</span>
+              </span>
+            ` : ''}
+          </div>
         </div>
+      `);
+    }
+
+    // Line 2: Dedicated Total row
+    let totalHtml = '';
+    if (this.activeSourceKeys.size > 0) {
+      totalHtml = `
+        <div class="legend-total-row">
+          <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
+          <div class="legend-group-items">
+            ${showCalls ? `
+              <span class="legend-sub-item">
+                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, var(--text-main, #f8fafc) 0, var(--text-main, #f8fafc) 7px, transparent 7px, transparent 12px);"></span>
+                <span>${t('stats.metricTypeCalls')}</span>
+              </span>
+            ` : ''}
+            ${showPoints ? `
+              <span class="legend-sub-item">
+                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, #38bdf8 0, #38bdf8 7px, transparent 7px, transparent 12px);"></span>
+                <span>${t('stats.metricTypePoints')}</span>
+              </span>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="chart-legend-container">
+        <div class="legend-sources-row">
+          ${sourceGroups.join('')}
+        </div>
+        ${totalHtml}
       </div>
     `;
   }
 
   private attachTimelineEventListeners(): void {
-    // Presets
+    // Preset buttons
     this.element.querySelectorAll('[data-preset]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const p = (e.currentTarget as HTMLElement).getAttribute('data-preset') as TelemetryPreset;
@@ -488,7 +538,7 @@ export class TelemetryDashboard {
       });
     });
 
-    // Granularity
+    // Granularity buttons
     this.element.querySelectorAll('[data-granularity]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const g = (e.currentTarget as HTMLElement).getAttribute('data-granularity') as Granularity;
@@ -499,72 +549,68 @@ export class TelemetryDashboard {
       });
     });
 
-    // noUiSlider Initialization
-    this.initNoUiSlider();
+    // Calendar Inputs with strict clamping to database boundaries
+    const startInput = this.element.querySelector('#comp-date-start') as HTMLInputElement | null;
+    const endInput = this.element.querySelector('#comp-date-end') as HTMLInputElement | null;
 
-    // Source Toggles Checkboxes
-    this.element.querySelectorAll<HTMLInputElement>('.source-checkbox').forEach((checkbox) => {
-      checkbox.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement;
+    const onDateInputChange = () => {
+      if (startInput && endInput) {
+        let startVal = startInput.value;
+        let endVal = endInput.value;
+
+        if (startVal < this.minHistoryDate) {
+          startVal = this.minHistoryDate;
+          startInput.value = this.minHistoryDate;
+        }
+        if (endVal > this.maxHistoryDate) {
+          endVal = this.maxHistoryDate;
+          endInput.value = this.maxHistoryDate;
+        }
+        if (startVal > endVal) {
+          endVal = startVal;
+          endInput.value = startVal;
+        }
+
+        this.hasCustomRange = true;
+        this.customStartDate = startVal;
+        this.customEndDate = endVal;
+        this.fetchTimeline();
+      }
+    };
+
+    startInput?.addEventListener('change', onDateInputChange);
+    endInput?.addEventListener('change', onDateInputChange);
+
+    // Metric Multi-Toggle Buttons (Points & Calls can both be active)
+    this.element.querySelector('#comp-metric-points-btn')?.addEventListener('click', () => {
+      if (this.compShowPoints && this.compShowCalls) {
+        this.compShowPoints = false;
+      } else if (!this.compShowPoints) {
+        this.compShowPoints = true;
+      }
+      this.render();
+      this.mountChart();
+    });
+
+    this.element.querySelector('#comp-metric-calls-btn')?.addEventListener('click', () => {
+      if (this.compShowCalls && this.compShowPoints) {
+        this.compShowCalls = false;
+      } else if (!this.compShowCalls) {
+        this.compShowCalls = true;
+      }
+      this.render();
+      this.mountChart();
+    });
+
+    // Source Toggle Buttons
+    this.element.querySelectorAll<HTMLButtonElement>('[data-source-name]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
         const srcName = target.getAttribute('data-source-name');
         if (srcName) {
           this.toggleSource(srcName);
         }
       });
-    });
-  }
-
-  private initNoUiSlider(): void {
-    const sliderContainer = this.element.querySelector('#nouislider-time-window') as HTMLElement | null;
-    if (!sliderContainer) return;
-
-    if (this.sliderInstance) {
-      try {
-        this.sliderInstance.destroy();
-      } catch {
-        // Ignore if already destroyed
-      }
-      this.sliderInstance = null;
-    }
-
-    const minTs = new Date(this.minHistoryDate).getTime();
-    const maxTs = new Date(this.maxHistoryDate).getTime();
-    const startTs = Math.max(minTs, Math.min(new Date(this.customStartDate).getTime(), maxTs));
-    const endTs = Math.max(minTs, Math.min(new Date(this.customEndDate).getTime(), maxTs));
-
-    const slider = noUiSlider.create(sliderContainer, {
-      start: [startTs, endTs],
-      connect: true,
-      behaviour: 'drag',
-      step: 86400000,
-      range: {
-        min: minTs,
-        max: Math.max(maxTs, minTs + 86400000),
-      },
-    });
-
-    this.sliderInstance = slider;
-
-    const labelStart = this.element.querySelector('#range-start-label');
-    const labelEnd = this.element.querySelector('#range-end-label');
-
-    slider.on('update', (values) => {
-      const sTs = Number(values[0]);
-      const eTs = Number(values[1]);
-      const sStr = new Date(sTs).toISOString().slice(0, 10);
-      const eStr = new Date(eTs).toISOString().slice(0, 10);
-
-      if (labelStart) labelStart.textContent = sStr;
-      if (labelEnd) labelEnd.textContent = eStr;
-    });
-
-    slider.on('change', (values) => {
-      const sTs = Number(values[0]);
-      const eTs = Number(values[1]);
-      this.hasCustomRange = true;
-      this.customStartDate = new Date(sTs).toISOString().slice(0, 10);
-      this.customEndDate = new Date(eTs).toISOString().slice(0, 10);
-      this.fetchTimeline();
     });
   }
 
@@ -579,6 +625,7 @@ export class TelemetryDashboard {
         activeSourceKeys: this.activeSourceKeys,
         availableSources: this.availableSources,
         showTotal: true,
+        metricFilter: this.computationMetricFilter,
       });
     }
   }
@@ -596,7 +643,6 @@ export class TelemetryDashboard {
         metric: this.spatialMetric,
       };
 
-      // Date range filter
       if (this.spatialHasCustomRange) {
         params.from_date = this.spatialCustomStartDate;
         params.to_date = this.spatialCustomEndDate;
@@ -620,6 +666,14 @@ export class TelemetryDashboard {
       }
 
       // Map active source keys to source IDs
+      if (this.spatialActiveSourceKeys.size === 0 && this.availableSources.length > 0) {
+        this.availableSources.forEach((s) => {
+          if (s.name !== 'unknown') {
+            this.spatialActiveSourceKeys.add(s.name);
+          }
+        });
+      }
+
       if (this.spatialActiveSourceKeys.size > 0 && this.availableSources.length > 0) {
         const ids = this.availableSources
           .filter((s) => this.spatialActiveSourceKeys.has(s.name))
@@ -673,156 +727,149 @@ export class TelemetryDashboard {
     const activeCells = this.spatialData?.summary.active_cells_count || 0;
     const maxCellHits = this.spatialData?.summary.max_cell_hits || 0;
 
-    // Default quadrant items if not yet loaded
     const qNW = quadrants?.NW || { value: 0, percentage: 0 };
     const qNE = quadrants?.NE || { value: 0, percentage: 0 };
     const qSW = quadrants?.SW || { value: 0, percentage: 0 };
     const qSE = quadrants?.SE || { value: 0, percentage: 0 };
 
-    // Source toggle chips
-    const sourceChipsHtml = this.availableSources
-      .filter((s) => s.name !== 'unknown')
+    // Dynamic Source Toggles matching Computation lookup and omitting unknown
+    const displaySources = this.availableSources.filter((s) => s.name !== 'unknown');
+    const spatialSourceTogglesHtml = displaySources
       .map((s) => {
         const isActive = this.spatialActiveSourceKeys.size === 0 || this.spatialActiveSourceKeys.has(s.name);
+        const displayName = this.getSourceDisplayName(s.name);
         return `
-          <button class="spatial-source-chip ${isActive ? 'active' : ''}" data-spatial-source="${s.name}">
-            <span class="chip-check">${isActive ? '✓' : ''}</span>
-            <span>${t(`stats.source${s.name.charAt(0).toUpperCase() + s.name.slice(1)}`) || s.name}</span>
+          <button type="button" class="telemetry-toggle-btn individual ${isActive ? 'active' : ''}" data-spatial-source-name="${s.name}">
+            ${displayName}
           </button>
         `;
       })
       .join('');
 
     return `
-      <!-- Top Deck: 4 Mathematical Quadrant Cards -->
-      <div class="spatial-quadrants-deck">
-        <div class="quadrant-card nw">
-          <div class="quadrant-header">
-            <span class="quadrant-code">NW</span>
-            <span class="quadrant-name">${t('stats.quadrantNW')}</span>
-          </div>
-          <div class="quadrant-value mono">${qNW.value.toLocaleString()}</div>
-          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qNW.percentage })}</div>
+      <!-- Overall Stats Area: Full-Width Summary Rectangle -->
+      <div class="spatial-overview-banner">
+        <div class="spatial-overview-col left-col">
+          <div class="overview-sublabel">${this.spatialMetric === 'points' ? t('stats.totalPoints') : t('stats.totalCalls')}</div>
+          <div class="overview-main-val mono">${totalVal.toLocaleString()}</div>
         </div>
-
-        <div class="quadrant-card ne">
-          <div class="quadrant-header">
-            <span class="quadrant-code">NE</span>
-            <span class="quadrant-name">${t('stats.quadrantNE')}</span>
-          </div>
-          <div class="quadrant-value mono">${qNE.value.toLocaleString()}</div>
-          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qNE.percentage })}</div>
-        </div>
-
-        <div class="quadrant-card sw">
-          <div class="quadrant-header">
-            <span class="quadrant-code">SW</span>
-            <span class="quadrant-name">${t('stats.quadrantSW')}</span>
-          </div>
-          <div class="quadrant-value mono">${qSW.value.toLocaleString()}</div>
-          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qSW.percentage })}</div>
-        </div>
-
-        <div class="quadrant-card se">
-          <div class="quadrant-header">
-            <span class="quadrant-code">SE</span>
-            <span class="quadrant-name">${t('stats.quadrantSE')}</span>
-          </div>
-          <div class="quadrant-value mono">${qSE.value.toLocaleString()}</div>
-          <div class="quadrant-share">${t('stats.shareOfTotal', { pct: qSE.percentage })}</div>
+        <div class="spatial-overview-col right-col">
+          <div class="overview-sublabel">${t('stats.activeCellsLabel')}</div>
+          <div class="overview-main-val mono">${activeCells.toLocaleString()}</div>
         </div>
       </div>
 
-      <!-- Controls Deck -->
+      <!-- 4 Mathematical Quadrant Cards (Name Above, Value Below with adjacent %) -->
+      <div class="spatial-quadrants-deck">
+        <div class="quadrant-card nw">
+          <div class="quadrant-name">${t('stats.quadrantNW')}</div>
+          <div class="quadrant-val-row">
+            <span class="quadrant-value mono">${qNW.value.toLocaleString()}</span>
+            <span class="quadrant-share mono">(${qNW.percentage}%)</span>
+          </div>
+        </div>
+
+        <div class="quadrant-card ne">
+          <div class="quadrant-name">${t('stats.quadrantNE')}</div>
+          <div class="quadrant-val-row">
+            <span class="quadrant-value mono">${qNE.value.toLocaleString()}</span>
+            <span class="quadrant-share mono">(${qNE.percentage}%)</span>
+          </div>
+        </div>
+
+        <div class="quadrant-card sw">
+          <div class="quadrant-name">${t('stats.quadrantSW')}</div>
+          <div class="quadrant-val-row">
+            <span class="quadrant-value mono">${qSW.value.toLocaleString()}</span>
+            <span class="quadrant-share mono">(${qSW.percentage}%)</span>
+          </div>
+        </div>
+
+        <div class="quadrant-card se">
+          <div class="quadrant-name">${t('stats.quadrantSE')}</div>
+          <div class="quadrant-val-row">
+            <span class="quadrant-value mono">${qSE.value.toLocaleString()}</span>
+            <span class="quadrant-share mono">(${qSE.percentage}%)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Deck (Compact, Matching Computation) -->
       <div class="telemetry-deck spatial-controls-deck">
-        <!-- Row 1: Time Horizon Presets -->
-        <div class="telemetry-deck-row">
+        <!-- Row 1: Unified Presets Single Bar -->
+        <div class="telemetry-deck-row unified-controls-row">
           <div class="telemetry-facet-group">
-            <span class="facet-label">${t('stats.activePeriod')}:</span>
-            <div class="btn-group">
-              <button class="btn btn-sm ${this.spatialPreset === 'all' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="all">
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.spatialPreset === 'all' && !this.spatialHasCustomRange ? 'active' : ''}" data-spatial-preset="all">
                 ${t('stats.presetAll')}
               </button>
-              <button class="btn btn-sm ${this.spatialPreset === '12m' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="12m">
+              <button class="telemetry-toggle-btn ${this.spatialPreset === '12m' && !this.spatialHasCustomRange ? 'active' : ''}" data-spatial-preset="12m">
                 ${t('stats.preset12M')}
               </button>
-              <button class="btn btn-sm ${this.spatialPreset === 'ytd' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="ytd">
+              <button class="telemetry-toggle-btn ${this.spatialPreset === 'ytd' && !this.spatialHasCustomRange ? 'active' : ''}" data-spatial-preset="ytd">
                 ${t('stats.presetYTD')}
               </button>
-              <button class="btn btn-sm ${this.spatialPreset === '30d' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="30d">
+              <button class="telemetry-toggle-btn ${this.spatialPreset === '30d' && !this.spatialHasCustomRange ? 'active' : ''}" data-spatial-preset="30d">
                 ${t('stats.preset30D')}
               </button>
-              <button class="btn btn-sm ${this.spatialPreset === '7d' && !this.spatialHasCustomRange ? 'btn-primary' : 'btn-outline'}" data-spatial-preset="7d">
+              <button class="telemetry-toggle-btn ${this.spatialPreset === '7d' && !this.spatialHasCustomRange ? 'active' : ''}" data-spatial-preset="7d">
                 ${t('stats.preset7D')}
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- Total Count & Cell Area Badges -->
-          <div class="spatial-overview-badges">
-            <span class="stat-pill">
-              <span class="muted">${t('stats.activeCellsCount', { count: activeCells.toLocaleString() })}</span>
-            </span>
-            <span class="stat-pill cell-area-pill">
-              <span class="muted">${t('stats.cellAreaNote')}</span>
-            </span>
-            <span class="stat-pill highlight">
-              <strong>${totalVal.toLocaleString()}</strong> ${this.spatialMetric === 'points' ? t('stats.metricPoints') : t('stats.metricCalls')}
-            </span>
+        <!-- Row 2: Native Themed Calendar Inputs & Limits -->
+        <div class="telemetry-deck-row telemetry-date-controls-row">
+          <div class="telemetry-date-inputs-cluster">
+            <div class="date-input-group">
+              <input 
+                type="date" 
+                class="telemetry-date-input" 
+                id="spatial-date-start"
+                min="${this.minHistoryDate}" 
+                max="${this.maxHistoryDate}" 
+                value="${this.spatialCustomStartDate}" 
+              />
+            </div>
+            <span class="range-arrow">→</span>
+            <div class="date-input-group">
+              <input 
+                type="date" 
+                class="telemetry-date-input" 
+                id="spatial-date-end"
+                min="${this.minHistoryDate}" 
+                max="${this.maxHistoryDate}" 
+                value="${this.spatialCustomEndDate}" 
+              />
+            </div>
+          </div>
+
+          <div class="telemetry-range-limits-pill">
+            <span class="limit-subtle">${t('stats.sliderEarliest', { date: this.minHistoryDate })}</span>
+            <span class="limit-divider">•</span>
+            <span class="limit-subtle">${t('stats.sliderToday', { date: this.maxHistoryDate })}</span>
           </div>
         </div>
 
-        <!-- Row 2: Vanilla Date Range Scrubber -->
-        <div class="telemetry-deck-row spatial-date-scrubber-row">
-          <div class="spatial-date-scrubber-label">
-            <span class="facet-label">${t('stats.rangeSliderLabel')}</span>
-            <span class="mono primary-light font-bold" id="spatial-range-display">
-              ${this.spatialCustomStartDate} — ${this.spatialCustomEndDate}
-            </span>
+        <!-- Row 3: Merged SOURCES (Left) & METRIC (Right) -->
+        <div class="telemetry-deck-row merged-filters-row">
+          <div class="filters-left-group">
+            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
+            <div class="sources-toggle-list">
+              ${spatialSourceTogglesHtml}
+            </div>
           </div>
-          <div class="spatial-date-inputs">
-            <input type="date" class="form-control form-control-sm" id="spatial-date-start"
-              min="${this.minHistoryDate}" max="${this.maxHistoryDate}" value="${this.spatialCustomStartDate}" />
-            <span class="muted">➔</span>
-            <input type="date" class="form-control form-control-sm" id="spatial-date-end"
-              min="${this.minHistoryDate}" max="${this.maxHistoryDate}" value="${this.spatialCustomEndDate}" />
-          </div>
-        </div>
-
-        <!-- Row 3: Metric Toggle & Scale Mode Toggle (Zero Emojis) -->
-        <div class="telemetry-deck-row facet-row">
-          <div class="telemetry-facet-group">
-            <span class="facet-label">${t('stats.metricToggleLabel')}</span>
-            <div class="btn-group">
-              <button class="btn btn-sm ${this.spatialMetric === 'points' ? 'btn-primary' : 'btn-outline'}" id="spatial-metric-points-btn">
+          <div class="filters-right-group">
+            <span class="facet-label">${t('stats.metricFilterLabel')}</span>
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.spatialMetric === 'points' ? 'active' : ''}" id="spatial-metric-points-btn">
                 ${t('stats.metricPoints')}
               </button>
-              <button class="btn btn-sm ${this.spatialMetric === 'calls' ? 'btn-primary' : 'btn-outline'}" id="spatial-metric-calls-btn">
+              <button class="telemetry-toggle-btn ${this.spatialMetric === 'calls' ? 'active' : ''}" id="spatial-metric-calls-btn">
                 ${t('stats.metricCalls')}
               </button>
             </div>
-          </div>
-
-          <div class="telemetry-facet-group">
-            <span class="facet-label">${t('stats.scaleToggleLabel')}</span>
-            <div class="btn-group">
-              <button class="btn btn-sm ${this.spatialScaleMode === 'log' ? 'btn-primary' : 'btn-outline'}" id="spatial-scale-log-btn">
-                ${t('stats.scaleLog')}
-              </button>
-              <button class="btn btn-sm ${this.spatialScaleMode === 'linear' ? 'btn-primary' : 'btn-outline'}" id="spatial-scale-linear-btn">
-                ${t('stats.scaleLinear')}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Row 4: Client Sources Filter Chips -->
-        <div class="telemetry-deck-row source-toggles-row">
-          <div class="sources-label-col">
-            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
-          </div>
-          <div class="spatial-source-chips-list">
-            ${sourceChipsHtml}
           </div>
         </div>
       </div>
@@ -831,10 +878,13 @@ export class TelemetryDashboard {
       <div class="telemetry-chart-viewport spatial-matrix-viewport">
         ${this.isSpatialLoading ? `<div class="timeline-loading-overlay">${t('stats.loadingTimeline')}</div>` : ''}
         
-        <!-- Top Info Header & 5-Step Discrete Color Legend (Strict i18n) -->
-        <div class="spatial-viewport-legend-row">
+        <!-- Canvas Container Slot -->
+        <div id="spatial-matrix-slot"></div>
+
+        <!-- Bottom Heatmap Controls & Legend Bar -->
+        <div class="spatial-matrix-bottom-bar">
+          <!-- 5-Step Discrete Color Ramp Legend -->
           <div class="spatial-legend-bar">
-            <span class="legend-bar-label">${t('stats.scaleToggleLabel')}</span>
             <div class="legend-color-step">
               <span class="step-swatch ghost"></span>
               <span class="step-label">${t('stats.levelEmpty')}</span>
@@ -857,14 +907,25 @@ export class TelemetryDashboard {
             </div>
           </div>
 
-          <div class="spatial-legend-notes">
-            <span class="spatial-ghost-note">${t('stats.ghostCellsNote')}</span>
-            <span class="spatial-quadrant-note">${t('stats.quadrantLinesNote')}</span>
+          <!-- Bottom-Right Scaling Selector -->
+          <div class="spatial-scaling-selector-bottom">
+            <span class="facet-label">${t('stats.scaleToggleLabel')}</span>
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.spatialScaleMode === 'log' ? 'active' : ''}" id="spatial-scale-log-btn">
+                ${t('stats.scaleLog')}
+              </button>
+              <button class="telemetry-toggle-btn ${this.spatialScaleMode === 'linear' ? 'active' : ''}" id="spatial-scale-linear-btn">
+                ${t('stats.scaleLinear')}
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Canvas Container Slot -->
-        <div id="spatial-matrix-slot"></div>
+        <!-- Stacked Footnotes: Resolution, Cell Area, Quadrant Lines -->
+        <div class="spatial-notes-block">
+          <div class="spatial-note-item">${t('stats.gridCellSizeNote')}</div>
+          <div class="spatial-note-item">${t('stats.quadrantLinesNote')}</div>
+        </div>
       </div>
     `;
   }
@@ -880,18 +941,32 @@ export class TelemetryDashboard {
       });
     });
 
-    // Date range inputs
+    // Date range inputs with strict clamping to database boundaries
     const startInput = this.element.querySelector('#spatial-date-start') as HTMLInputElement | null;
     const endInput = this.element.querySelector('#spatial-date-end') as HTMLInputElement | null;
 
     const onDateInputChange = () => {
       if (startInput && endInput) {
-        if (startInput.value && endInput.value && startInput.value <= endInput.value) {
-          this.spatialHasCustomRange = true;
-          this.spatialCustomStartDate = startInput.value;
-          this.spatialCustomEndDate = endInput.value;
-          this.fetchSpatialMatrix();
+        let startVal = startInput.value;
+        let endVal = endInput.value;
+
+        if (startVal < this.minHistoryDate) {
+          startVal = this.minHistoryDate;
+          startInput.value = this.minHistoryDate;
         }
+        if (endVal > this.maxHistoryDate) {
+          endVal = this.maxHistoryDate;
+          endInput.value = this.maxHistoryDate;
+        }
+        if (startVal > endVal) {
+          endVal = startVal;
+          endInput.value = startVal;
+        }
+
+        this.spatialHasCustomRange = true;
+        this.spatialCustomStartDate = startVal;
+        this.spatialCustomEndDate = endVal;
+        this.fetchSpatialMatrix();
       }
     };
 
@@ -930,17 +1005,13 @@ export class TelemetryDashboard {
       }
     });
 
-    // Source chips
-    this.element.querySelectorAll('[data-spatial-source]').forEach((chip) => {
-      chip.addEventListener('click', (e) => {
-        const srcName = (e.currentTarget as HTMLElement).getAttribute('data-spatial-source');
+    // Source toggle buttons
+    this.element.querySelectorAll<HTMLButtonElement>('[data-spatial-source-name]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const srcName = target.getAttribute('data-spatial-source-name');
         if (srcName) {
-          if (this.spatialActiveSourceKeys.has(srcName)) {
-            this.spatialActiveSourceKeys.delete(srcName);
-          } else {
-            this.spatialActiveSourceKeys.add(srcName);
-          }
-          this.fetchSpatialMatrix();
+          this.toggleSpatialSource(srcName);
         }
       });
     });

@@ -65,7 +65,7 @@ webapp/
     │   ├── FileUpload.ts      # Drag-and-drop file processor with streaming progress
     │   ├── MapView.ts         # Leaflet map, 3 independent layer groups, dual map navigation
     │   ├── StatsView.ts       # Active grid metadata and operational status modal
-    │   ├── TelemetryDashboard.ts # Full-page usage telemetry dashboard with noUiSlider time scrubber
+    │   ├── TelemetryDashboard.ts # Full-page usage telemetry dashboard (Computation & Spatial views)
     │   ├── TimelineChart.ts   # Interactive SVG dual-metric timeline chart with dynamic source curves
     │   ├── SpatialMatrixChart.ts # 0.1° punchcard canvas matrix with quadrant lines and ghost cells
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
@@ -137,12 +137,24 @@ webapp/
    - Base maps: OpenStreetMap (default), CartoDB Dark Matter, CartoDB Positron, and ESRI World Imagery.
    - Min zoom reduced to 3 for full regional/global zoom range.
 
-6. **Telemetry & Usage Analytics Architecture (`TelemetryDashboard.ts`, `TimelineChart.ts`)**:
-   - Dedicated full-page view accessible via the header's **Usage Data** (`Date Utilizare`) button with a clean "← Back to Studio" return route.
-   - **Dynamic Source Discovery**: Queries `/api/v1/telemetry/timeline` to discover all client sources registered in `logs/usage.db`, dynamically creating interactive toggle checkboxes without hardcoded client identifiers.
-   - **Interactive Time Window Scrubber (`noUiSlider`)**: Dual-handle slider with `behaviour: 'drag'` that lets users slide a custom date interval window across the full historical timeline (bounded by earliest record and current day).
-   - **Dynamic Aggregation & Granularities**: Supports Daily, Weekly (Monday-start), and Monthly buckets with precise elapsed interval formatting (`X zile`, `X săptămâni`, `X luni`).
-   - **Live Metric Recalculation**: The Total line curve and the top KPI banner (Total Invocations, Total Points, Batch Intensity) dynamically recalculate based strictly on the user's active client source checkboxes.
+6. **Telemetry & Usage Analytics Architecture (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`)**:
+   - Full-page analytics view accessible via the primary header's **Usage** (`Date Utilizare`) tab, featuring GitHub-style underline sub-navigation:
+     - **Computation View (`TimelineChart.ts`)**:
+       - Dynamic discovery of logging client sources (`rest_api`, `web_app`, `desktop_cli`) from `logs/usage.db` via `/api/v1/telemetry/timeline` with exact fallback for unmapped sources and exclusion of `unknown`.
+       - Native themed `<input type="date">` calendar pickers with strict boundary clamping (`2023-11-01` to current date) and a range limits indicator pill.
+       - Daily, Weekly, and Monthly temporal aggregation with preset intervals (`All Time`, `12M`, `YTD`, `30D`, `7D`).
+       - Strictly additive Total curve ($\text{Total} \ge \text{each source}$) with high-visibility dashed styling.
+       - Independent multi-metric filtering (`Points` and `Calls` toggleable individually or together) with neutral-toned Y-axes and a 2-line grouped symbology legend.
+       - Luminous/pastel tints for Calls and darker tones for Points across client color palettes.
+     - **Spatial View (`SpatialMatrixChart.ts`)**:
+       - Macroscopic $0.1^\circ$ (~10 km) punchcard canvas matrix representing geographic distribution across Romania with subtle ghost cells for unvisited coordinates.
+       - Mathematical quadrant summary cards (**NW**, **NE**, **SW**, **SE**) calculated around the national center ($45.9^\circ\text{ N}, 24.9^\circ\text{ E}$) with volume and percentage share.
+       - Deduplicated full-width overview banner displaying Total volume and Active Cells count.
+       - Cartographic coordinate notation (`°N` and `°E`) with the Latitude axis positioned on the left margin.
+       - Discrete 5-step color ramp and Logarithmic / Linear scaling toggle in the canvas footer bar.
+       - Synchronized time horizon presets, date clamping, and standalone source toggle buttons matching the Computation view.
+     - **Theme-Native Visual Controls**:
+       - Filter toggles use standalone buttons with neutral borders (`--border-medium`), elevated backgrounds (`--bg-surface-elevated`), 8px spacing, and high-contrast theme-native active states (`--btn-primary-bg` / `--btn-primary-text`), removing saturated electric blue accents.
 
 7. **Client-Side Exporting**:
    - Results can be downloaded directly in the browser as:

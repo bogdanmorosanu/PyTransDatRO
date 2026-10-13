@@ -258,6 +258,64 @@ The top navigation bar (`52px` fixed height) functions as the unified applicatio
     - The official vector logo (Concept 1: Geodetic Shift Lattice, `webapp/src/assets/logo.svg`) is sized to `36px × 36px` in the header.
     - The browser tab favicon (`webapp/public/favicon.svg`) must always remain in 1:1 synchronization with the application brand SVG.
 
+### 4.9 Telemetry, Charts & Filter Controls Architecture (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`)
+
+#### 4.9.1 Selector vs. Toggle Button Ergonomics
+Filters and options must communicate their behavior through physical framing and spacing:
+1. **Mutually Exclusive Selectors (Single-Choice Segmented Tray)**:
+   - Used when options are mutually exclusive (e.g., Presets `All Time` | `12M` | `YTD`, Granularity `Daily` | `Weekly` | `Monthly`, Spatial Metric `Points` | `Calls`, Scale `Logarithmic` | `Linear`).
+   - **Styling**: Enclosed in a single continuous pill/tray (`.telemetry-btn-toggle-group`) with a shared background (`var(--bg-surface-elevated)`), border (`var(--border-medium)`), `2px` padding, and `2px` gap between buttons.
+   - **Mental Model**: Functions like a segmented radio control. Only one option in the tray is active at any time.
+
+2. **Standalone Individual Toggles (Multi-Choice / Independent On-Off)**:
+   - Used when options can be enabled or disabled independently in any combination (e.g., Client Sources `REST API`, `Web App`, `Desktop / CLI`, or Computation Metrics `Points` and `Calls` where both can be active).
+   - **Styling**: Rendered as standalone buttons (`.telemetry-toggle-btn.individual`) with **NO** continuous outer tray.
+   - **Spacing**: Generous `8px` gap between buttons (`.telemetry-individual-toggle-group` or `.sources-toggle-list`).
+   - **Structure**: Each button has its own independent border (`1px solid var(--border-medium)`), elevated background (`var(--bg-surface-elevated)`), and rounded corners (`var(--radius-xs)`).
+   - **Elimination of Checkboxes**: Never use native form checkboxes or saturated colored checkmarks for filter toggles; clean button text with theme-native active states provides superior visual clarity.
+   - **Mental Model**: The physical separation and independent borders immediately indicate that each toggle operates independently rather than sliding between mutually exclusive choices.
+
+#### 4.9.2 Theme-Native Button Styling & Active State Contrast
+Buttons and toggles must avoid saturated or neon accent colors (e.g., arbitrary electric blues):
+- **Inactive State**: Neutral elevated surface (`var(--bg-surface-elevated)`), neutral border (`var(--border-medium)`), and muted text (`var(--text-muted)`). Hover transitions subtly brighten the border and text (`var(--text-main)`).
+- **Active State**: High-contrast theme-native anchor fill (`var(--btn-primary-bg)`), crisp matching border, high-contrast text (`var(--btn-primary-text)`), and subtle elevation (`var(--shadow-sm)`).
+  - *Dark Theme*: Crisp porcelain off-white fill (`#f8fafc`) with dark obsidian text (`#090d16`).
+  - *Light Theme*: Deep obsidian/slate fill (`#0f172a`) with crisp white text (`#f8fafc`).
+
+#### 4.9.3 Chart & Graph Visual Clarity Invariants
+1. **Neutral Axes & Labels**:
+   - Both X and Y axes, tick marks, and axis title labels must use neutral grey typography (`var(--text-muted)` / `var(--border-subtle)`).
+   - Never color axes with series colors (e.g. green or blue Y-axes); colored axes add visual noise without geodetic or analytical value.
+2. **Visual Symbology Brightness Hierarchy**:
+   - When plotting related metrics for the same entity (e.g. Calls vs. Points):
+     - **Calls (Invocations)**: Lighter, more luminous/pastel tints of the client hue family.
+     - **Points (Volume)**: Darker, deeper tones of the same hue family.
+   - **Total Curve**: Distinctive dashed symbology (`stroke-dasharray="7 5"`, `2.6px` thickness) in neutral theme text (`var(--text-main)`), strictly reflecting the sum of active selected sources ($\text{Total} \ge \text{each source}$).
+3. **2-Line Grouped Symbology Legends**:
+   - Complex multi-series legends must not wrap horizontally in a single unorganized row.
+   - **Line 1 (Sources)**: Active curves grouped by entity: `[Source Name]: [Calls swatch] Calls, [Points swatch] Points`.
+   - **Line 2 (Total)**: Dedicated row for aggregate curves: `Total: [Calls swatch] Calls, [Points swatch] Points`.
+   - **Concise Wording**: Label as simply `Total`, omitting verbose suffixes like `Total (Selected Sources)`.
+4. **Decoupled Control Decks & Legends**:
+   - Filtering controls (selecting which sources/metrics to query) must remain in the controls deck above the chart.
+   - The graph symbology legend is purely descriptive (showing what is currently drawn) and sits inside the chart viewport directly above the plot.
+
+#### 4.9.4 Spatial Heatmap & Cartographic Grid Invariants
+1. **Left-Margin Latitude Axis**:
+   - Vertical latitude labels must be placed on the **LEFT** side of the canvas with right-aligned text (`textAlign = 'right'`) and sufficient padding (`42px`), ensuring standard cartographic conventions and preventing coordinate letters (e.g. `°N`) from clipping against the canvas edge.
+2. **Plain-Language Physical Dimensions**:
+   - State grid cell measurements in plain language (`Grid cell resolution is 0.1° latitude by 0.1° longitude (~10 km, ~86 km² avg. cell area at 46°N)`), avoiding confusing or academic terminology like "Macroscopic".
+3. **Stacked Footnotes**:
+   - Separate physical dimension notes from coordinate reference/quadrant notes by vertically stacking them into distinct items (`.spatial-notes-block` and `.spatial-note-item`).
+4. **Metric Deduplication**:
+   - Avoid repeating identical metric values across top banners and bottom footnotes. Present high-level aggregate counts (e.g. Active Cells count) in top KPI cards, and analytical parameters (e.g. Average Cell Area) in the bottom footnote.
+
+#### 4.9.5 Temporal Range Controls & Date Clamping
+- **Themed Native Calendar Controls**:
+  - Always apply `color-scheme: dark | light` to native `<input type="date">` elements and theme roots to ensure browser date picker dialogs render natively without white glare in dark mode.
+- **Strict Domain Clamping**:
+  - In addition to HTML `min` and `max` attributes, date input change handlers must programmatically clamp entered or typed values to verified database boundaries (e.g., clamping `startVal < minHistoryDate` to `minHistoryDate`), preventing erroneous out-of-bounds selections.
+
 ---
 
 ## 5. Checklist for Future UI & Map Changes
@@ -278,5 +336,12 @@ Before committing any frontend UI or map changes, verify:
 - [ ] Does Quasigeoid Height use the dedicated technical cyan metric palette (`--color-metric-text`) and never green/red?
 - [ ] Are map viewports decoupled from coordinate transforms (no auto-panning)?
 - [ ] Do all tabs provide separate `Center on Map` and `Zoom to Extents` actions, strictly guarded within Romania's envelope?
+- [ ] Do mutually exclusive controls use continuous segmented trays (`.telemetry-btn-toggle-group`) and multi-select filters use standalone separated buttons (`.telemetry-toggle-btn.individual`) with `8px` spacing?
+- [ ] Are active toggle and button states styled with theme-native high contrast (`--btn-primary-bg` / `--btn-primary-text`) without saturated electric blue borders?
+- [ ] Are chart axes, ticks, and title labels styled in neutral grey (`var(--text-muted)`) rather than series colors?
+- [ ] Do dual-metric chart lines follow the brightness hierarchy (Calls = lighter tint, Points = darker tone)?
+- [ ] Are chart legends grouped by entity with a dedicated second line for Total curves?
+- [ ] Is the heatmap Latitude axis positioned on the left margin with right-aligned text to prevent clipping?
+- [ ] Are date inputs clamped programmatically against known database boundaries?
 - [ ] Does `npm --prefix webapp run build` compile cleanly with 0 TypeScript/bundler errors?
 

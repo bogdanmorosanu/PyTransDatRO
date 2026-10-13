@@ -58,6 +58,7 @@
 
 /* Dark Theme (Default) - Deep Obsidian & Charcoal */
 html[data-theme="dark"] {
+  color-scheme: dark;
   --bg-app: #090d16;
   --bg-surface: #0f172a;
   --bg-surface-elevated: #1e293b;
@@ -98,6 +99,7 @@ html[data-theme="dark"] {
 
 /* Light Theme - Clean Crisp Porcelain */
 html[data-theme="light"] {
+  color-scheme: light;
   --bg-app: #f8fafc;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #f1f5f9;

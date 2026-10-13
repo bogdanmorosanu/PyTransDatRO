@@ -9,6 +9,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Usage Section Iteration 2 Harmonization & Ergonomics (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`, `components.css`, `en.ts`, `ro.ts`)**:
+  - **Source Fallback Transparency**: Unmapped database client sources display their exact database string (`sourceName`) directly in toggles and legends without transformation.
+  - **Visual Symbology Brightness Hierarchy**: Standardized brightness across all chart lines and legend symbols: **Calls** use lighter tints (pastel/luminous), while **Points** use darker tones of the same hue family.
+  - **Unified Deck Ergonomics & Filter Layout**:
+    - Aligned time presets to the left and granularity toggles (`Daily`, `Weekly`, `Monthly`) to the right (`justify-content: space-between`).
+    - Merged **SOURCES** and **METRIC** into a single cohesive row across both views (sources on left, metric on right; concise labels `SOURCES` and `METRIC`).
+    - Harmonized filter controls: SOURCES (both Computation and Spatial) and METRIC (Computation) are styled as individual standalone toggle buttons with theme-native neutral borders and backgrounds (`--bg-surface-elevated`), generous 8px spacing, and zero continuous frame enclosure, completely removing blue borders and checkboxes. Active states use high-contrast theme-native `--btn-primary-bg`/`--btn-primary-text`. METRIC on Spatial retains the mutually exclusive segmented pill toggle.
+    - Updated active button styling to theme-native high contrast (`--btn-primary-bg` / `--btn-primary-text`), removing electric blue tints.
+  - **Strict Database Boundary Clamping**: Clamped calendar date pickers (`startVal < minHistoryDate` and `endVal > maxHistoryDate`) directly in input handlers and DOM attributes, preventing selection of dates prior to earliest database record (`2023-11-01`).
+  - **Neutral Computation Chart Axes**: Neutralized left and right Y-axes tick marks and title labels to match the neutral grey of the X-axis (`var(--text-muted)`).
+  - **2-Line Grouped Symbology Legend**: Redesigned the Computation graph legend into a clean 2-line layout: Line 1 groups active sources by client name (`Web App: Calls, Points`), Line 2 displays `Total: Calls, Points` on its own line labeled simply "Total".
+  - **Deduplicated Spatial Top Banner**: Kept solely the clean numerical Active Cells metric in the top overview banner, eliminating duplicate cell area text.
+  - **Stacked Spatial Heatmap Footnotes**: Split and stacked the bottom notes into two distinct, clear items: plain grid cell dimensions (`0.1° latitude by 0.1° longitude (~10 km, ~86 km² avg. cell area at 46°N)` without the word "Macroscopic") and quadrant divider explanation.
+  - **Heatmap Latitude Axis Alignment**: Relocated the Latitude axis to the left side with right-aligned coordinate text, eliminating the clipped letter "N" at the canvas border.
+- **Usage Section Visual & Architectural Refinement (`TelemetryDashboard.ts`, `TimelineChart.ts`, `en.ts`, `ro.ts`, `components.css`, `variables.css`)**:
+  - **Header Structure & Navigation**:
+    - Removed the redundant "Back to Geodetic Studio" button; changed page title to "Usage Data" (`Date de Utilizare`).
+    - Styled top view switcher tabs with GitHub-style underline tabs ("Computation" and "Spatial") adjacent to the title with a subtle separator, matching the primary `Transform` and `Usage` header navigation. Completely removed the obsolete "Grid Specs" tab.
+  - **Computation View**:
+    - Replaced the `noUiSlider` timeline scrubber with native themed `<input type="date">` calendar controls matching the Spatial section, including range limits pill (`Earliest Available` • `Current Date`).
+    - Applied `color-scheme: dark | light` ensuring native browser calendar pickers and form controls render natively in dark or light theme.
+    - Dynamically discovered sources from the database mapped via canonical lookup (`REST API`, `Web App`, `Desktop / CLI`), cleanly falling back to capitalized database names for future sources, and filtering out `unknown`.
+    - Implemented strictly additive Total curve logic across active selected sources ($\text{Total} \ge \text{each active source}$).
+    - Enhanced Total curve symbology with wider dash spacing (`stroke-dasharray="7 5"`), thicker stroke (`2.6px`), and visible 24px repeating dashed sample in the legend.
+    - Added 3-way Metric selector: `Points`, `Calls`, or `Both`, dynamically adapting curves, left/right Y-axes with explicit title labels (`Calls` on left, `Points` on right), and interactive tooltips.
+    - Standardized terminology to "Points" and "Calls". Converted top KPI cards to neutral technical styling, removing saturated green accents.
+    - Separated source toggle checkboxes (clean minimalist checkboxes without attached line symbols) from the dedicated graph symbology legend.
+    - Dynamically generated graph symbology legend synchronized with the visible curves and active metric filter.
+  - **Spatial View**:
+    - Harmonized active period controls into a unified compact preset bar matching the Computation view.
+    - Redesigned top overview banner into a full-width summary card spanning from Total Points/Calls (left) to Active Cells (right) with the average cell size indicator.
+    - Optimized quadrant summary cards with vertical stacking (quadrant name above, volume below) and compact adjacent percentage (`1,250 (34.2%)` without redundant "of total" text).
+    - Verified axis coordinate labels use `°N` and `°E` cartographic notation.
+    - Relocated scaling mode selector (`Logarithmic` | `Linear`) to the bottom-right of the heatmap canvas viewport alongside the 5-step discrete color ramp.
+    - Combined grid resolution, average cell area, and quadrant divider notes into a single cohesive footnote below the heatmap.
 - **Refactored 3-Zone Application Header (`Header.ts`, `GridInfoModal.ts`, `logo.svg`, `components.css`, `ro.ts`, `en.ts`)**:
   - **Zone 1: Brand Cluster Hierarchy & Favicon**:
     - Enlarged vector logo to `36px × 36px` to harmonize with a two-line text cluster.

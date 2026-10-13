@@ -1548,16 +1548,16 @@ input.form-input[readonly]:focus,
   gap: 16px;
 }
 
-/* KPI Banner */
+/* KPI Banner: Neutral Theme Colors, Clean Info Presentation */
 .telemetry-kpi-banner {
   display: grid;
-  grid-template-columns: repeat(3, 1fr) 1.5fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 @media (max-width: 768px) {
   .telemetry-kpi-banner {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1565,16 +1565,20 @@ input.form-input[readonly]:focus,
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .telemetry-kpi-val {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
   font-family: var(--font-mono);
+}
+
+.telemetry-kpi-val.neutral-val {
+  color: var(--text-main);
 }
 
 .telemetry-kpi-val.blue {
@@ -1647,9 +1651,10 @@ input.form-input[readonly]:focus,
 }
 
 .telemetry-toggle-btn.active {
-  background-color: var(--color-primary);
-  color: #ffffff;
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 
 .telemetry-source-chips {
@@ -1729,10 +1734,76 @@ input.form-input[readonly]:focus,
   color: var(--text-muted);
 }
 
+.chart-legend-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  padding-bottom: 8px;
+}
+
+.legend-sources-row {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 18px;
+  row-gap: 6px;
+  align-items: center;
+}
+
+.legend-source-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.legend-group-title {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 11.5px;
+}
+
+.legend-group-items {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-sub-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-total-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  padding-top: 2px;
+}
+
 .legend-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.legend-line-sample {
+  display: inline-block;
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-line-sample.dashed-sample {
+  height: 3px;
+  border-radius: 1px;
 }
 
 .legend-box {
@@ -1781,6 +1852,20 @@ input.form-input[readonly]:focus,
   fill: var(--text-muted);
   font-size: 10.5px;
   font-family: var(--font-sans);
+}
+
+.chart-axis-title {
+  fill: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--font-sans);
+}
+
+.chart-axis-title.calls-title,
+.chart-axis-title.points-title {
+  fill: var(--text-muted);
 }
 
 .chart-axis-text.accent-cyan {
@@ -1899,9 +1984,13 @@ html[data-theme="light"] .chart-crosshair {
    Full-Page Telemetry View & Facet Deck
    ========================================================================== */
 
+/* ==========================================================================
+   Full-Page Telemetry View & Section Navigation
+   ========================================================================== */
+
 .telemetry-page-view {
   width: 100%;
-  height: calc(100vh - var(--header-height, 56px));
+  height: calc(100vh - 52px);
   overflow-y: auto;
   background-color: var(--bg-surface);
   color: var(--text-main);
@@ -1922,7 +2011,7 @@ html[data-theme="light"] .chart-crosshair {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -1937,6 +2026,53 @@ html[data-theme="light"] .chart-crosshair {
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.3px;
+}
+
+/* GitHub-Style Underline Section Navigation Tabs */
+.telemetry-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+}
+
+.telemetry-nav-tab-btn {
+  background: transparent;
+  border: none;
+  height: 100%;
+  padding: 0 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.telemetry-nav-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.telemetry-nav-tab-btn.active {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.telemetry-tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background-color: transparent;
+  border-radius: 2px 2px 0 0;
+  transition: background-color 0.2s ease;
+}
+
+.telemetry-nav-tab-btn.active .telemetry-tab-indicator {
+  background-color: var(--color-primary-light);
 }
 
 .telemetry-page-content {
@@ -1964,15 +2100,154 @@ html[data-theme="light"] .chart-crosshair {
   flex-wrap: wrap;
 }
 
-.telemetry-deck-row.facet-row,
-.telemetry-deck-row.source-toggles-row {
-  padding-top: 12px;
-  border-top: 1px solid var(--border-subtle);
+.telemetry-deck-row.unified-controls-row {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 16px;
+}
+
+.telemetry-btn-toggle-group {
+  display: inline-flex;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.telemetry-individual-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.telemetry-toggle-btn {
+  background: transparent;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.telemetry-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+.telemetry-toggle-btn.active {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.telemetry-toggle-btn.individual {
+  border: 1px solid var(--border-medium);
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+}
+
+.telemetry-toggle-btn.individual:hover {
+  border-color: var(--text-muted);
+  color: var(--text-main);
+}
+
+.telemetry-toggle-btn.individual.active {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-bg);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Themed Native Calendar Date Controls */
+.telemetry-date-controls-row {
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   flex-wrap: wrap;
+}
+
+.telemetry-date-inputs-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.telemetry-date-input {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  color-scheme: dark;
+}
+
+html[data-theme="light"] .telemetry-date-input {
+  color-scheme: light;
+}
+
+.telemetry-date-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-glow);
+}
+
+.telemetry-range-limits-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+}
+
+.limit-divider {
+  color: var(--border-medium);
+}
+
+.telemetry-deck-row.facet-row,
+.telemetry-deck-row.source-toggles-row,
+.telemetry-deck-row.merged-filters-row {
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filters-left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filters-right-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .sources-label-col {
@@ -1995,38 +2270,29 @@ html[data-theme="light"] .chart-crosshair {
   flex-wrap: wrap;
 }
 
-.source-toggle-card {
+.source-toggle-card.simple-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  padding: 6px 12px;
-  font-size: 12.5px;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
 }
 
-.source-toggle-card:hover {
+.source-toggle-card.simple-toggle:hover {
   border-color: var(--border-focus);
   color: var(--text-main);
 }
 
-.source-toggle-card.active {
+.source-toggle-card.simple-toggle.active {
   border-color: var(--color-primary-light);
   background-color: var(--bg-surface-hover);
-  color: var(--text-main);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
-}
-
-.source-toggle-card.persistent-total {
-  border-style: dashed;
-  border-color: #64748b;
-  cursor: default;
-  background-color: rgba(255, 255, 255, 0.03);
   color: var(--text-main);
 }
 
@@ -2036,23 +2302,6 @@ html[data-theme="light"] .chart-crosshair {
   width: 14px;
   height: 14px;
   margin: 0;
-}
-
-.source-swatch-duo {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.swatch-bar {
-  width: 12px;
-  height: 6px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
-.swatch-bar.dashed {
-  border: 1px dashed #64748b;
 }
 
 .source-name-label {
@@ -2166,12 +2415,9 @@ html[data-theme="light"] .chart-crosshair {
   margin-bottom: 8px;
 }
 
-.axis-calls {
-  fill: #818cf8;
-}
-
+.axis-calls,
 .axis-points {
-  fill: #38bdf8;
+  fill: var(--text-muted);
 }
 
 .chart-series-line.line-calls {
@@ -2297,6 +2543,57 @@ html[data-theme="light"] .chart-crosshair {
    Spatial Overview Matrix & Quadrants Visual Styles
    ========================================================================== */
 
+/* Full-Width Overview Banner */
+.spatial-overview-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .spatial-overview-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.spatial-overview-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.overview-sublabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.4px;
+}
+
+.overview-main-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.overview-right-content {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.overview-cell-note {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
 /* 4 Mathematical Quadrant Cards */
 .spatial-quadrants-deck {
   display: grid;
@@ -2332,26 +2629,18 @@ html[data-theme="light"] .chart-crosshair {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
-.quadrant-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quadrant-code {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-primary-glow);
-  color: var(--color-primary-light);
-  letter-spacing: 0.5px;
-}
-
 .quadrant-name {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.quadrant-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .quadrant-value {
@@ -2362,7 +2651,7 @@ html[data-theme="light"] .chart-crosshair {
 }
 
 .quadrant-share {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--color-primary-light);
   font-weight: 500;
 }
@@ -2370,12 +2659,6 @@ html[data-theme="light"] .chart-crosshair {
 /* Spatial Controls Deck */
 .spatial-controls-deck {
   padding: 14px 18px;
-}
-
-.spatial-overview-badges {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .spatial-source-chips-list {
@@ -2389,12 +2672,13 @@ html[data-theme="light"] .chart-crosshair {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--bg-surface-elevated);
+  background: transparent;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-full);
-  padding: 4px 12px;
-  font-size: 12px;
   color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 3px 10px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -2429,14 +2713,20 @@ html[data-theme="light"] .chart-crosshair {
   overflow-x: auto;
 }
 
-.spatial-viewport-legend-row {
+.spatial-matrix-bottom-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.spatial-scaling-selector-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .spatial-legend-bar {
@@ -2444,14 +2734,6 @@ html[data-theme="light"] .chart-crosshair {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.legend-bar-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
 }
 
 .legend-color-step {
@@ -2494,10 +2776,19 @@ html[data-theme="light"] .chart-crosshair {
   color: var(--text-muted);
 }
 
-.spatial-ghost-note {
+.spatial-combined-footnote,
+.spatial-notes-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  text-align: center;
+  padding-top: 6px;
+}
+
+.spatial-note-item {
   font-size: 11.5px;
-  color: var(--text-muted);
-  font-style: italic;
+  color: var(--text-dim);
 }
 
 /* Canvas Wrapper & Tooltip */
@@ -2569,64 +2860,5 @@ html[data-theme="light"] .chart-crosshair {
   justify-content: space-between;
   gap: 10px;
   font-size: 11.5px;
-}
-
-/* Spatial Date Range Scrubber */
-.spatial-date-scrubber-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.spatial-date-scrubber-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12.5px;
-}
-
-.spatial-date-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.spatial-date-inputs input[type="date"] {
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: var(--text-main);
-  padding: 4px 8px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.spatial-date-inputs input[type="date"]:focus {
-  border-color: var(--color-primary);
-}
-
-/* Cell Area Pill & Legend Notes */
-.stat-pill.cell-area-pill {
-  border-left: 2px solid var(--color-primary-light);
-  font-size: 11.5px;
-}
-
-.spatial-legend-notes {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  text-align: right;
-}
-
-.spatial-quadrant-note {
-  font-size: 11px;
-  color: var(--color-primary-light);
-  opacity: 0.85;
 }
 

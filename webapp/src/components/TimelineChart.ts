@@ -10,47 +10,55 @@ export interface SourceDisplayConfig {
 
 export const KNOWN_SOURCE_COLORS: Record<string, { calls: string; points: string; labelKey: string }> = {
   rest_api: {
-    calls: '#6366f1',    // Tech Indigo
-    points: '#a5b4fc',   // Light Indigo / Lilac
+    calls: '#a5b4fc',    // Soft Lavender / Light Indigo (Lighter)
+    points: '#6366f1',   // Tech Indigo (Darker)
     labelKey: 'stats.sourceRestApi',
   },
+  web_app: {
+    calls: '#6ee7b7',    // Mint / Light Emerald (Lighter)
+    points: '#10b981',   // Emerald Green (Darker)
+    labelKey: 'stats.sourceWebMap',
+  },
   web_map: {
-    calls: '#10b981',    // Emerald / Green
-    points: '#6ee7b7',   // Mint / Light Emerald
+    calls: '#6ee7b7',    // Mint / Light Emerald (Lighter)
+    points: '#10b981',   // Emerald Green (Darker)
     labelKey: 'stats.sourceWebMap',
   },
   desktop_cli: {
-    calls: '#f59e0b',    // Amber / Orange
-    points: '#fde68a',   // Warm Yellow
+    calls: '#fde68a',    // Warm Yellow (Lighter)
+    points: '#f59e0b',   // Amber (Darker)
     labelKey: 'stats.sourceDesktopCli',
   },
   unknown: {
-    calls: '#94a3b8',    // Silver Slate
-    points: '#cbd5e1',   // Light Slate
+    calls: '#cbd5e1',    // Light Slate
+    points: '#94a3b8',   // Medium Slate
     labelKey: 'stats.sourceUnknown',
   },
 };
 
-// Distinct fallback palette pairs for dynamic sources beyond the known ones
+// Distinct fallback palette pairs for dynamic sources beyond the known ones (calls lighter, points darker)
 const FALLBACK_PALETTE_PAIRS = [
-  { calls: '#ec4899', points: '#fbcfe8' }, // Pink
-  { calls: '#8b5cf6', points: '#ddd6fe' }, // Purple
-  { calls: '#14b8a6', points: '#99f6e4' }, // Teal
-  { calls: '#f97316', points: '#fed7aa' }, // Bright Orange
-  { calls: '#06b6d4', points: '#a5f3fc' }, // Cyan
+  { calls: '#fbcfe8', points: '#ec4899' }, // Pink
+  { calls: '#ddd6fe', points: '#8b5cf6' }, // Purple
+  { calls: '#99f6e4', points: '#14b8a6' }, // Teal
+  { calls: '#fed7aa', points: '#f97316' }, // Bright Orange
+  { calls: '#a5f3fc', points: '#06b6d4' }, // Cyan
 ];
 
 export const TOTAL_SERIES_CONFIG = {
   key: 'total',
   labelKey: 'stats.seriesTotal',
-  callsColor: '#f8fafc',  // Crisp White dashed line for Total Invocations
+  callsColor: 'var(--text-main, #f8fafc)',  // Theme-adaptive dashed line for Total Invocations
   pointsColor: '#38bdf8', // Vibrant Cyan dashed line for Total Coordinates
 };
+
+export type TimelineMetricFilter = 'both' | 'points' | 'calls';
 
 export interface TimelineChartOptions {
   activeSourceKeys: Set<string>;
   availableSources: SourceItem[];
   showTotal: boolean;
+  metricFilter: TimelineMetricFilter;
 }
 
 export class TimelineChart {
@@ -60,6 +68,7 @@ export class TimelineChart {
     activeSourceKeys: new Set(['rest_api', 'web_map', 'desktop_cli']),
     availableSources: [],
     showTotal: true,
+    metricFilter: 'both',
   };
 
   constructor() {
@@ -77,6 +86,7 @@ export class TimelineChart {
       if (options.activeSourceKeys) this.options.activeSourceKeys = options.activeSourceKeys;
       if (options.availableSources) this.options.availableSources = options.availableSources;
       if (options.showTotal !== undefined) this.options.showTotal = options.showTotal;
+      if (options.metricFilter) this.options.metricFilter = options.metricFilter;
     }
     this.render();
   }
@@ -117,10 +127,19 @@ export class TimelineChart {
       return;
     }
 
+    const metricMode = this.options.metricFilter;
+    const showCalls = metricMode === 'both' || metricMode === 'calls';
+    const showPoints = metricMode === 'both' || metricMode === 'points';
+
     // Chart dimensions
     const width = 880;
     const height = 350;
-    const padding = { top: 25, right: 75, bottom: 45, left: 65 };
+    const padding = { 
+      top: 30, 
+      right: showPoints ? 80 : 30, 
+      bottom: 45, 
+      left: showCalls ? 70 : 30 
+    };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -134,9 +153,7 @@ export class TimelineChart {
       activeConfigs.push(this.getSourceConfig(srcKey, idx++));
     }
 
-    // Compute maximums for dual Y-axes
-    // Left axis = Invocations / Calls
-    // Right axis = Coordinates processed / Points
+    // Compute maximums for axes
     let maxCalls = 0;
     let maxPoints = 0;
 
@@ -153,7 +170,7 @@ export class TimelineChart {
         if (pVal > maxPoints) maxPoints = pVal;
       }
 
-      // Total line for selected sources
+      // Total line strictly sums selected sources
       if (bucketSelectedCalls > maxCalls) maxCalls = bucketSelectedCalls;
       if (bucketSelectedPoints > maxPoints) maxPoints = bucketSelectedPoints;
     }
@@ -176,8 +193,20 @@ export class TimelineChart {
       const pointTickVal = Math.round(ratio * maxPoints);
 
       gridLinesSvg += `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" class="chart-grid-line" />`;
-      leftAxisLabelsSvg += `<text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" class="chart-axis-text axis-calls">${this.formatNumber(callTickVal)}</text>`;
-      rightAxisLabelsSvg += `<text x="${width - padding.right + 8}" y="${y + 4}" text-anchor="start" class="chart-axis-text axis-points">${this.formatCompact(pointTickVal)}</text>`;
+      if (showCalls) {
+        leftAxisLabelsSvg += `<text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" class="chart-axis-text">${this.formatNumber(callTickVal)}</text>`;
+      }
+      if (showPoints) {
+        rightAxisLabelsSvg += `<text x="${width - padding.right + 8}" y="${y + 4}" text-anchor="start" class="chart-axis-text">${this.formatCompact(pointTickVal)}</text>`;
+      }
+    }
+
+    // Add Axis Title Labels (Neutral grey matching X-axis)
+    if (showCalls) {
+      leftAxisLabelsSvg += `<text x="${padding.left - 8}" y="${padding.top - 12}" text-anchor="end" class="chart-axis-title">${t('stats.metricTypeCalls')}</text>`;
+    }
+    if (showPoints) {
+      rightAxisLabelsSvg += `<text x="${width - padding.right + 8}" y="${padding.top - 12}" text-anchor="start" class="chart-axis-title">${t('stats.metricTypePoints')}</text>`;
     }
 
     // Build series paths
@@ -200,89 +229,94 @@ export class TimelineChart {
         pointCoords.push({ x, y: yP });
       });
 
-      // Calls line (Solid line in Calls Color)
-      const callPathD = this.buildSmoothPath(callCoords);
-      pathsSvg += `
-        <path 
-          d="${callPathD}" 
-          fill="none" 
-          stroke="${s.callsColor}" 
-          stroke-width="2.2" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"
-          class="chart-series-line line-calls"
-          data-series="${s.key}-calls"
-        />
-      `;
-
-      // Coordinates line (Solid line in Points Color)
-      const pointPathD = this.buildSmoothPath(pointCoords);
-      pathsSvg += `
-        <path 
-          d="${pointPathD}" 
-          fill="none" 
-          stroke="${s.pointsColor}" 
-          stroke-width="2.2" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"
-          class="chart-series-line line-points"
-          data-series="${s.key}-points"
-        />
-      `;
-    }
-
-    // 2. Persistent Total Lines (calculated from selected sources)
-    const totalCallCoords: { x: number; y: number }[] = [];
-    const totalPointCoords: { x: number; y: number }[] = [];
-
-    this.data.forEach((item, index) => {
-      const x = padding.left + (n === 1 ? chartWidth / 2 : index * stepX);
-      let cVal = 0;
-      let pVal = 0;
-      for (const s of activeConfigs) {
-        cVal += item.calls.sources?.[s.key] ?? (item.calls[s.key] as number) ?? 0;
-        pVal += item.points.sources?.[s.key] ?? (item.points[s.key] as number) ?? 0;
+      if (showCalls) {
+        const callPathD = this.buildSmoothPath(callCoords);
+        pathsSvg += `
+          <path 
+            d="${callPathD}" 
+            fill="none" 
+            stroke="${s.callsColor}" 
+            stroke-width="2.2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            class="chart-series-line line-calls"
+            data-series="${s.key}-calls"
+          />
+        `;
       }
 
-      const yC = padding.top + chartHeight - (cVal / maxCalls) * chartHeight;
-      const yP = padding.top + chartHeight - (pVal / maxPoints) * chartHeight;
+      if (showPoints) {
+        const pointPathD = this.buildSmoothPath(pointCoords);
+        pathsSvg += `
+          <path 
+            d="${pointPathD}" 
+            fill="none" 
+            stroke="${s.pointsColor}" 
+            stroke-width="2.2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            class="chart-series-line line-points"
+            data-series="${s.key}-points"
+          />
+        `;
+      }
+    }
 
-      totalCallCoords.push({ x, y: yC });
-      totalPointCoords.push({ x, y: yP });
-    });
+    // 2. Persistent Total Lines (calculated strictly from selected sources)
+    if (this.options.showTotal && activeConfigs.length > 0) {
+      const totalCallCoords: { x: number; y: number }[] = [];
+      const totalPointCoords: { x: number; y: number }[] = [];
 
-    const totalCallPathD = this.buildSmoothPath(totalCallCoords);
-    const totalPointPathD = this.buildSmoothPath(totalPointCoords);
+      this.data.forEach((item, index) => {
+        const x = padding.left + (n === 1 ? chartWidth / 2 : index * stepX);
+        let cVal = 0;
+        let pVal = 0;
+        for (const s of activeConfigs) {
+          cVal += item.calls.sources?.[s.key] ?? (item.calls[s.key] as number) ?? 0;
+          pVal += item.points.sources?.[s.key] ?? (item.points[s.key] as number) ?? 0;
+        }
 
-    // Total Invocations line (Dashed white/light)
-    pathsSvg += `
-      <path 
-        d="${totalCallPathD}" 
-        fill="none" 
-        stroke="${TOTAL_SERIES_CONFIG.callsColor}" 
-        stroke-width="2.2" 
-        stroke-dasharray="4 3"
-        stroke-linecap="round" 
-        stroke-linejoin="round"
-        class="chart-total-line total-calls"
-        data-series="total-calls"
-      />
-    `;
+        const yC = padding.top + chartHeight - (cVal / maxCalls) * chartHeight;
+        const yP = padding.top + chartHeight - (pVal / maxPoints) * chartHeight;
 
-    // Total Coordinates processed line (Dashed cyan)
-    pathsSvg += `
-      <path 
-        d="${totalPointPathD}" 
-        fill="none" 
-        stroke="${TOTAL_SERIES_CONFIG.pointsColor}" 
-        stroke-width="2.2" 
-        stroke-dasharray="4 3"
-        stroke-linecap="round" 
-        stroke-linejoin="round"
-        class="chart-total-line total-points"
-        data-series="total-points"
-      />
-    `;
+        totalCallCoords.push({ x, y: yC });
+        totalPointCoords.push({ x, y: yP });
+      });
+
+      if (showCalls) {
+        const totalCallPathD = this.buildSmoothPath(totalCallCoords);
+        pathsSvg += `
+          <path 
+            d="${totalCallPathD}" 
+            fill="none" 
+            stroke="${TOTAL_SERIES_CONFIG.callsColor}" 
+            stroke-width="2.6" 
+            stroke-dasharray="7 5"
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            class="chart-total-line total-calls"
+            data-series="total-calls"
+          />
+        `;
+      }
+
+      if (showPoints) {
+        const totalPointPathD = this.buildSmoothPath(totalPointCoords);
+        pathsSvg += `
+          <path 
+            d="${totalPointPathD}" 
+            fill="none" 
+            stroke="${TOTAL_SERIES_CONFIG.pointsColor}" 
+            stroke-width="2.6" 
+            stroke-dasharray="7 5"
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            class="chart-total-line total-points"
+            data-series="total-points"
+          />
+        `;
+      }
+    }
 
     // X Axis Dates
     let xAxisLabelsSvg = '';
@@ -362,6 +396,10 @@ export class TimelineChart {
 
     if (!svg || !tooltip || !crosshair) return;
 
+    const metricMode = this.options.metricFilter;
+    const showCalls = metricMode === 'both' || metricMode === 'calls';
+    const showPoints = metricMode === 'both' || metricMode === 'points';
+
     svg.addEventListener('mousemove', (e: MouseEvent) => {
       const rect = svg.getBoundingClientRect();
       const mouseSvgX = ((e.clientX - rect.left) / rect.width) * totalWidth;
@@ -388,15 +426,23 @@ export class TimelineChart {
       for (const s of activeConfigs) {
         const cVal = item.calls.sources?.[s.key] ?? (item.calls[s.key] as number) ?? 0;
         const pVal = item.points.sources?.[s.key] ?? (item.points[s.key] as number) ?? 0;
+        
+        let detailsHtml = '';
+        if (showCalls) {
+          detailsHtml += `<span><span class="legend-indicator" style="background-color: ${s.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${cVal.toLocaleString()}</strong></span>`;
+        }
+        if (showPoints) {
+          detailsHtml += `<span><span class="legend-indicator" style="background-color: ${s.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${pVal.toLocaleString()}</strong></span>`;
+        }
+
         sourceRowsHtml += `
           <div class="tooltip-source-block">
             <div class="tooltip-source-title">
-              <span class="tooltip-dot" style="background-color: ${s.callsColor};"></span>
+              <span class="tooltip-dot" style="background-color: ${showCalls ? s.callsColor : s.pointsColor};"></span>
               <strong>${s.label}</strong>
             </div>
             <div class="tooltip-source-details">
-              <span><span class="legend-indicator" style="background-color: ${s.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${cVal.toLocaleString()}</strong></span>
-              <span><span class="legend-indicator" style="background-color: ${s.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${pVal.toLocaleString()}</strong></span>
+              ${detailsHtml}
             </div>
           </div>
         `;
@@ -410,15 +456,22 @@ export class TimelineChart {
         totalSelectedPoints += item.points.sources?.[s.key] ?? (item.points[s.key] as number) ?? 0;
       }
 
+      let totalDetailsHtml = '';
+      if (showCalls) {
+        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${TOTAL_SERIES_CONFIG.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${totalSelectedCalls.toLocaleString()}</strong></span>`;
+      }
+      if (showPoints) {
+        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${TOTAL_SERIES_CONFIG.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${totalSelectedPoints.toLocaleString()}</strong></span>`;
+      }
+
       const totalHtml = `
         <div class="tooltip-row total-row">
           <div class="tooltip-source-title">
-            <span class="tooltip-dot dashed" style="background-color: ${TOTAL_SERIES_CONFIG.callsColor};"></span>
+            <span class="tooltip-dot dashed" style="background-color: ${showCalls ? TOTAL_SERIES_CONFIG.callsColor : TOTAL_SERIES_CONFIG.pointsColor};"></span>
             <strong>${t('stats.seriesTotal')}</strong>
           </div>
           <div class="tooltip-source-details">
-            <span><span class="legend-indicator dashed" style="background-color: ${TOTAL_SERIES_CONFIG.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${totalSelectedCalls.toLocaleString()}</strong></span>
-            <span><span class="legend-indicator dashed" style="background-color: ${TOTAL_SERIES_CONFIG.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${totalSelectedPoints.toLocaleString()}</strong></span>
+            ${totalDetailsHtml}
           </div>
         </div>
       `;

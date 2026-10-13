@@ -41,7 +41,10 @@ export class SpatialMatrixChart {
   private rows: number = 0;
   private cellSize: number = 8;
   private cellGap: number = 2;
-  private padding: number = 24;
+  private paddingLeft: number = 42;
+  private paddingRight: number = 16;
+  private paddingTop: number = 16;
+  private paddingBottom: number = 28;
 
   // Hover state
   private hoveredCell: { lat: number; lon: number; hits: number } | null = null;
@@ -103,12 +106,12 @@ export class SpatialMatrixChart {
     // Responsive sizing based on container width
     const containerWidth = Math.max(this.container.clientWidth || 800, 320);
     // 101 cols -> calculate ideal cell size with gaps
-    const availableWidth = containerWidth - (this.padding * 2);
+    const availableWidth = containerWidth - this.paddingLeft - this.paddingRight;
     this.cellSize = Math.max(Math.floor((availableWidth - (this.cols * this.cellGap)) / this.cols), 6);
     this.cellGap = 2;
 
-    const totalWidth = (this.cols * (this.cellSize + this.cellGap)) + (this.padding * 2);
-    const totalHeight = (this.rows * (this.cellSize + this.cellGap)) + (this.padding * 2) + 20; // extra space for axis labels
+    const totalWidth = (this.cols * (this.cellSize + this.cellGap)) + this.paddingLeft + this.paddingRight;
+    const totalHeight = (this.rows * (this.cellSize + this.cellGap)) + this.paddingTop + this.paddingBottom;
 
     // Handle HiDPI displays
     const dpr = window.devicePixelRatio || 1;
@@ -130,11 +133,11 @@ export class SpatialMatrixChart {
     // Iterate rows (Lat: maxLat down to minLat so North is on Top)
     for (let r = 0; r < this.rows; r++) {
       const lat = Number((MATRIX_BOUNDS.maxLat - (r * MATRIX_BOUNDS.step)).toFixed(1));
-      const y = this.padding + (r * (this.cellSize + this.cellGap));
+      const y = this.paddingTop + (r * (this.cellSize + this.cellGap));
 
       for (let c = 0; c < this.cols; c++) {
         const lon = Number((MATRIX_BOUNDS.minLon + (c * MATRIX_BOUNDS.step)).toFixed(1));
-        const x = this.padding + (c * (this.cellSize + this.cellGap));
+        const x = this.paddingLeft + (c * (this.cellSize + this.cellGap));
 
         const key = `${lat.toFixed(1)}:${lon.toFixed(1)}`;
         const hits = this.cellMap.get(key) || 0;
@@ -180,14 +183,14 @@ export class SpatialMatrixChart {
 
     // Calculate Y position for Latitude 45.9°N
     const latOffset = (MATRIX_BOUNDS.maxLat - QUADRANT_CENTER.lat) / MATRIX_BOUNDS.step;
-    const splitY = this.padding + (latOffset * (this.cellSize + this.cellGap));
+    const splitY = this.paddingTop + (latOffset * (this.cellSize + this.cellGap));
 
     // Calculate X position for Longitude 24.9°E
     const lonOffset = (QUADRANT_CENTER.lon - MATRIX_BOUNDS.minLon) / MATRIX_BOUNDS.step;
-    const splitX = this.padding + (lonOffset * (this.cellSize + this.cellGap));
+    const splitX = this.paddingLeft + (lonOffset * (this.cellSize + this.cellGap));
 
-    const gridRight = this.padding + (this.cols * (this.cellSize + this.cellGap)) - this.cellGap;
-    const gridBottom = this.padding + (this.rows * (this.cellSize + this.cellGap)) - this.cellGap;
+    const gridRight = this.paddingLeft + (this.cols * (this.cellSize + this.cellGap)) - this.cellGap;
+    const gridBottom = this.paddingTop + (this.rows * (this.cellSize + this.cellGap)) - this.cellGap;
 
     this.ctx.save();
     this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)'; // Subtle cyan divider tone
@@ -196,13 +199,13 @@ export class SpatialMatrixChart {
 
     // Horizontal line (45.9°N)
     this.ctx.beginPath();
-    this.ctx.moveTo(this.padding, splitY);
+    this.ctx.moveTo(this.paddingLeft, splitY);
     this.ctx.lineTo(gridRight, splitY);
     this.ctx.stroke();
 
     // Vertical line (24.9°E)
     this.ctx.beginPath();
-    this.ctx.moveTo(splitX, this.padding);
+    this.ctx.moveTo(splitX, this.paddingTop);
     this.ctx.lineTo(splitX, gridBottom);
     this.ctx.stroke();
 
@@ -214,27 +217,27 @@ export class SpatialMatrixChart {
 
     this.ctx.fillStyle = 'rgba(148, 163, 184, 0.7)'; // muted slate
     this.ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'top';
 
     // Longitude labels at bottom
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'top';
     for (let c = 0; c < this.cols; c++) {
       const lon = Number((MATRIX_BOUNDS.minLon + (c * MATRIX_BOUNDS.step)).toFixed(1));
       if (Math.abs(lon - Math.round(lon)) < 0.01) {
-        const x = this.padding + (c * (this.cellSize + this.cellGap)) + (this.cellSize / 2);
-        const y = this.padding + (this.rows * (this.cellSize + this.cellGap)) + 4;
+        const x = this.paddingLeft + (c * (this.cellSize + this.cellGap)) + (this.cellSize / 2);
+        const y = this.paddingTop + (this.rows * (this.cellSize + this.cellGap)) + 4;
         this.ctx.fillText(`${lon.toFixed(0)}°E`, x, y);
       }
     }
 
-    // Latitude labels at right
-    this.ctx.textAlign = 'left';
+    // Latitude labels at LEFT (standard cartographic placement, no clipping)
+    this.ctx.textAlign = 'right';
     this.ctx.textBaseline = 'middle';
     for (let r = 0; r < this.rows; r++) {
       const lat = Number((MATRIX_BOUNDS.maxLat - (r * MATRIX_BOUNDS.step)).toFixed(1));
       if (Math.abs(lat - Math.round(lat)) < 0.01) {
-        const x = this.padding + (this.cols * (this.cellSize + this.cellGap)) + 4;
-        const y = this.padding + (r * (this.cellSize + this.cellGap)) + (this.cellSize / 2);
+        const x = this.paddingLeft - 6;
+        const y = this.paddingTop + (r * (this.cellSize + this.cellGap)) + (this.cellSize / 2);
         this.ctx.fillText(`${lat.toFixed(0)}°N`, x, y);
       }
     }
@@ -271,8 +274,8 @@ export class SpatialMatrixChart {
 
   private handleMouseMove(e: MouseEvent): void {
     const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - this.padding;
-    const y = e.clientY - rect.top - this.padding;
+    const x = e.clientX - rect.left - this.paddingLeft;
+    const y = e.clientY - rect.top - this.paddingTop;
 
     const colPitch = this.cellSize + this.cellGap;
     const rowPitch = this.cellSize + this.cellGap;
