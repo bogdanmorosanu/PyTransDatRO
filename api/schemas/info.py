@@ -150,3 +150,22 @@ class SpatialMatrixResponse(BaseModel):
     summary: SpatialMatrixSummary
     cells: List[SpatialCellItem]
 
+
+# Benchmark comparison schemas for the Web App Help section
+class DirectionComparisonSummary(BaseModel):
+    direction: str
+    total_points: int
+    status: str
+    max_abs_error: Dict[str, float]
+    mean_abs_error: Dict[str, float]
+    flags: Dict[str, Dict[str, int]]
+    model_config = {"extra": "allow"}
+
+
+class GridComparisonResponse(BaseModel):
+    total_points: int
+    overall_status: str
+    etrs89_to_st70: DirectionComparisonSummary
+    st70_to_etrs89: DirectionComparisonSummary
+    model_config = {"extra": "allow"}
+

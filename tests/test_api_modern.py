@@ -366,3 +366,18 @@ def test_telemetry_spatial_matrix_invalid_metric(client):
     res = client.get("/api/v1/telemetry/spatial-matrix?metric=invalid")
     assert res.status_code == 422
 
+
+def test_grid_comparison_endpoint(client):
+    """Verifies /api/v1/grid/comparison returns official ANCPI benchmark metrics."""
+    res = client.get("/api/v1/grid/comparison")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_points"] >= 9000
+    assert data["overall_status"] == "PASS"
+    assert "etrs89_to_st70" in data
+    assert "st70_to_etrs89" in data
+    assert data["etrs89_to_st70"]["status"] == "PASS"
+    assert data["st70_to_etrs89"]["status"] == "PASS"
+    assert "max_abs_error" in data["etrs89_to_st70"]
+    assert "max_abs_error" in data["st70_to_etrs89"]
+

@@ -1,0 +1,60 @@
+{
+  "_generator": "tools/generate_ancpi_comparison_reports.py",
+  "_generated_at": "2026-10-14T08:11:58.006284+00:00",
+  "total_points": 9046,
+  "overall_status": "PASS",
+  "etrs89_to_st70": {
+    "direction": "ETRS89 to Stereo70",
+    "total_points": 9046,
+    "status": "PASS",
+    "max_abs_error": {
+      "easting_m": 0.000314,
+      "northing_m": 0.000335,
+      "elevation_m": 0.0005
+    },
+    "mean_abs_error": {
+      "easting_m": 7e-05,
+      "northing_m": 8e-05,
+      "elevation_m": 0.000251
+    },
+    "flags": {
+      "easting": {
+        "0": 9046
+      },
+      "northing": {
+        "0": 9046
+      },
+      "elevation": {
+        "0": 9046
+      }
+    }
+  },
+  "st70_to_etrs89": {
+    "direction": "Stereo70 to ETRS89",
+    "total_points": 9046,
+    "status": "PASS",
+    "max_abs_error": {
+      "latitude_sec": 1.006e-05,
+      "longitude_sec": 1.007e-05,
+      "elevation_m": 0.0005
+    },
+    "mean_abs_error": {
+      "latitude_sec": 5.01e-06,
+      "longitude_sec": 5e-06,
+      "elevation_m": 0.000251
+    },
+    "flags": {
+      "latitude": {
+        "0": 9032,
+        "1": 14
+      },
+      "longitude": {
+        "0": 9015,
+        "1": 31
+      },
+      "elevation": {
+        "0": 9046
+      }
+    }
+  }
+}

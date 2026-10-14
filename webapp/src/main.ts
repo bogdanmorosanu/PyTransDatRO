@@ -9,7 +9,7 @@ import { PointConverter, type AngularUnitType } from './components/PointConverte
 import { MapView } from './components/MapView';
 import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
-import { GeodeticHelpModal } from './components/GeodeticHelpModal';
+import { GeodeticHelpPanel } from './components/GeodeticHelpPanel';
 import { GridMetadataPanel } from './components/GridMetadataPanel';
 import { FeedbackModal } from './components/FeedbackModal';
 import { TelemetryDashboard } from './components/TelemetryDashboard';
@@ -39,8 +39,8 @@ class App {
   private pointConverter!: PointConverter;
   private batchConverter!: BatchConverter;
   private fileUpload!: FileUpload;
-  private geodeticHelpModal = new GeodeticHelpModal();
   private gridMetadataPanel = new GridMetadataPanel();
+  private geodeticHelpPanel = new GeodeticHelpPanel();
   private mapView!: MapView;
 
   private feedbackModal = new FeedbackModal();
@@ -70,7 +70,7 @@ class App {
       onNavigate: (page) => this.navigateToPage(page),
       onOpenFeedback: () => this.feedbackModal.open(),
       onOpenGridInfo: () => this.gridMetadataPanel.toggle(),
-      onOpenGeodeticHelp: () => this.geodeticHelpModal.open(),
+      onOpenGeodeticHelp: () => this.geodeticHelpPanel.toggle(),
       onToggleMobileView: () => this.toggleMobileView(),
     });
     this.rootElement.appendChild(this.header.getElement());

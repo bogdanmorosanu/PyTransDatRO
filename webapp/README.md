@@ -59,7 +59,7 @@ webapp/
     ├── components/         # Interactive UI workbench components
     │   ├── Header.ts       # 3-Zone Header (Brand, Navigation, Native Details Help Dropdown, Health)
     │   ├── GridMetadataPanel.ts # Non-modal, draggable & resizable SPG grid metadata tree panel
-    │   ├── GeodeticHelpModal.ts # Dedicated Help and reference documentation modal
+    │   ├── GeodeticHelpPanel.ts # Non-modal, draggable & resizable geodetic reference & benchmark panel
     │   ├── PointConverter.ts  # Single-point transformation workbench
     │   ├── BatchConverter.ts  # Multi-line text conversion workbench
     │   ├── FileUpload.ts      # Drag-and-drop file processor with streaming progress

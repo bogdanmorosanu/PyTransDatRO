@@ -1,14 +1,30 @@
+#!/usr/bin/env python3
+"""
+ANCPI Official Replication Benchmarking & Precision Report Generator.
+
+Compares PyTransDatRO transformation calculations against the official ANCPI
+TransDatRO / RomGeo reference datasets (9,000+ points across Romania).
+
+Generates:
+1. Human-readable text summaries in reports/ (reports/etrs89_to_st70_summary.txt, reports/st70_to_etrs89_summary.txt)
+2. Interactive Leaflet HTML maps in reports/
+3. Machine-readable JSON summary for the web application help section at:
+   pytransdatro/grids/ancpi_comparison_summary.json
+"""
+
 import os
 import sys
 import csv
 import math
 import json
+import datetime
 from pathlib import Path
 
 # Add project root to sys path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytransdatro
+
 
 def get_flag_m(diff):
     abs_diff = abs(diff)
@@ -21,6 +37,7 @@ def get_flag_m(diff):
     else:
         return 4
 
+
 def get_flag_sec(diff):
     abs_diff = abs(diff)
     if abs_diff <= 0.00001:
@@ -32,6 +49,7 @@ def get_flag_sec(diff):
     else:
         return 4
 
+
 def get_color_for_flag(flag):
     if flag == 0:
         return 'green'
@@ -41,6 +59,7 @@ def get_color_for_flag(flag):
         return 'orange'
     else:
         return 'red'
+
 
 def read_csv(filepath, has_sexa_latlon=False):
     data = {}
@@ -54,7 +73,7 @@ def read_csv(filepath, has_sexa_latlon=False):
                 lat = pytransdatro.utils.sexa_dms_chars_to_rad(vals[1])
                 lon = pytransdatro.utils.sexa_dms_chars_to_rad(vals[2])
                 z = float(vals[3])
-                data[pid] = (lat, lon, z, vals[1], vals[2]) # Also store raw string
+                data[pid] = (lat, lon, z, vals[1], vals[2])  # Also store raw string
             else:
                 n = float(vals[1])
                 e = float(vals[2])
@@ -62,22 +81,23 @@ def read_csv(filepath, has_sexa_latlon=False):
                 data[pid] = (n, e, z)
     return data
 
+
 def write_summary(filepath, direction, total, errs, flags_e, flags_n, flags_z):
     max_e, max_n, max_z = errs['max_e'], errs['max_n'], errs['max_z']
     sum_e, sum_n, sum_z = errs['sum_e'], errs['sum_n'], errs['sum_z']
-    
+
     mean_e = sum_e / total if total > 0 else 0
     mean_n = sum_n / total if total > 0 else 0
     mean_z = sum_z / total if total > 0 else 0
-    
+
     # Check if pass
     passed = (flags_e.get(4, 0) == 0) and (flags_n.get(4, 0) == 0) and (flags_z.get(4, 0) == 0)
-    
+
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(f"Transformation Report Summary: {direction}\n")
-        f.write("="*50 + "\n")
+        f.write("=" * 50 + "\n")
         f.write(f"Overall Status: {'PASS' if passed else 'FAIL'}\n\n")
-        
+
         f.write("Maximum Absolute Errors:\n")
         if direction == "ETRS89 to Stereo70":
             f.write(f"  Easting:   {max_e:.6f} m\n")
@@ -86,7 +106,7 @@ def write_summary(filepath, direction, total, errs, flags_e, flags_n, flags_z):
             f.write(f"  Longitude: {max_e:.8f} sec\n")
             f.write(f"  Latitude:  {max_n:.8f} sec\n")
         f.write(f"  Elevation: {max_z:.6f} m\n\n")
-        
+
         f.write("Mean Absolute Errors:\n")
         if direction == "ETRS89 to Stereo70":
             f.write(f"  Easting:   {mean_e:.6f} m\n")
@@ -95,7 +115,7 @@ def write_summary(filepath, direction, total, errs, flags_e, flags_n, flags_z):
             f.write(f"  Longitude: {mean_e:.8f} sec\n")
             f.write(f"  Latitude:  {mean_n:.8f} sec\n")
         f.write(f"  Elevation: {mean_z:.6f} m\n\n")
-        
+
         f.write("Precision Distribution (Count of points per flag):\n")
         labels = ["Easting/Longitude", "Northing/Latitude", "Elevation"]
         stats = [flags_e, flags_n, flags_z]
@@ -107,10 +127,11 @@ def write_summary(filepath, direction, total, errs, flags_e, flags_n, flags_z):
             f.write(f"    Flag 4: {stat.get(4, 0)}\n")
             f.write("\n")
 
+
 def write_html_map(filepath, points, direction):
     # points format: [{'lat': lat_deg, 'lon': lon_deg, 'color_2d': color, 'color_1d': color, 'popup': html_string}]
     points_json = json.dumps(points)
-    
+
     html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -172,71 +193,97 @@ def write_html_map(filepath, points, direction):
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(html)
 
+
+def export_comparison_json(output_path: Path, etrs_summary: dict, st70_summary: dict):
+    """Exports structured summary JSON for consumption by web app help modal."""
+    total_tested = max(etrs_summary.get('total_points', 0), st70_summary.get('total_points', 0))
+    overall_status = "PASS" if (etrs_summary.get('status') == "PASS" and st70_summary.get('status') == "PASS") else "FAIL"
+
+    summary_data = {
+        "_generator": "tools/generate_ancpi_comparison_reports.py",
+        "_generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "total_points": total_tested,
+        "overall_status": overall_status,
+        "etrs89_to_st70": etrs_summary,
+        "st70_to_etrs89": st70_summary
+    }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(summary_data, f, indent=2, ensure_ascii=False)
+    print(f"Comparison JSON exported successfully to: {output_path}")
+
+
 def generate_reports():
     root_dir = Path(__file__).parent.parent
     data_dir = root_dir / "tests" / "data"
     reports_dir = root_dir / "reports"
     reports_dir.mkdir(exist_ok=True)
-    
+
+    json_output_path = root_dir / "pytransdatro" / "grids" / "ancpi_comparison_summary.json"
+
     t = pytransdatro.TransRO()
-    
+
+    etrs_to_st70_result = {}
+    st70_to_etrs_result = {}
+
     # 1. ETRS89 to Stereo70
     print("Generating ETRS89 to Stereo70 reports...")
     in_file = data_dir / "etrs89_to_st70_input.csv"
     exp_file = data_dir / "etrs89_to_st70_expected.csv"
-    
+
     if in_file.exists() and exp_file.exists():
         inputs = read_csv(in_file, has_sexa_latlon=True)
         expecteds = read_csv(exp_file, has_sexa_latlon=False)
-        
+
         errs = {'max_e': 0, 'max_n': 0, 'max_z': 0, 'sum_e': 0, 'sum_n': 0, 'sum_z': 0}
         flags_e, flags_n, flags_z = {}, {}, {}
         map_points = []
-        
+
         with open(reports_dir / "etrs89_to_st70_report.csv", "w", newline="", encoding='utf-8') as f_csv:
             writer = csv.writer(f_csv)
-            writer.writerow(["Point_ID", "Input_Lat_sexa", "Input_Lon_sexa", "Input_Z", 
-                             "Expected_E", "Expected_N", "Expected_Z", 
-                             "Computed_E", "Computed_N", "Computed_Z", 
-                             "Diff_E", "Diff_N", "Diff_Z", 
+            writer.writerow(["Point_ID", "Input_Lat_sexa", "Input_Lon_sexa", "Input_Z",
+                             "Expected_E", "Expected_N", "Expected_Z",
+                             "Computed_E", "Computed_N", "Computed_Z",
+                             "Diff_E", "Diff_N", "Diff_Z",
                              "Flag_E", "Flag_N", "Flag_Z"])
-            
+
             for pid, (lat_rad, lon_rad, z_in, lat_sexa, lon_sexa) in inputs.items():
                 if pid not in expecteds:
                     continue
                 exp_n, exp_e, exp_z = expecteds[pid]
-                
+
                 try:
                     comp_n, comp_e, comp_z = t.etrs89_to_st70(lat_rad, lon_rad, z_in)
                 except Exception as e:
                     print(f"Error computing point {pid}: {e}")
                     continue
-                
+
                 diff_e = comp_e - exp_e
                 diff_n = comp_n - exp_n
                 diff_z = comp_z - exp_z
-                
+
                 errs['max_e'] = max(errs['max_e'], abs(diff_e))
                 errs['max_n'] = max(errs['max_n'], abs(diff_n))
                 errs['max_z'] = max(errs['max_z'], abs(diff_z))
                 errs['sum_e'] += abs(diff_e)
                 errs['sum_n'] += abs(diff_n)
                 errs['sum_z'] += abs(diff_z)
-                
+
                 fl_e = get_flag_m(diff_e)
                 fl_n = get_flag_m(diff_n)
                 fl_z = get_flag_m(diff_z)
-                
+
                 flags_e[fl_e] = flags_e.get(fl_e, 0) + 1
                 flags_n[fl_n] = flags_n.get(fl_n, 0) + 1
                 flags_z[fl_z] = flags_z.get(fl_z, 0) + 1
-                
+
                 writer.writerow([pid, lat_sexa, lon_sexa, f"{z_in:.3f}",
                                  f"{exp_e:.3f}", f"{exp_n:.3f}", f"{exp_z:.3f}",
                                  f"{comp_e:.3f}", f"{comp_n:.3f}", f"{comp_z:.3f}",
                                  f"{diff_e:.6f}", f"{diff_n:.6f}", f"{diff_z:.6f}",
                                  fl_e, fl_n, fl_z])
-                
+
                 # For map
                 flag_2d = max(fl_e, fl_n)
                 flag_1d = fl_z
@@ -251,84 +298,109 @@ def generate_reports():
                     'color_1d': get_color_for_flag(flag_1d),
                     'popup': popup
                 })
-        
-        write_summary(reports_dir / "etrs89_to_st70_summary.txt", "ETRS89 to Stereo70", len(map_points), errs, flags_e, flags_n, flags_z)
+
+        total = len(map_points)
+        passed = (flags_e.get(4, 0) == 0) and (flags_n.get(4, 0) == 0) and (flags_z.get(4, 0) == 0)
+        mean_e = errs['sum_e'] / total if total > 0 else 0
+        mean_n = errs['sum_n'] / total if total > 0 else 0
+        mean_z = errs['sum_z'] / total if total > 0 else 0
+
+        etrs_to_st70_result = {
+            "direction": "ETRS89 to Stereo70",
+            "total_points": total,
+            "status": "PASS" if passed else "FAIL",
+            "max_abs_error": {
+                "easting_m": round(errs['max_e'], 6),
+                "northing_m": round(errs['max_n'], 6),
+                "elevation_m": round(errs['max_z'], 6)
+            },
+            "mean_abs_error": {
+                "easting_m": round(mean_e, 6),
+                "northing_m": round(mean_n, 6),
+                "elevation_m": round(mean_z, 6)
+            },
+            "flags": {
+                "easting": {str(k): v for k, v in sorted(flags_e.items())},
+                "northing": {str(k): v for k, v in sorted(flags_n.items())},
+                "elevation": {str(k): v for k, v in sorted(flags_z.items())}
+            }
+        }
+
+        write_summary(reports_dir / "etrs89_to_st70_summary.txt", "ETRS89 to Stereo70", total, errs, flags_e, flags_n, flags_z)
         write_html_map(reports_dir / "etrs89_to_st70_map.html", map_points, "ETRS89 to Stereo70")
         print("Done ETRS89 to Stereo70.")
-    
+
     # 2. Stereo70 to ETRS89
     print("Generating Stereo70 to ETRS89 reports...")
     in_file = data_dir / "st70_to_etrs89_input.csv"
     exp_file = data_dir / "st70_to_etrs89_expected.csv"
-    
+
     if in_file.exists() and exp_file.exists():
         inputs = read_csv(in_file, has_sexa_latlon=False)
         expecteds = read_csv(exp_file, has_sexa_latlon=True)
-        
+
         errs = {'max_e': 0, 'max_n': 0, 'max_z': 0, 'sum_e': 0, 'sum_n': 0, 'sum_z': 0}
         flags_e, flags_n, flags_z = {}, {}, {}
         map_points = []
-        
+
         with open(reports_dir / "st70_to_etrs89_report.csv", "w", newline="", encoding='utf-8') as f_csv:
             writer = csv.writer(f_csv)
-            writer.writerow(["Point_ID", "Input_E", "Input_N", "Input_Z", 
-                             "Expected_Lat_sexa", "Expected_Lon_sexa", "Expected_Z", 
-                             "Computed_Lat_sexa", "Computed_Lon_sexa", 
-                             "Computed_Lat_deg", "Computed_Lon_deg", "Computed_Z", 
-                             "Diff_Lat_sec", "Diff_Lon_sec", "Diff_Z", 
+            writer.writerow(["Point_ID", "Input_E", "Input_N", "Input_Z",
+                             "Expected_Lat_sexa", "Expected_Lon_sexa", "Expected_Z",
+                             "Computed_Lat_sexa", "Computed_Lon_sexa",
+                             "Computed_Lat_deg", "Computed_Lon_deg", "Computed_Z",
+                             "Diff_Lat_sec", "Diff_Lon_sec", "Diff_Z",
                              "Flag_Lat", "Flag_Lon", "Flag_Z"])
-            
+
             for pid, (n_in, e_in, z_in) in inputs.items():
                 if pid not in expecteds:
                     continue
                 exp_lat_rad, exp_lon_rad, exp_z, exp_lat_sexa, exp_lon_sexa = expecteds[pid]
-                
+
                 try:
                     comp_lat_rad, comp_lon_rad, comp_z = t.st70_to_etrs89(n_in, e_in, z_in)
                 except Exception as e:
                     print(f"Error computing point {pid}: {e}")
                     continue
-                
+
                 # compute difference in radians, then convert to arc seconds
-                # 1 rad = 360/(2pi) degrees = 360 * 3600 / (2pi) arc seconds
                 rad_to_sec = 3600 * 180 / math.pi
-                
+
                 diff_lat_rad = comp_lat_rad - exp_lat_rad
                 diff_lon_rad = comp_lon_rad - exp_lon_rad
                 diff_z = comp_z - exp_z
-                
+
                 diff_lat_sec = diff_lat_rad * rad_to_sec
                 diff_lon_sec = diff_lon_rad * rad_to_sec
-                
+
                 errs['max_e'] = max(errs['max_e'], abs(diff_lon_sec))
                 errs['max_n'] = max(errs['max_n'], abs(diff_lat_sec))
                 errs['max_z'] = max(errs['max_z'], abs(diff_z))
                 errs['sum_e'] += abs(diff_lon_sec)
                 errs['sum_n'] += abs(diff_lat_sec)
                 errs['sum_z'] += abs(diff_z)
-                
+
                 fl_e = get_flag_sec(diff_lon_sec)
                 fl_n = get_flag_sec(diff_lat_sec)
                 fl_z = get_flag_m(diff_z)
-                
+
                 flags_e[fl_e] = flags_e.get(fl_e, 0) + 1
                 flags_n[fl_n] = flags_n.get(fl_n, 0) + 1
                 flags_z[fl_z] = flags_z.get(fl_z, 0) + 1
-                
+
                 comp_lat_deg = pytransdatro.utils.rad_to_deg(comp_lat_rad)
                 comp_lon_deg = pytransdatro.utils.rad_to_deg(comp_lon_rad)
-                
-                # rad_to_sexa produces string like "47 42 56.40000"
+
                 comp_lat_sexa = pytransdatro.utils.rad_to_sexa(comp_lat_rad)
                 comp_lon_sexa = pytransdatro.utils.rad_to_sexa(comp_lon_rad)
-                
+
                 writer.writerow([pid, f"{e_in:.3f}", f"{n_in:.3f}", f"{z_in:.3f}",
                                  exp_lat_sexa, exp_lon_sexa, f"{exp_z:.3f}",
-                                 comp_lat_sexa, comp_lon_sexa, 
+                                 comp_lat_sexa, comp_lon_sexa,
                                  f"{comp_lat_deg:.8f}", f"{comp_lon_deg:.8f}", f"{comp_z:.3f}",
                                  f"{diff_lat_sec:.8f}", f"{diff_lon_sec:.8f}", f"{diff_z:.6f}",
                                  fl_n, fl_e, fl_z])
-                
+
                 # For map
                 flag_2d = max(fl_e, fl_n)
                 flag_1d = fl_z
@@ -343,11 +415,42 @@ def generate_reports():
                     'color_1d': get_color_for_flag(flag_1d),
                     'popup': popup
                 })
-        
-        write_summary(reports_dir / "st70_to_etrs89_summary.txt", "Stereo70 to ETRS89", len(map_points), errs, flags_e, flags_n, flags_z)
+
+        total = len(map_points)
+        passed = (flags_e.get(4, 0) == 0) and (flags_n.get(4, 0) == 0) and (flags_z.get(4, 0) == 0)
+        mean_e = errs['sum_e'] / total if total > 0 else 0
+        mean_n = errs['sum_n'] / total if total > 0 else 0
+        mean_z = errs['sum_z'] / total if total > 0 else 0
+
+        st70_to_etrs_result = {
+            "direction": "Stereo70 to ETRS89",
+            "total_points": total,
+            "status": "PASS" if passed else "FAIL",
+            "max_abs_error": {
+                "latitude_sec": round(errs['max_n'], 8),
+                "longitude_sec": round(errs['max_e'], 8),
+                "elevation_m": round(errs['max_z'], 6)
+            },
+            "mean_abs_error": {
+                "latitude_sec": round(mean_n, 8),
+                "longitude_sec": round(mean_e, 8),
+                "elevation_m": round(mean_z, 6)
+            },
+            "flags": {
+                "latitude": {str(k): v for k, v in sorted(flags_n.items())},
+                "longitude": {str(k): v for k, v in sorted(flags_e.items())},
+                "elevation": {str(k): v for k, v in sorted(flags_z.items())}
+            }
+        }
+
+        write_summary(reports_dir / "st70_to_etrs89_summary.txt", "Stereo70 to ETRS89", total, errs, flags_e, flags_n, flags_z)
         write_html_map(reports_dir / "st70_to_etrs89_map.html", map_points, "Stereo70 to ETRS89")
         print("Done Stereo70 to ETRS89.")
-        print(f"\nAll reports generated successfully in {reports_dir.absolute()}")
+
+    # Export machine-readable JSON once directly to pytransdatro/grids/
+    export_comparison_json(json_output_path, etrs_to_st70_result, st70_to_etrs_result)
+    print(f"\nAll comparison reports and dynamic JSON summary generated successfully.")
+
 
 if __name__ == "__main__":
     generate_reports()

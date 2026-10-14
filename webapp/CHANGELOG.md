@@ -9,23 +9,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- **Dynamic Grid Metadata Floating Panel (`GridMetadataPanel.ts`, `components.css`, `apiClient.ts`, `en.ts`, `ro.ts`)**:
-  - Implemented an unobtrusive, non-modal floating window to inspect 100% of the active grid metadata without disrupting ongoing map navigation or coordinate transformations.
-  - Interactive recursive collapsible tree structure automatically rendering all root and nested keys (`file_info`, `metadata`, `params`, `grids`, and any future attributes added in subsequent grid releases).
-  - Quick action toolbar: **Expand All**, **Collapse All**, instant real-time search filter for nested keys and values, and **Copy JSON** clipboard export.
-  - Smooth dragging via Pointer Capture API (`setPointerCapture`) with viewport boundary clamping and complete event isolation from the Leaflet map.
-  - Interactive bottom-right corner resize handle (`nwse-resize`) with Pointer Events allowing custom sizing from `340px × 220px` up to full viewport dimensions.
-  - Authoritative provenance notice under the title confirming data is extracted directly from the binary grid file, accompanied by formatted size and SHA-256 hash badges.
-- **Dynamic Full SPG Metadata API & Extractor Tool (`tools/export_spg_metadata_json.py`, `api/routes/info.py`, `api/schemas/info.py`)**:
-  - Created standalone extraction script `tools/export_spg_metadata_json.py` extracting 100% of metadata, parameters, and layers into `pytransdatro/grids/spg_metadata.json` without exposing local system filesystem paths.
-  - Added public REST API endpoint `GET /api/v1/grid/metadata` with flexible Pydantic v2 schemas (`model_config = {"extra": "allow"}`) for public consumption and web application use.
+- **Dynamic Geodetic Help & Benchmark Floating Panel (`GeodeticHelpPanel.ts`, `components.css`, `apiClient.ts`, `en.ts`, `ro.ts`)**:
+  - Replaced the static, modal-based help dialog with a non-modal, draggable floating window matching the UX, dragging mechanics, boundary clamping, and resizing capabilities of `GridMetadataPanel.ts`.
+  - Organized geodetic documentation into 4 clean, scannable cards adhering strictly to [`design_guide.md`](file:///D:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/webapp/design_guide.md):
+    - **Card 1: About & Disclaimer**: States that PyTransDatRO is an independent open-source MIT project reproducing ANCPI TransDatRO & RomGeo algorithms, accompanied by an explicit non-official disclaimer.
+    - **Card 2: Official Engine Replication Benchmark**: Dynamically pulls test metrics across 9,046 test points covering Romania from `/api/v1/grid/comparison`, displaying sub-millimeter residuals ($\le 0.34\text{ mm}$ planimetric, $0.5\text{ mm}$ vertical), dynamic PASS status, and explicit tolerance criteria ($\le 0.003\text{ m}$ / $0.00003''$).
+    - **Card 3: Reference Systems & Datums**: Crisp definitions of Stereo 70 (`EPSG:31700`) with normal heights $H$ explicitly in meters, ETRS89 (`EPSG:4258`), and the Quasigeoid $\zeta = h - H$ model.
+    - **Card 4: Formats & Conventions**: Quick syntax guide for unspaced DMS (`46°00'00.00000"`), decimal degrees, radians with note that angle format governs input parsing, coordinate display, and exported batch files; `NE(H)` vs `EN(H)` coordinate order; and 2D/3D full transformation auto-detection.
+- **ANCPI Comparison Report Pipeline & Backend Integration (`tools/generate_ancpi_comparison_reports.py`, `api/routes/info.py`, `api/schemas/info.py`)**:
+  - Renamed `tools/generate_reports.py` to `tools/generate_ancpi_comparison_reports.py`.
+  - Preserved human-readable `.txt` summaries and interactive `.html` maps in `reports/`.
+  - Added export of machine-readable benchmark JSON written strictly once to `pytransdatro/grids/ancpi_comparison_summary.json`.
+  - Exposed `GET /api/v1/grid/comparison` REST endpoint for dynamic frontend consumption.
 
 ### Changed
-- Renamed Help menu item from **Grid Model & Metadata** (`Model Grilă & Metadate`) to **Grid Metadata** (`Metadate Grilă`) across English and Romanian dictionaries.
-- Default floating panel position refined to `top: 68px; right: 28px` adjacent to the Help menu.
+- In the Header Help dropdown:
+  - Renamed group title from **HELP** / **Ajutor** to **PyTransDatRO**.
+  - Renamed link text from **Help** / **Ajutor** to **PyTransDatRO Help** / **Ajutor PyTransDatRO**.
+  - Replaced the circular icon with a crisp standalone SVG question mark (`?`) help icon without an enclosing circle for maximum legibility.
+- Removed badge tag from Help floating window header for a cleaner aesthetic.
 
 ### Removed
-- Retired blocking `GridInfoModal.ts` in favor of the non-modal `GridMetadataPanel.ts`.
+- Removed legacy `GeodeticHelpModal.ts` in favor of `GeodeticHelpPanel.ts`.
+- Removed legacy `tools/generate_reports.py` in favor of `tools/generate_ancpi_comparison_reports.py`.
 
 ### Added
 - **Usage Section Iteration 2 Harmonization & Ergonomics (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`, `components.css`, `en.ts`, `ro.ts`)**:

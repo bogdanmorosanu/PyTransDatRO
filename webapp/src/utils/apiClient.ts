@@ -109,6 +109,22 @@ export interface TimelineSummary {
   period_count?: number | null;
 }
 
+export interface DirectionComparisonSummary {
+  direction: string;
+  total_points: number;
+  status: string;
+  max_abs_error: Record<string, number>;
+  mean_abs_error: Record<string, number>;
+  flags: Record<string, Record<string, number>>;
+}
+
+export interface GridComparisonResponse {
+  total_points: number;
+  overall_status: string;
+  etrs89_to_st70: DirectionComparisonSummary;
+  st70_to_etrs89: DirectionComparisonSummary;
+}
+
 export interface TimelineResponse {
   summary: TimelineSummary;
   series: TimelineSeriesItem[];
@@ -247,6 +263,16 @@ export const apiClient = {
     });
     if (!res.ok) {
       throw new Error(`Grid Metadata Error: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getGridComparison(): Promise<GridComparisonResponse> {
+    const res = await fetch('/api/v1/grid/comparison', {
+      headers: { 'X-Client-Source': 'web_app' },
+    });
+    if (!res.ok) {
+      throw new Error(`Grid Comparison Error: ${res.status}`);
     }
     return res.json();
   },
