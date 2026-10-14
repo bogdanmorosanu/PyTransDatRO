@@ -27,7 +27,7 @@ export const en = {
     romposPortal: 'Rompos Downloads Portal',
     romgeoGui: 'RomGeo Desktop (GUI Conversion)',
     romgeoGrid: 'RomGeo Grid Binary Files',
-    apiDocs: 'API',
+    apiDocs: 'REST API Reference',
     feedback: 'Feedback',
     apiOnline: 'API Online',
     apiOffline: 'API Offline',
@@ -224,17 +224,82 @@ export const en = {
     closeBtn: 'Close Report',
   },
   feedback: {
-    title: 'Report a Discrepancy / Suggest Feature',
-    desc: 'Did you notice a discrepancy with official benchmarks or would you like to suggest a new import format?',
-    nameLabel: 'Your Name (optional)',
-    emailLabel: 'Contact Email (optional)',
-    typeLabel: 'Report Type',
+    title: 'Report & Feedback',
+    desc: 'Help improve PyTransDatRO by reporting discrepancies, new grid releases, bugs, or suggesting enhancements.',
+    typeLabel: 'REPORT TYPE',
     typeDiscrepancy: 'Coordinate Discrepancy',
-    typeFeature: 'Format or Feature Suggestion',
-    coordsLabel: 'Tested Coordinates (optional)',
-    messageLabel: 'Detailed Description',
+    typeGridUpdate: 'New Official Grid Release Available',
+    typeBug: 'Bug / Application Error',
+    typeFeature: 'Feature or Format Suggestion',
+    typeApiDown: 'REST API Offline / Down',
+    messageLabel: 'DETAILED DESCRIPTION',
+    templateHint: 'A template has been pre-populated below for this report type. Feel free to replace or edit this text.',
+    resetTemplateBtn: 'Reset Template',
+    mathLabel: 'Human Verification:',
+    mathPlaceholder: 'Result',
+    mathError: 'Incorrect answer to the verification question. Please try again.',
     submitBtn: 'Submit Feedback',
-    successToast: 'Feedback submitted successfully! Thank you.',
+    copyBtn: 'Copy Report',
+    openGithubBtn: 'Open GitHub Issue',
+    copiedToast: 'Report copied to clipboard!',
+    successToast: 'Thank you! Your feedback has been recorded.',
+    errorToast: 'Failed to submit feedback. You can copy your report to GitHub or clipboard.',
+    offlineNotice: 'REST API appears to be offline. You can copy the report text or open a GitHub issue directly.',
+    templates: {
+      discrepancy: `[COORDINATE DISCREPANCY REPORT]
+Transformation Direction: Stereo 70 <-> ETRS89
+Input Coordinates:
+  - Northing (N) / Lat: 
+  - Easting (E) / Lon: 
+  - Height (H / h): 
+
+PyTransDatRO Result:
+  - N / E / H: 
+
+Expected Result (Official ANCPI RomGeo / GNSS Benchmark):
+  - N / E / H: 
+
+Benchmark Station / Reference Source:
+Observations & Notes:
+`,
+      grid_update: `[NEW GRID RELEASE REPORT]
+Currently Loaded Grid in PyTransDatRO: {currentGrid}
+
+New Official ANCPI / RomGeo Release:
+  - Version / Release Date: 
+  - Official Download Link / Portal: https://rompos.ro/index.php/download
+  
+Observations & Changes noted:
+`,
+      bug: `[BUG REPORT]
+Summary of the Issue:
+
+Steps to Reproduce:
+1. 
+2. 
+3. 
+
+Observed Behavior:
+Expected Behavior:
+
+Browser & Environment:
+{browserEnv}
+`,
+      feature: `[FEATURE OR FORMAT SUGGESTION]
+Proposed Feature or Format:
+
+Why is this useful:
+
+Example Data / Use Case:
+`,
+      api_down: `[REST API SERVICE INTERRUPTION REPORT]
+Status: PyTransDatRO REST API is reported as Offline / Unreachable
+Reported Timestamp: {timestamp}
+Client URL: {clientUrl}
+
+Observed Error Details:
+`,
+    },
   },
   stats: {
     title: 'Usage Data',

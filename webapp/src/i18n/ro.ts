@@ -27,7 +27,7 @@ export const ro = {
     romposPortal: 'Portal Descărcări Rompos',
     romgeoGui: 'RomGeo Desktop (GUI Conversie)',
     romgeoGrid: 'Fișiere Grilă RomGeo',
-    apiDocs: 'API',
+    apiDocs: 'Referință REST API',
     feedback: 'Feedback',
     apiOnline: 'API Conectat',
     apiOffline: 'API Neconectat',
@@ -224,17 +224,82 @@ export const ro = {
     closeBtn: 'Închide Raportul',
   },
   feedback: {
-    title: 'Semnalează o Neconcordanță / Sugestie',
-    desc: 'Ai identificat o diferență între rezultatele PyTransDatRO și o bornă geodezică oficială sau dorești un format nou de import?',
-    nameLabel: 'Numele tău (opțional)',
-    emailLabel: 'Email de contact (opțional)',
-    typeLabel: 'Tipul semnalării',
+    title: 'Raportare & Feedback',
+    desc: 'Ajută la îmbunătățirea PyTransDatRO semnalând neconcordanțe, versiuni noi de grilă, erori sau propunând îmbunătățiri.',
+    typeLabel: 'TIPUL SEMNALĂRII',
     typeDiscrepancy: 'Neconcordanță de coordonate',
+    typeGridUpdate: 'Versiune nouă de grilă ANCPI disponibilă',
+    typeBug: 'Eroare aplicație (Bug)',
     typeFeature: 'Sugestie format sau funcționalitate',
-    coordsLabel: 'Coordonate testate (opțional)',
-    messageLabel: 'Descriere detaliată',
+    typeApiDown: 'REST API indisponibil / căzut',
+    messageLabel: 'DESCRIERE DETALIATĂ',
+    templateHint: 'Un șablon a fost precompletat mai jos pentru acest tip de raport. Puteți edita sau înlocui liber acest text.',
+    resetTemplateBtn: 'Resetează Șablonul',
+    mathLabel: 'Verificare umană:',
+    mathPlaceholder: 'Rezultat',
+    mathError: 'Răspuns incorect la întrebarea de verificare. Vă rugăm încercați din nou.',
     submitBtn: 'Trimite Mesajul',
+    copyBtn: 'Copiază Raportul',
+    openGithubBtn: 'Deschide Issue pe GitHub',
+    copiedToast: 'Raportul a fost copiat în clipboard!',
     successToast: 'Mesajul tău a fost înregistrat cu succes! Mulțumim.',
+    errorToast: 'Trimiterea a eșuat. Puteți copia raportul pe GitHub sau în clipboard.',
+    offlineNotice: 'Serviciul REST API pare indisponibil. Puteți copia textul raportului sau deschide un tichet pe GitHub.',
+    templates: {
+      discrepancy: `[RAPORT NECONCORDANȚĂ COORDONATE]
+Direcție transformare: Stereo 70 <-> ETRS89
+Coordonate de intrare:
+  - Nord (N) / Lat: 
+  - Est (E) / Lon: 
+  - Înălțime (H / h): 
+
+Rezultat PyTransDatRO:
+  - N / E / H: 
+
+Rezultat Așteptat (RomGeo Oficial ANCPI / Bornă GNSS):
+  - N / E / H: 
+
+Denumire Bornă / Sursă de referință:
+Observații & note:
+`,
+      grid_update: `[NOTIFICARE VERSIUNE NOUĂ DE GRILĂ]
+Grilă încărcată în prezent în PyTransDatRO: {currentGrid}
+
+Versiune nouă oficială ANCPI / RomGeo detectată:
+  - Versiune / Dată lansare: 
+  - Link oficial descărcare: https://rompos.ro/index.php/download
+  
+Observații și modificări remarcate:
+`,
+      bug: `[RAPORT EROARE APLICAȚIE (BUG)]
+Sumar problemă:
+
+Pași pentru reproducere:
+1. 
+2. 
+3. 
+
+Comportament observat:
+Comportament așteptat:
+
+Browser & Mediu de rulare:
+{browserEnv}
+`,
+      feature: `[SUGESTIE FUNCȚIONALITATE SAU FORMAT NOU]
+Funcționalitate sau format propus:
+
+De ce este utilă această îmbunătățire:
+
+Exemplu de date / Caz de utilizare:
+`,
+      api_down: `[RAPORT INDISPONIBILITATE REST API]
+Stare: Serviciul REST API PyTransDatRO este raportat ca Offline / Inaccesibil
+Dată & Oră: {timestamp}
+URL Aplicație: {clientUrl}
+
+Detalii eroare observate:
+`,
+    },
   },
   stats: {
     title: 'Date Utilizare',

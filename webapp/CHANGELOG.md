@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Refined Floating Feedback System & REST API Health Synchronization (`FeedbackPanel.ts`, `components.css`, `api/routes/feedback.py`, `api/services/mailer.py`, `en.ts`, `ro.ts`)**:
+  - Replaced the static `FeedbackModal.ts` with a non-modal, draggable, resizable floating panel matching `GridMetadataPanel.ts` and `GeodeticHelpPanel.ts`.
+  - Dropped Name and Contact Email fields for complete GDPR exemption and user privacy.
+  - Removed the standalone "Tested Coordinates" box to streamline form ergonomics.
+  - Added 5 specialized report categories:
+    - **Coordinate Discrepancy** (`discrepancy`): Pre-fills input, PyTransDatRO result, and expected benchmark coordinates.
+    - **New Official Grid Release** (`grid_update`): Auto-detects and injects the currently loaded SPG grid metadata, prompting the user for newer official ANCPI/RomGeo versions.
+    - **Bug Report** (`bug`): Pre-fills issue summary, reproduction steps, expected/observed behavior, and browser environment.
+    - **Feature / Format Suggestion** (`feature`): Solicits use cases and format specifications.
+    - **REST API Offline / Down** (`api_down`): Directly synchronized with the header's API health indicator dot and offline alert banner for 1-click incident reporting.
+  - Added lightweight bot protection: off-screen honeypot field, in-browser dynamic math verification challenge, and fast-submit prevention.
+  - Added backend `POST /api/v1/feedback` endpoint with standard library SMTP email dispatch and local `logs/feedback.jsonl` logging fallback.
+  - Added 1-click "Copy Report" and "Open GitHub Issue" actions for zero-friction user sharing.
 - **Dynamic Geodetic Help & Benchmark Floating Panel (`GeodeticHelpPanel.ts`, `components.css`, `apiClient.ts`, `en.ts`, `ro.ts`)**:
   - Replaced the static, modal-based help dialog with a non-modal, draggable floating window matching the UX, dragging mechanics, boundary clamping, and resizing capabilities of `GridMetadataPanel.ts`.
   - Organized geodetic documentation into 4 clean, scannable cards adhering strictly to [`design_guide.md`](file:///D:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/webapp/design_guide.md):
@@ -23,13 +36,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Exposed `GET /api/v1/grid/comparison` REST endpoint for dynamic frontend consumption.
 
 ### Changed
-- In the Header Help dropdown:
+- In the Header and Navigation chrome:
+  - Consolidated actions: Moved standalone **REST API Reference** (`/docs` with `↗`) and **Feedback** into the **Help** dropdown under the `PyTransDatRO` group.
+  - Positioned **Feedback** above **REST API Reference**, separated by a clean dashed line (`.dropdown-divider-dashed`) to visually distinguish internal modal/panel actions from external documentation.
+  - Formatted **REST API Reference** with left-aligned text, no internal icon, and a right-aligned external link arrow (`↗`), maintaining 100% visual consistency with the other external links in the dropdown.
+  - Refined the brand subrow health indicator: Guaranteed a bright, circular green dot (`7.5px`) with glow when online, turning red with an inline alert message `Report REST API failure` when an issue is detected, linking directly to the feedback panel with `api_down` pre-selected.
+  - Aligned Feedback form with [`design_guide.md`](file:///D:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/webapp/design_guide.md): uppercase micro-headers (`REPORT TYPE`, `DETAILED DESCRIPTION`), dedicated template note beneath the title, and placed "Reset Template", "Copy Report", and "Open GitHub Issue" on their own dedicated row aligned to the right.
   - Renamed group title from **HELP** / **Ajutor** to **PyTransDatRO**.
   - Renamed link text from **Help** / **Ajutor** to **PyTransDatRO Help** / **Ajutor PyTransDatRO**.
   - Replaced the circular icon with a crisp standalone SVG question mark (`?`) help icon without an enclosing circle for maximum legibility.
 - Removed badge tag from Help floating window header for a cleaner aesthetic.
 
 ### Removed
+- Removed legacy `FeedbackModal.ts` in favor of floating, draggable `FeedbackPanel.ts`.
 - Removed legacy `GeodeticHelpModal.ts` in favor of `GeodeticHelpPanel.ts`.
 - Removed legacy `tools/generate_reports.py` in favor of `tools/generate_ancpi_comparison_reports.py`.
 

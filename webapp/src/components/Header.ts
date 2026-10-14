@@ -3,7 +3,7 @@ import logoSvg from '../assets/logo.svg';
 
 export interface HeaderCallbacks {
   onNavigate: (page: 'studio' | 'telemetry') => void;
-  onOpenFeedback: () => void;
+  onOpenFeedback: (initialType?: 'discrepancy' | 'grid_update' | 'bug' | 'feature' | 'api_down') => void;
   onOpenGridInfo: () => void;
   onOpenGeodeticHelp: () => void;
   onToggleMobileView: () => void;
@@ -109,26 +109,27 @@ export class Header {
             <span class="brand-title-text">${t('app.title')}</span>
             <div class="brand-meta-subrow">
               <span class="brand-stage-badge">${t('app.version')}</span>
-              <span 
+              <button 
+                type="button"
                 class="health-dot ${this.isApiOnline ? 'online' : 'offline'}" 
+                id="header-health-dot-btn"
                 title="${this.isApiOnline ? 'API Connected & Healthy' : 'API Offline - Click to report issue'}"
-              ></span>
+              ></button>
+              ${
+                !this.isApiOnline
+                  ? `
+                <button type="button" class="header-offline-alert" id="header-offline-alert-btn" title="Report REST API failure">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 011 1v4a1 1 0 11-2 0V5a1 1 0 011-1zm0 8a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/>
+                  </svg>
+                  <span>Report REST API failure</span>
+                </button>
+              `
+                  : ''
+              }
             </div>
           </div>
         </a>
-
-        ${
-          !this.isApiOnline
-            ? `
-          <button class="header-offline-alert" id="header-offline-alert-btn" title="${t('header.reportOffline')}">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 011 1v4a1 1 0 11-2 0V5a1 1 0 011-1zm0 8a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/>
-            </svg>
-            <span>${t('header.reportOffline')}</span>
-          </button>
-        `
-            : ''
-        }
 
         <!-- Subtle Vertical Separator between Brand & Navigation -->
         <div class="header-brand-nav-divider"></div>
@@ -158,7 +159,7 @@ export class Header {
         </nav>
       </div>
 
-      <!-- Right Cluster: Attribution, Resources, Feedback & Utilities -->
+      <!-- Right Cluster: Attribution, Resources & Utilities -->
       <div class="header-zone-actions">
         <!-- by PyTransDatRO link -->
         <a 
@@ -174,7 +175,7 @@ export class Header {
           </svg>
         </a>
 
-        <!-- Help Dropdown using semantic <details><summary> for guaranteed browser expansion -->
+        <!-- Help Dropdown using semantic <details><summary> -->
         <details class="header-dropdown-wrap" id="header-help-details" ${wasHelpOpen ? 'open' : ''}>
           <summary class="btn btn-outline header-dropdown-trigger" id="header-help-trigger">
             <span>${t('header.helpMenu')}</span>
@@ -197,6 +198,21 @@ export class Header {
               </svg>
               <span>${t('header.gridInfo')}</span>
             </button>
+            <button type="button" class="dropdown-item" id="menu-feedback-btn">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H4l-3 3V4a1 1 0 011-1z"/>
+              </svg>
+              <span>${t('header.feedback')}</span>
+            </button>
+
+            <div class="dropdown-divider-dashed"></div>
+
+            <a href="/docs" target="_blank" rel="noopener noreferrer" class="dropdown-item">
+              <span>${t('header.apiDocs')}</span>
+              <svg class="ext-icon" width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
 
             <div class="dropdown-divider"></div>
             
@@ -221,19 +237,6 @@ export class Header {
             </a>
           </div>
         </details>
-
-        <!-- API Link Button -->
-        <a href="/docs" target="_blank" rel="noopener noreferrer" class="btn btn-outline header-btn-link" title="${t('app.devDocsBtn')}">
-          <span>${t('header.apiDocs')}</span>
-          <svg class="ext-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-
-        <!-- Feedback Button (Consistent with outline action buttons) -->
-        <button type="button" class="btn btn-outline" id="header-feedback-btn">
-          <span>${t('header.feedback')}</span>
-        </button>
 
         <div class="header-divider-v"></div>
 
@@ -297,12 +300,26 @@ export class Header {
       });
     });
 
-    this.element.querySelector('#header-feedback-btn')?.addEventListener('click', () => {
-      this.callbacks.onOpenFeedback();
+    this.element.querySelector('#menu-feedback-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeDropdown();
+      this.callbacks.onOpenFeedback('discrepancy');
     });
 
-    this.element.querySelector('#header-offline-alert-btn')?.addEventListener('click', () => {
-      this.callbacks.onOpenFeedback();
+    this.element.querySelector('#header-offline-alert-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.callbacks.onOpenFeedback('api_down');
+    });
+
+    this.element.querySelector('#header-health-dot-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!this.isApiOnline) {
+        this.callbacks.onOpenFeedback('api_down');
+      } else {
+        this.callbacks.onOpenFeedback('discrepancy');
+      }
     });
 
     this.element.querySelector('#header-lang-btn')?.addEventListener('click', () => {

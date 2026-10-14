@@ -73,6 +73,12 @@
   line-height: 1.1;
 }
 
+button.health-dot {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
 .health-dot {
   width: 7.5px;
   height: 7.5px;
@@ -321,6 +327,12 @@ details.header-dropdown-wrap[open] .header-dropdown-menu,
 .dropdown-divider {
   height: 1px;
   background-color: var(--border-subtle);
+  margin: 4px 6px;
+}
+
+.dropdown-divider-dashed {
+  height: 0;
+  border-top: 1px dashed var(--border-medium);
   margin: 4px 6px;
 }
 
@@ -3413,6 +3425,136 @@ html[data-theme="light"] .telemetry-date-input {
   border-radius: var(--radius-sm);
   color: var(--color-primary-light);
 }
+
+/* ==========================================================================
+   Non-Modal Floating Feedback Panel (.floating-feedback-panel)
+   ========================================================================== */
+.floating-feedback-panel {
+  position: fixed;
+  top: 76px;
+  right: 56px;
+  width: 540px;
+  min-width: 360px;
+  min-height: 380px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 90px);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.1);
+  z-index: 1055;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-feedback-panel.minimized {
+  width: 320px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+}
+
+.ffp-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.ffp-desc {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.ffp-template-hint {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.ffp-textarea {
+  resize: vertical;
+  min-height: 140px;
+  line-height: 1.45;
+  font-size: 11.5px;
+  background-color: var(--bg-surface-elevated);
+}
+
+.ffp-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ffp-verify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+}
+
+.ffp-math-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ffp-math-label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ffp-math-expr {
+  font-weight: 700;
+  color: var(--text-main);
+  background-color: var(--bg-surface-input);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.ffp-math-input {
+  width: 65px !important;
+  padding: 4px 6px !important;
+  font-size: 13px !important;
+  text-align: center;
+}
+
+.ffp-aux-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ffp-aux-btn {
+  padding: 4px 10px !important;
+  font-size: 11.5px !important;
+}
+
+.ffp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+}
+
 
 
 

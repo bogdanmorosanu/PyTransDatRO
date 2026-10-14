@@ -11,7 +11,7 @@ import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
 import { GeodeticHelpPanel } from './components/GeodeticHelpPanel';
 import { GridMetadataPanel } from './components/GridMetadataPanel';
-import { FeedbackModal } from './components/FeedbackModal';
+import { FeedbackPanel } from './components/FeedbackPanel';
 import { TelemetryDashboard } from './components/TelemetryDashboard';
 import { VolumeWarningModal } from './components/VolumeWarningModal';
 import { apiClient, type TransformationOp } from './utils/apiClient';
@@ -43,7 +43,7 @@ class App {
   private geodeticHelpPanel = new GeodeticHelpPanel();
   private mapView!: MapView;
 
-  private feedbackModal = new FeedbackModal();
+  private feedbackPanel = new FeedbackPanel();
   private volumeWarningModal = new VolumeWarningModal();
 
   constructor() {
@@ -68,7 +68,7 @@ class App {
     // 1. Header
     this.header = new Header({
       onNavigate: (page) => this.navigateToPage(page),
-      onOpenFeedback: () => this.feedbackModal.open(),
+      onOpenFeedback: (initialType) => this.feedbackPanel.toggle(initialType),
       onOpenGridInfo: () => this.gridMetadataPanel.toggle(),
       onOpenGeodeticHelp: () => this.geodeticHelpPanel.toggle(),
       onToggleMobileView: () => this.toggleMobileView(),

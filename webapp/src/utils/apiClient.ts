@@ -331,4 +331,26 @@ export const apiClient = {
     const res = await fetch('/health');
     return res.json();
   },
+
+  async submitFeedback(payload: {
+    report_type: 'discrepancy' | 'grid_update' | 'bug' | 'feature' | 'api_down';
+    description: string;
+    client_timestamp?: string;
+    app_version?: string;
+    active_grid?: string;
+    honeypot?: string;
+  }): Promise<{ status: 'success' | 'logged'; delivered_email: boolean; message: string }> {
+    const res = await fetch('/api/v1/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Source': 'web_app',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new Error(`Feedback submission failed: ${res.status}`);
+    }
+    return res.json();
+  },
 };

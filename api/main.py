@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from api.middleware.rate_limit import SlidingWindowRateLimiter
-from api.routes import legacy, point, batch, file, info, health
+from api.routes import legacy, point, batch, file, info, health, feedback
 from pytransdatro.trans_ro import TransRO
 from pytransdatro.telemetry import SqliteUsageLogger
 
@@ -63,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(file.router)
     app.include_router(info.router)
     app.include_router(health.router)
+    app.include_router(feedback.router)
 
     # Mount static web application assets if built
     webapp_dist = Path(__file__).resolve().parent.parent / "webapp" / "dist"

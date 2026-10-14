@@ -70,7 +70,7 @@ webapp/
     │   ├── SpatialMatrixChart.ts # 0.1° punchcard canvas matrix with quadrant lines and ghost cells
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
     │   ├── ReportModal.ts     # Diagnostic calculation details modal
-    │   └── FeedbackModal.ts   # Discrepancy reporting and user feedback modal
+    │   └── FeedbackPanel.ts   # Non-modal draggable, resizable feedback & discrepancy panel
     ├── i18n/               # Internationalization system
     │   ├── index.ts        # Reactive translation store & persistent state
     │   ├── ro.ts           # Romanian translation dictionary (default)
