@@ -150,6 +150,61 @@ def test_grid_info(client):
     assert bounds["min_northing"] > 200000
     assert bounds["max_northing"] < 800000
     assert "EPSG:31700" in data["crs"]["projected"]
+    assert "metadata" in data
+    assert "params" in data
+    assert "grids" in data
+
+
+def test_grid_metadata_endpoint(client):
+    """Verifies /api/v1/grid/metadata returns exhaustive, dynamic SPG metadata."""
+    res = client.get("/api/v1/grid/metadata")
+    assert res.status_code == 200
+    data = res.json()
+
+    # 1. File Info
+    assert "file_info" in data
+    file_info = data["file_info"]
+    assert "rom_grid3d" in file_info["name"]
+    assert file_info["size_bytes"] > 100000
+    assert len(file_info["sha256"]) == 64
+
+    # 2. Metadata Provenance
+    assert "metadata" in data
+    meta = data["metadata"]
+    assert meta["created_by"] == "CNC"
+    assert "license" in meta
+    assert "release" in meta
+    assert meta["release"]["major"] == 25
+
+    # 3. Parameters & Helmert
+    assert "params" in data
+    params = data["params"]
+    assert "helmert" in params
+    assert "os_st70" in params["helmert"]
+    assert "st70_os" in params["helmert"]
+    assert params["helmert"]["os_st70"]["tE"] > 100.0
+    assert "interpolation_descriptions" in params
+
+    # 4. Layers & Diagnostics
+    assert "grids" in data
+    grids = data["grids"]
+    assert "geodetic_shifts" in grids
+    assert "geoid_heights" in grids
+
+    # Planimetric layer
+    geo_shifts = grids["geodetic_shifts"]
+    assert "band_statistics" in geo_shifts
+    assert len(geo_shifts["band_statistics"]) == 2
+    assert geo_shifts["band_statistics"][0]["valid_nodes"] == 2689
+    assert "formatted_extents" in geo_shifts
+    assert geo_shifts["formatted_extents"]["easting"]["step_m"] == 11000.0
+
+    # Vertical geoid layer
+    geoid = grids["geoid_heights"]
+    assert "band_statistics" in geoid
+    assert geoid["band_statistics"][0]["valid_nodes"] == 43071
+    assert "formatted_extents" in geoid
+    assert "min_dms" in geoid["formatted_extents"]["longitude"]
 
 
 def test_telemetry_stats(client):

@@ -58,7 +58,7 @@ webapp/
     │   └── logo.svg        # Official Geodetic Shift Lattice application logo
     ├── components/         # Interactive UI workbench components
     │   ├── Header.ts       # 3-Zone Header (Brand, Navigation, Native Details Help Dropdown, Health)
-    │   ├── GridInfoModal.ts   # Dedicated binary grid (transdat.spg) model & metadata modal
+    │   ├── GridMetadataPanel.ts # Non-modal, draggable & resizable SPG grid metadata tree panel
     │   ├── GeodeticHelpModal.ts # Dedicated Help and reference documentation modal
     │   ├── PointConverter.ts  # Single-point transformation workbench
     │   ├── BatchConverter.ts  # Multi-line text conversion workbench

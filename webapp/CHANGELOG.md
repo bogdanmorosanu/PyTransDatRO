@@ -9,6 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Dynamic Grid Metadata Floating Panel (`GridMetadataPanel.ts`, `components.css`, `apiClient.ts`, `en.ts`, `ro.ts`)**:
+  - Implemented an unobtrusive, non-modal floating window to inspect 100% of the active grid metadata without disrupting ongoing map navigation or coordinate transformations.
+  - Interactive recursive collapsible tree structure automatically rendering all root and nested keys (`file_info`, `metadata`, `params`, `grids`, and any future attributes added in subsequent grid releases).
+  - Quick action toolbar: **Expand All**, **Collapse All**, instant real-time search filter for nested keys and values, and **Copy JSON** clipboard export.
+  - Smooth dragging via Pointer Capture API (`setPointerCapture`) with viewport boundary clamping and complete event isolation from the Leaflet map.
+  - Interactive bottom-right corner resize handle (`nwse-resize`) with Pointer Events allowing custom sizing from `340px × 220px` up to full viewport dimensions.
+  - Authoritative provenance notice under the title confirming data is extracted directly from the binary grid file, accompanied by formatted size and SHA-256 hash badges.
+- **Dynamic Full SPG Metadata API & Extractor Tool (`tools/export_spg_metadata_json.py`, `api/routes/info.py`, `api/schemas/info.py`)**:
+  - Created standalone extraction script `tools/export_spg_metadata_json.py` extracting 100% of metadata, parameters, and layers into `pytransdatro/grids/spg_metadata.json` without exposing local system filesystem paths.
+  - Added public REST API endpoint `GET /api/v1/grid/metadata` with flexible Pydantic v2 schemas (`model_config = {"extra": "allow"}`) for public consumption and web application use.
+
+### Changed
+- Renamed Help menu item from **Grid Model & Metadata** (`Model Grilă & Metadate`) to **Grid Metadata** (`Metadate Grilă`) across English and Romanian dictionaries.
+- Default floating panel position refined to `top: 68px; right: 28px` adjacent to the Help menu.
+
+### Removed
+- Retired blocking `GridInfoModal.ts` in favor of the non-modal `GridMetadataPanel.ts`.
+
+### Added
 - **Usage Section Iteration 2 Harmonization & Ergonomics (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`, `components.css`, `en.ts`, `ro.ts`)**:
   - **Source Fallback Transparency**: Unmapped database client sources display their exact database string (`sourceName`) directly in toggles and legends without transformation.
   - **Visual Symbology Brightness Hierarchy**: Standardized brightness across all chart lines and legend symbols: **Calls** use lighter tints (pastel/luminous), while **Points** use darker tones of the same hue family.

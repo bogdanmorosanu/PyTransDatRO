@@ -1,6 +1,6 @@
 """Pydantic schemas for grid information and telemetry stats/timeline.
 """
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -11,11 +11,33 @@ class BoundingBox(BaseModel):
     max_easting: float
 
 
+class SpgFileInfo(BaseModel):
+    name: str
+    size_bytes: int
+    size_formatted: str
+    sha256: str
+    model_config = {"extra": "allow"}
+
+
+class GridMetadataResponse(BaseModel):
+    """Exhaustive, dynamic SPG grid metadata model for public REST consumers and web app."""
+    file_info: SpgFileInfo
+    metadata: Dict[str, Any]
+    params: Dict[str, Any]
+    grids: Dict[str, Any]
+    model_config = {"extra": "allow"}
+
+
 class GridInfoResponse(BaseModel):
     grid_file: str
     bounds: BoundingBox
     crs: Dict[str, str]
     quasigeoid_model: str
+    metadata: Optional[Dict[str, Any]] = None
+    params: Optional[Dict[str, Any]] = None
+    grids: Optional[Dict[str, Any]] = None
+    file_info: Optional[SpgFileInfo] = None
+    model_config = {"extra": "allow"}
 
 
 class DailyStatItem(BaseModel):

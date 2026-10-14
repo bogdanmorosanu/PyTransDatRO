@@ -10,7 +10,7 @@ import { MapView } from './components/MapView';
 import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
 import { GeodeticHelpModal } from './components/GeodeticHelpModal';
-import { GridInfoModal } from './components/GridInfoModal';
+import { GridMetadataPanel } from './components/GridMetadataPanel';
 import { FeedbackModal } from './components/FeedbackModal';
 import { TelemetryDashboard } from './components/TelemetryDashboard';
 import { VolumeWarningModal } from './components/VolumeWarningModal';
@@ -40,7 +40,7 @@ class App {
   private batchConverter!: BatchConverter;
   private fileUpload!: FileUpload;
   private geodeticHelpModal = new GeodeticHelpModal();
-  private gridInfoModal = new GridInfoModal();
+  private gridMetadataPanel = new GridMetadataPanel();
   private mapView!: MapView;
 
   private feedbackModal = new FeedbackModal();
@@ -69,7 +69,7 @@ class App {
     this.header = new Header({
       onNavigate: (page) => this.navigateToPage(page),
       onOpenFeedback: () => this.feedbackModal.open(),
-      onOpenGridInfo: () => this.gridInfoModal.open(),
+      onOpenGridInfo: () => this.gridMetadataPanel.toggle(),
       onOpenGeodeticHelp: () => this.geodeticHelpModal.open(),
       onToggleMobileView: () => this.toggleMobileView(),
     });

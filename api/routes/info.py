@@ -7,9 +7,12 @@ from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, Request
 from api.dependencies import get_trans_engine
+import json
 from api.schemas.info import (
     BoundingBox,
     GridInfoResponse,
+    GridMetadataResponse,
+    SpgFileInfo,
     DailyStatItem,
     TelemetrySummary,
     TelemetryStatsResponse,
@@ -26,8 +29,39 @@ from api.schemas.info import (
     SpatialMatrixResponse,
 )
 from pytransdatro.trans_ro import TransRO
+from tools.export_spg_metadata_json import extract_full_spg_metadata
 
 router = APIRouter(prefix="/api/v1", tags=["Metadata & Telemetry"])
+
+
+def _load_or_extract_metadata() -> dict:
+    """Loads metadata JSON from pytransdatro/grids/spg_metadata.json or extracts it dynamically."""
+    json_path = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids" / "spg_metadata.json"
+    if json_path.exists():
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    # Fallback to dynamic extraction if JSON not generated yet
+    spg_dir = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids"
+    spg_candidates = list(spg_dir.glob("*.spg"))
+    if spg_candidates:
+        return extract_full_spg_metadata(spg_candidates[0])
+    return {
+        "file_info": {"name": "rom_grid3d_25.09.spg", "size_bytes": 0, "size_formatted": "0 B", "sha256": ""},
+        "metadata": {},
+        "params": {},
+        "grids": {}
+    }
+
+
+@router.get("/grid/metadata", response_model=GridMetadataResponse)
+async def get_grid_metadata() -> GridMetadataResponse:
+    """Returns comprehensive, dynamic 3D SPG grid metadata, Helmert parameters, layer statistics, and diagnostics."""
+    meta_dict = _load_or_extract_metadata()
+    return GridMetadataResponse(**meta_dict)
 
 
 @router.get("/grid/info", response_model=GridInfoResponse)
@@ -35,6 +69,14 @@ async def get_grid_info(trans: TransRO = Depends(get_trans_engine)) -> GridInfoR
     """Returns active .spg grid metadata, coverage boundaries, and CRS parameters."""
     grid = trans._t_gr2d
     grid_filename = Path(grid.file_name).name
+    meta_dict = _load_or_extract_metadata()
+
+    file_info = SpgFileInfo(**meta_dict.get("file_info", {
+        "name": grid_filename,
+        "size_bytes": 0,
+        "size_formatted": "0 B",
+        "sha256": ""
+    }))
 
     return GridInfoResponse(
         grid_file=grid_filename,
@@ -48,7 +90,11 @@ async def get_grid_info(trans: TransRO = Depends(get_trans_engine)) -> GridInfoR
             "projected": "EPSG:31700 (Pulkovo 1942(58) / Stereo70)",
             "geographic": "EPSG:4258 (ETRS89)"
         },
-        quasigeoid_model="Modern Romanian Quasigeoid (1D nearest-neighbor)"
+        quasigeoid_model="Modern Romanian Quasigeoid (1D nearest-neighbor)",
+        metadata=meta_dict.get("metadata"),
+        params=meta_dict.get("params"),
+        grids=meta_dict.get("grids"),
+        file_info=file_info
     )
 
 

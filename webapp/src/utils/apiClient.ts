@@ -23,6 +23,23 @@ export interface BatchTransformResponse {
   count: number;
 }
 
+export interface SpgFileInfo {
+  name: string;
+  size_bytes: number;
+  size_formatted: string;
+  sha256: string;
+}
+
+export interface GridMetadataResponse {
+  _generator?: string;
+  _generated_at?: string;
+  file_info: SpgFileInfo;
+  metadata: Record<string, any>;
+  params: Record<string, any>;
+  grids: Record<string, any>;
+  [key: string]: any;
+}
+
 export interface GridInfoResponse {
   grid_file: string;
   bounds: {
@@ -36,6 +53,11 @@ export interface GridInfoResponse {
     geographic: string;
   };
   quasigeoid_model: string;
+  metadata?: Record<string, any>;
+  params?: Record<string, any>;
+  grids?: Record<string, any>;
+  file_info?: SpgFileInfo;
+  [key: string]: any;
 }
 
 export interface TelemetryStatsResponse {
@@ -215,6 +237,16 @@ export const apiClient = {
     });
     if (!res.ok) {
       throw new Error(`Grid Info Error: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getGridMetadata(): Promise<GridMetadataResponse> {
+    const res = await fetch('/api/v1/grid/metadata', {
+      headers: { 'X-Client-Source': 'web_app' },
+    });
+    if (!res.ok) {
+      throw new Error(`Grid Metadata Error: ${res.status}`);
     }
     return res.json();
   },

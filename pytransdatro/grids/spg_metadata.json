@@ -1,0 +1,191 @@
+{
+  "_generator": "export_spg_metadata_json.py",
+  "_generated_at": "2026-10-13T23:55:33.054207+00:00",
+  "file_info": {
+    "name": "rom_grid3d_25.09.spg",
+    "size_bytes": 205347,
+    "size_formatted": "200.53 KB",
+    "sha256": "8b8d2e6631eee008c74eeadd4214073d5f8d030ef314a6fa7d91df98112db0d4"
+  },
+  "metadata": {
+    "file": "rom_grid3d_25.09.spg",
+    "license": "CC by-nd 4.0",
+    "created_by": "CNC",
+    "attribution": "<p xmlns:cc=\"http://creativecommons.org/ns#\" xmlns:dct=\"http://purl.org/dc/terms/\"><a property=\"dct:title\" rel=\"cc:attributionURL\" href=\"https://romgeo.ro/grids\">RomGEO Densified transformation Grid</a> by <a rel=\"cc:attributionURL dct:creator\" property=\"cc:attributionName\" href=\"https://cartografie.ro\">Centrul National de Cartografie</a> is licensed under <a href=\"https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1\" target=\"_blank\" rel=\"license noopener noreferrer\" style=\"display:inline-block;\">Creative Commons Attribution-NoDerivatives 4.0 International<img style=\"height:22px!important;margin-left:3px;vertical-align:text-bottom;\" src=\"https://mirrors.creativecommons.org/presskit/icons/cc.svg?ref=chooser-v1\" alt=\"\"><img style=\"height:22px!important;margin-left:3px;vertical-align:text-bottom;\" src=\"https://mirrors.creativecommons.org/presskit/icons/by.svg?ref=chooser-v1\" alt=\"\"><img style=\"height:22px!important;margin-left:3px;vertical-align:text-bottom;\" src=\"https://mirrors.creativecommons.org/presskit/icons/nd.svg?ref=chooser-v1\" alt=\"\"></a></p>",
+    "abstract": "(C) CNC 2025",
+    "notes": "release 2025.09; switched to colocate (0) interpolation for geoid_heights",
+    "release": {
+      "major": 25,
+      "minor": 9,
+      "revision": 0,
+      "legacy": "no"
+    },
+    "release_date": "2025-10-20T00:00:00+00:00",
+    "valid_from": "2025-10-20T00:00:00+00:00",
+    "valid_to": "None"
+  },
+  "params": {
+    "geodetic_shifts_file": "ETRS89_KRASOVSCHI42_2D.GRT",
+    "geoid_heights_file": "RomHybQGeoid_CS1_5_MT3_MD80_4par_GNSS4h66.tif",
+    "version": "25.09",
+    "output_file": "rom_grid3d_25.09.spg",
+    "helmert": {
+      "os_st70": {
+        "tE": 119.7358,
+        "tN": 31.8051,
+        "dm": 0.11559991,
+        "Rz": -0.22739706
+      },
+      "st70_os": {
+        "tE": -119.7358,
+        "tN": -31.8051,
+        "dm": -0.11559991,
+        "Rz": 0.22739706
+      }
+    },
+    "interpolation": {
+      "horizontal": 2,
+      "vertical": 0
+    },
+    "description": "",
+    "interpolation_descriptions": {
+      "horizontal": "INTERP_BICUBIC (Bicubic Spline)",
+      "vertical": "INTERP_COLOCATE (Nearest-Neighbor)"
+    }
+  },
+  "grids": {
+    "geodetic_shifts": {
+      "name": "etrs89_krasovschi42",
+      "source": "etrs89",
+      "target": "krasovschi42",
+      "metadata": {
+        "ndim": 2,
+        "mine": 109783.04,
+        "maxe": 890783.04,
+        "minn": 213634.564,
+        "maxn": 785634.564,
+        "stepe": 11000.0,
+        "stepn": 11000.0,
+        "crs_type": "grid",
+        "ncols": 72,
+        "nrows": 53
+      },
+      "array_properties": {
+        "shape": [
+          2,
+          53,
+          72
+        ],
+        "dimensions_count": 3,
+        "num_bands": 2,
+        "dtype": "float32",
+        "memory_bytes": 30528,
+        "memory_formatted": "29.81 KB",
+        "total_nodes": 7632,
+        "nodes_per_band": 3816
+      },
+      "band_statistics": [
+        {
+          "band_index": 0,
+          "total_nodes": 3816,
+          "valid_nodes": 2689,
+          "nan_nodes": 1127,
+          "valid_percentage": 70.47,
+          "min": -2.464555,
+          "max": 2.235057,
+          "mean": 0.010294,
+          "std": 0.292045
+        },
+        {
+          "band_index": 1,
+          "total_nodes": 3816,
+          "valid_nodes": 2689,
+          "nan_nodes": 1127,
+          "valid_percentage": 70.47,
+          "min": -4.374139,
+          "max": 1.678038,
+          "mean": -0.008021,
+          "std": 0.418991
+        }
+      ],
+      "formatted_extents": {
+        "easting": {
+          "min_m": 109783.04,
+          "max_m": 890783.04,
+          "span_m": 781000.0,
+          "step_m": 11000.0
+        },
+        "northing": {
+          "min_m": 213634.564,
+          "max_m": 785634.564,
+          "span_m": 572000.0,
+          "step_m": 11000.0
+        }
+      }
+    },
+    "geoid_heights": {
+      "name": "romhybqgeoid_cs1",
+      "source": "romhybqgeoid",
+      "target": "cs1",
+      "metadata": {
+        "ndim": 1,
+        "crs_type": "geodetic",
+        "minla": 20.066666666666666,
+        "maxla": 29.833333333333332,
+        "minphi": 43.53333333333333,
+        "maxphi": 48.43333333333333,
+        "ncols": 293,
+        "nrows": 147,
+        "stepla": 0.03333333333333333,
+        "stepphi": 0.03333333333333333
+      },
+      "array_properties": {
+        "shape": [
+          1,
+          147,
+          293
+        ],
+        "dimensions_count": 3,
+        "num_bands": 1,
+        "dtype": "float32",
+        "memory_bytes": 172284,
+        "memory_formatted": "168.25 KB",
+        "total_nodes": 43071,
+        "nodes_per_band": 43071
+      },
+      "band_statistics": [
+        {
+          "band_index": 0,
+          "total_nodes": 43071,
+          "valid_nodes": 43071,
+          "nan_nodes": 0,
+          "valid_percentage": 100.0,
+          "min": 28.996445,
+          "max": 46.358082,
+          "mean": 37.673515,
+          "std": 4.688305
+        }
+      ],
+      "formatted_extents": {
+        "longitude": {
+          "min_deg": 20.066666666666666,
+          "max_deg": 29.833333333333332,
+          "span_deg": 9.76666667,
+          "min_dms": "20° 04' 00.00\" E",
+          "max_dms": "29° 50' 00.00\" E",
+          "step_deg": 0.03333333333333333,
+          "step_arcminutes": 2.0
+        },
+        "latitude": {
+          "min_deg": 43.53333333333333,
+          "max_deg": 48.43333333333333,
+          "span_deg": 4.9,
+          "min_dms": "43° 32' 00.00\" N",
+          "max_dms": "48° 26' 00.00\" N",
+          "step_deg": 0.03333333333333333,
+          "step_arcminutes": 2.0
+        }
+      }
+    }
+  }
+}
