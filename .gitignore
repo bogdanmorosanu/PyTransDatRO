@@ -30,9 +30,22 @@ romgeo/
 
 # Telemetry / Local DB
 logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
 
 # Scratch directory
 scratch/
+
+# Virtual environments & tool caches
+.venv/
+.ruff_cache/
+.pytest_cache/
 
 # Exported container archives
 *.tar

@@ -1,0 +1,33 @@
+/**
+ * Centralized application configuration for the PyTransDatRO Web Application.
+ *
+ * Exposes runtime settings loaded from Vite environment variables (VITE_*)
+ * with resilient fallbacks for local and production deployment modes.
+ */
+
+export interface AppConfig {
+  /** Base URL for API requests. Defaults to empty string (same-origin / Vite dev proxy). */
+  apiBaseUrl: string;
+  /** Default geographic map center: Romania centroid [Latitude, Longitude]. */
+  defaultMapCenter: [number, number];
+  /** Default initial map zoom level. */
+  defaultMapZoom: number;
+  /** Point volume warning threshold triggering sample/render confirmation dialog. */
+  batchWarningThreshold: number;
+  /** Maximum allowable coordinates in an in-memory batch conversion. */
+  maxBatchPoints: number;
+  /** Maximum allowable coordinates in a streaming file conversion. */
+  maxFilePoints: number;
+  /** Maximum allowable file upload size in megabytes. */
+  maxFileSizeMb: number;
+}
+
+export const APP_CONFIG: AppConfig = {
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
+  defaultMapCenter: [45.9432, 24.9668],
+  defaultMapZoom: 7,
+  batchWarningThreshold: Number(import.meta.env.VITE_BATCH_WARNING_THRESHOLD) || 2000,
+  maxBatchPoints: 20000,
+  maxFilePoints: 100000,
+  maxFileSizeMb: 50,
+};

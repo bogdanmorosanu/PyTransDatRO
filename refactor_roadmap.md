@@ -30,19 +30,19 @@ flowchart TD
 ### Phase 1: Configuration, Constants & Environment Grounding
 **Goal**: Establish a unified configuration system, extract magic values, and set up project tooling.
 
-- [ ] **Python Dependencies & Tooling**:
+- [x] **Python Dependencies & Tooling**:
   - Add `ruff` and `pydantic-settings` to development/API dependencies.
   - Create `pyproject.toml` or `ruff.toml` with clean defaults (line length, import sorting rules, targeted rules).
   - Remove accidental root artifacts (`v/` directory, obsolete caches).
-- [ ] **Centralized Configuration**:
+- [x] **Centralized Configuration**:
   - Create `api/config.py` using Pydantic `BaseSettings`:
     - Server port/host, CORS origins, SQLite DB path (`usage.db`), feedback log path.
     - Rate limits (window, max requests), batch transformation line thresholds, upload file size limits.
     - Default logging level (`LOG_LEVEL`).
   - Create `.env.example` documenting all configuration knobs with sensible defaults.
-- [ ] **Geodetic Constants Extraction**:
+- [x] **Geodetic Constants Extraction**:
   - Create `pytransdatro/constants.py` extracting hardcoded WGS84 ellipsoid constants, Stereo 70 projection constants, and default false easting/northing.
-- [ ] **Frontend Environment Configuration**:
+- [x] **Frontend Environment Configuration**:
   - Create `webapp/src/config.ts` loading from `import.meta.env` with fallbacks for map center, default zoom, max file size, and batch warning thresholds.
 
 ---

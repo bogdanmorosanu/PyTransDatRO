@@ -1,21 +1,25 @@
-"""FastAPI application factory and entry point for PyTransDatRO Web Service.
-"""
+"""FastAPI application factory and entry point for PyTransDatRO Web Service."""
+
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from api.config import get_settings
 from api.middleware.rate_limit import SlidingWindowRateLimiter
-from api.routes import legacy, point, batch, file, info, health, feedback
-from pytransdatro.trans_ro import TransRO
+from api.routes import batch, feedback, file, health, info, legacy, point
 from pytransdatro.telemetry import SqliteUsageLogger
+from pytransdatro.trans_ro import TransRO
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager: pre-warms TransRO grid singleton and telemetry."""
+    settings = get_settings()
     # Initialize background SQLite WAL telemetry logger
-    telemetry = SqliteUsageLogger(log_dir="./logs")
+    telemetry = SqliteUsageLogger(log_dir=settings.log_dir)
     app.state.telemetry = telemetry
 
     # Load SPG grid into RAM once on worker boot
@@ -31,6 +35,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Factory creating and configuring the FastAPI instance."""
+    settings = get_settings()
+
     app = FastAPI(
         title="PyTransDatRO Web API",
         description=(
@@ -44,17 +50,22 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # Enable open CORS for web map applications and GIS plugins
+    # Enable configurable CORS for web map applications and GIS plugins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.parsed_cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # In-memory sliding-window rate limiting middleware
-    app.add_middleware(SlidingWindowRateLimiter)
+    # In-memory sliding-window rate limiting middleware configured from settings
+    app.add_middleware(
+        SlidingWindowRateLimiter,
+        point_limit=settings.rate_limit_point,
+        batch_limit=settings.rate_limit_batch,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
 
     # Register routers
     app.include_router(legacy.router)

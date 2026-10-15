@@ -1,6 +1,9 @@
 import math
 
-DEG_TO_RAD_FACTOR = math.pi / 180
+from pytransdatro import constants
+
+# Re-export angular conversion factor for backward compatibility
+DEG_TO_RAD_FACTOR: float = constants.DEG_TO_RAD_FACTOR
 
 def sexa_to_rad(s):
     """Returns the value in radians of a sexagesimal representation of an angle

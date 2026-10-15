@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytransdatro"
+version = "1.0.0"
+description = "Pure Python implementation of Romanian geodetic coordinate transformations (Stereo 70 <-> ETRS89)"
+authors = [{ name = "PyTransDatRO Authors" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.20.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27.0",
+]
+dev = [
+    "ruff>=0.3.0",
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort (import sorting)
+]
+ignore = [
+    "E501", # line-too-long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pytransdatro", "api"]

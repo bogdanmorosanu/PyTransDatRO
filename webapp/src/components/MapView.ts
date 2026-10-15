@@ -5,6 +5,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import { t, onLanguageChange } from '../i18n';
+import { APP_CONFIG } from '../config';
 import { formatDegToDMS, degToRad } from '../utils/dmsParser';
 import type { AngularUnitType, PointTransformedEvent } from './PointConverter';
 
@@ -197,10 +198,10 @@ export class MapView {
   public initMap(): void {
     if (this.map) return;
 
-    // Center of Romania: 45.9432° N, 24.9668° E
+    // Center and zoom initialized from centralized APP_CONFIG
     this.map = L.map(this.mapElement, {
-      center: [45.9432, 24.9668],
-      zoom: 7,
+      center: APP_CONFIG.defaultMapCenter,
+      zoom: APP_CONFIG.defaultMapZoom,
       minZoom: 3,
       maxZoom: 18,
       zoomControl: false, // Custom Controls Dock in top-left
@@ -1076,7 +1077,7 @@ export class MapView {
 
     const count = points.length;
 
-    if (count > 2000) {
+    if (count > APP_CONFIG.batchWarningThreshold) {
       this.callbacks.onOpenVolumeWarning(count, (choice) => {
         if (choice === 'skip') {
           return;
@@ -1109,7 +1110,7 @@ export class MapView {
 
     const count = points.length;
 
-    if (count > 2000) {
+    if (count > APP_CONFIG.batchWarningThreshold) {
       this.callbacks.onOpenVolumeWarning(count, (choice) => {
         if (choice === 'skip') {
           return;

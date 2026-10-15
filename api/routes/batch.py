@@ -1,13 +1,16 @@
-"""Modern in-memory batch coordinate transformation endpoint.
-"""
+"""Modern in-memory batch coordinate transformation endpoint."""
+
 import math
 from typing import List
-from fastapi import APIRouter, Depends
-from api.dependencies import get_trans_engine, get_client_source
-from api.schemas.batch import BatchRequest, BatchResponse
-from api.schemas.point import OperationEnum, AngleUnitEnum, PointResponse
-from pytransdatro.trans_ro import TransRO
+
+from fastapi import APIRouter, Depends, HTTPException
+
 import pytransdatro.exceptions as exc
+from api.config import Settings, get_settings
+from api.dependencies import get_client_source, get_trans_engine
+from api.schemas.batch import BatchRequest, BatchResponse
+from api.schemas.point import AngleUnitEnum, OperationEnum, PointResponse
+from pytransdatro.trans_ro import TransRO
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
 
@@ -17,14 +20,21 @@ async def transform_batch(
     req: BatchRequest,
     trans: TransRO = Depends(get_trans_engine),
     source: int = Depends(get_client_source),
+    settings: Settings = Depends(get_settings),
 ) -> BatchResponse:
-    """Batch processes a list of coordinates in memory (up to 20,000 points).
-    
+    """Batch processes a list of coordinates in memory (up to configured max points).
+
     Provides per-point failure isolation (e.g., points out of grid are marked with warnings
     without failing valid coordinates in the same batch).
     """
+    if len(req.points) > settings.max_batch_points:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Batch size exceeds maximum limit of {settings.max_batch_points} points.",
+        )
+
     results: List[PointResponse] = []
-    is_degrees = (req.unit == AngleUnitEnum.DEGREES)
+    is_degrees = req.unit == AngleUnitEnum.DEGREES
 
     for pt in req.points:
         dim = len(pt)

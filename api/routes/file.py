@@ -1,15 +1,19 @@
 """Streaming delimited file transformation endpoint.
 Supports up to 100,000 coordinates in CSV/TXT formats with robust Point ID and DMS handling.
 """
+
 import math
-from typing import AsyncGenerator, Optional, Tuple, List
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from typing import AsyncGenerator, List, Optional
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
-from api.dependencies import get_trans_engine, get_client_source
-from api.schemas.point import OperationEnum, AngleUnitEnum
-from pytransdatro.trans_ro import TransRO
+
 import pytransdatro.exceptions as exc
 import pytransdatro.utils as geoutils
+from api.config import Settings, get_settings
+from api.dependencies import get_client_source, get_trans_engine
+from api.schemas.point import AngleUnitEnum, OperationEnum
+from pytransdatro.trans_ro import TransRO
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
 
@@ -32,13 +36,13 @@ def _detect_delimiter(line: str) -> str:
 def rad_to_dms_str(rad: float, precision: int = 5) -> str:
     """Format radians into DD°MM'SS.SSSSS" with no spaces."""
     deg = math.degrees(rad)
-    sign = '-' if deg < 0 else ''
+    sign = "-" if deg < 0 else ""
     abs_deg = abs(deg)
     d = int(abs_deg)
     rem = (abs_deg - d) * 60.0
     m = int(rem)
     s = (rem - m) * 60.0
-    factor = 10 ** precision
+    factor = 10**precision
     s = round(s * factor) / factor
     if s >= 60.0:
         s = 0.0
@@ -54,7 +58,7 @@ def _parse_coordinate_token(token: str, is_geo: bool, is_degrees: bool) -> float
     t = token.strip().strip('"').strip("'")
     if is_geo:
         if any(c in t for c in "°'\"\ufffd") or len(t.split()) == 3:
-            clean_t = t.replace('\ufffd', '°')
+            clean_t = t.replace("\ufffd", "°")
             return geoutils.sexa_dms_chars_to_rad(clean_t)
         val = float(t)
         return math.radians(val) if is_degrees else val
@@ -76,8 +80,8 @@ def _transform_line(
     if len(tokens) < 2:
         return line + " # Wrong dimension\n"
 
-    is_source_geo = (op == OperationEnum.ETRS89_TO_STEREO70)
-    is_degrees = (unit == AngleUnitEnum.DEGREES)
+    is_source_geo = op == OperationEnum.ETRS89_TO_STEREO70
+    is_degrees = unit == AngleUnitEnum.DEGREES
 
     point_id: Optional[str] = None
     coord_tokens: List[str] = tokens
@@ -91,19 +95,21 @@ def _transform_line(
             has_angle0 = any(c in t0 for c in "°'\"")
             has_angle1 = any(c in t1 for c in "°'\"")
             try:
-                num0 = float(t0.strip('"\''))
+                num0 = float(t0.strip("\"'"))
             except ValueError:
                 num0 = None
-            if not has_angle0 and (has_angle1 or (num0 is not None and abs(num0) > 90) or num0 is None):
+            if not has_angle0 and (
+                has_angle1 or (num0 is not None and abs(num0) > 90) or num0 is None
+            ):
                 point_id = t0
                 coord_tokens = [t1, t2]
             else:
                 coord_tokens = tokens
         else:
             try:
-                n0 = float(t0.strip('"\''))
-                n1 = float(t1.strip('"\''))
-                n2 = float(t2.strip('"\''))
+                n0 = float(t0.strip("\"'"))
+                n1 = float(t1.strip("\"'"))
+                n2 = float(t2.strip("\"'"))
                 if n1 > 50000 and n2 > 50000 and n0 < 50000:
                     point_id = t0
                     coord_tokens = [t1, t2]
@@ -116,7 +122,7 @@ def _transform_line(
     try:
         c1 = _parse_coordinate_token(coord_tokens[0], is_source_geo, is_degrees)
         c2 = _parse_coordinate_token(coord_tokens[1], is_source_geo, is_degrees)
-        c3 = float(coord_tokens[2].strip('"\'')) if len(coord_tokens) >= 3 else None
+        c3 = float(coord_tokens[2].strip("\"'")) if len(coord_tokens) >= 3 else None
     except Exception:
         return line + " # Invalid coordinate data\n"
 
@@ -157,21 +163,26 @@ def _transform_line(
 async def transform_file(
     file: UploadFile = File(..., description="CSV or TXT file containing coordinates"),
     op: OperationEnum = Form(..., description="Transformation direction"),
-    unit: AngleUnitEnum = Form(default=AngleUnitEnum.RADIANS, description="Angular unit for ETRS89 coordinates"),
-    delimiter: str = Form(default="auto", description="Delimiter: auto, comma, semicolon, tab, or space"),
+    unit: AngleUnitEnum = Form(
+        default=AngleUnitEnum.RADIANS, description="Angular unit for ETRS89 coordinates"
+    ),
+    delimiter: str = Form(
+        default="auto", description="Delimiter: auto, comma, semicolon, tab, or space"
+    ),
     trans: TransRO = Depends(get_trans_engine),
     source: int = Depends(get_client_source),
+    settings: Settings = Depends(get_settings),
 ):
     """Transforms a delimited file (CSV, TXT) streaming results back using chunked HTTP transfer.
-    
-    Processes up to 100,000 points with negligible memory overhead.
+
+    Processes points with negligible memory overhead up to the configured limit.
     """
     chosen_delim = DELIMITER_MAP.get(delimiter.lower())
 
     async def line_generator() -> AsyncGenerator[bytes, None]:
         nonlocal chosen_delim
         row_count = 0
-        max_rows = 100000
+        max_rows = settings.max_file_points
 
         # Read line by line from uploaded stream
         buffer = ""
@@ -203,7 +214,9 @@ async def transform_file(
                     delim_char = chosen_delim if chosen_delim != " " else " "
                     row_count += 1
                     if row_count > max_rows:
-                        yield b"# Limit exceeded: maximum 100,000 points allowed\n"
+                        yield f"# Limit exceeded: maximum {max_rows:,} points allowed\n".encode(
+                            "utf-8"
+                        )
                         return
 
                     out = _transform_line(line, delim_char, op, unit, trans, source=source)
@@ -222,5 +235,5 @@ async def transform_file(
     return StreamingResponse(
         line_generator(),
         media_type="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="transformed_coordinates.csv"'}
+        headers={"Content-Disposition": 'attachment; filename="transformed_coordinates.csv"'},
     )

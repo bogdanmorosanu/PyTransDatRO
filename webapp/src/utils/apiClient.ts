@@ -192,14 +192,18 @@ export interface SpatialMatrixQueryParams {
   is_3d?: number;
 }
 
+import { APP_CONFIG } from '../config';
+
 const COMMON_HEADERS = {
   'Content-Type': 'application/json',
   'X-Client-Source': 'web_app',
 };
 
+const apiUrl = (path: string): string => `${APP_CONFIG.apiBaseUrl}${path}`;
+
 export const apiClient = {
   async transformPoint(req: PointTransformRequest): Promise<PointTransformResponse> {
-    const res = await fetch('/api/v1/transform/point', {
+    const res = await fetch(apiUrl('/api/v1/transform/point'), {
       method: 'POST',
       headers: COMMON_HEADERS,
       body: JSON.stringify(req),
@@ -211,7 +215,7 @@ export const apiClient = {
   },
 
   async transformBatch(req: BatchTransformRequest): Promise<BatchTransformResponse> {
-    const res = await fetch('/api/v1/transform/batch', {
+    const res = await fetch(apiUrl('/api/v1/transform/batch'), {
       method: 'POST',
       headers: COMMON_HEADERS,
       body: JSON.stringify(req),
@@ -234,7 +238,7 @@ export const apiClient = {
     formData.append('unit', unit);
     formData.append('delimiter', delimiter);
 
-    const res = await fetch('/api/v1/transform/file', {
+    const res = await fetch(apiUrl('/api/v1/transform/file'), {
       method: 'POST',
       headers: {
         'X-Client-Source': 'web_app',
@@ -248,7 +252,7 @@ export const apiClient = {
   },
 
   async getGridInfo(): Promise<GridInfoResponse> {
-    const res = await fetch('/api/v1/grid/info', {
+    const res = await fetch(apiUrl('/api/v1/grid/info'), {
       headers: { 'X-Client-Source': 'web_app' },
     });
     if (!res.ok) {
@@ -258,7 +262,7 @@ export const apiClient = {
   },
 
   async getGridMetadata(): Promise<GridMetadataResponse> {
-    const res = await fetch('/api/v1/grid/metadata', {
+    const res = await fetch(apiUrl('/api/v1/grid/metadata'), {
       headers: { 'X-Client-Source': 'web_app' },
     });
     if (!res.ok) {
@@ -268,7 +272,7 @@ export const apiClient = {
   },
 
   async getGridComparison(): Promise<GridComparisonResponse> {
-    const res = await fetch('/api/v1/grid/comparison', {
+    const res = await fetch(apiUrl('/api/v1/grid/comparison'), {
       headers: { 'X-Client-Source': 'web_app' },
     });
     if (!res.ok) {
@@ -278,7 +282,7 @@ export const apiClient = {
   },
 
   async getTelemetryStats(): Promise<TelemetryStatsResponse> {
-    const res = await fetch('/api/v1/telemetry/stats', {
+    const res = await fetch(apiUrl('/api/v1/telemetry/stats'), {
       headers: { 'X-Client-Source': 'web_app' },
     });
     if (!res.ok) {
@@ -297,7 +301,7 @@ export const apiClient = {
     if (params?.is_3d !== undefined) query.set('is_3d', String(params.is_3d));
 
     const qs = query.toString();
-    const url = `/api/v1/telemetry/timeline${qs ? `?${qs}` : ''}`;
+    const url = apiUrl(`/api/v1/telemetry/timeline${qs ? `?${qs}` : ''}`);
     const res = await fetch(url, {
       headers: { 'X-Client-Source': 'web_app' },
     });
@@ -317,7 +321,7 @@ export const apiClient = {
     if (params?.is_3d !== undefined) query.set('is_3d', String(params.is_3d));
 
     const qs = query.toString();
-    const url = `/api/v1/telemetry/spatial-matrix${qs ? `?${qs}` : ''}`;
+    const url = apiUrl(`/api/v1/telemetry/spatial-matrix${qs ? `?${qs}` : ''}`);
     const res = await fetch(url, {
       headers: { 'X-Client-Source': 'web_app' },
     });
@@ -328,7 +332,7 @@ export const apiClient = {
   },
 
   async checkHealth(): Promise<{ status: string; grid_loaded: boolean }> {
-    const res = await fetch('/health');
+    const res = await fetch(apiUrl('/health'));
     return res.json();
   },
 
@@ -340,7 +344,7 @@ export const apiClient = {
     active_grid?: string;
     honeypot?: string;
   }): Promise<{ status: 'success' | 'logged'; delivered_email: boolean; message: string }> {
-    const res = await fetch('/api/v1/feedback', {
+    const res = await fetch(apiUrl('/api/v1/feedback'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
