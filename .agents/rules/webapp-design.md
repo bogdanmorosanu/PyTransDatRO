@@ -11,6 +11,9 @@ For the full design system specification, see [webapp/design_guide.md](../../web
 - **Zero Decorative Emojis**: Tab labels, action buttons, and segmented options must never contain emojis (no ⚡, ⬍, ⬄, 🧭, etc.). Clean typography communicates technical authority.
 - **Micro-Headers**: Use subtle, sentence-case micro-headers (e.g. `Input coordinates (or click on map)`, `Computed coordinates`, `Download As:`).
 - **Workbench Panel Width**: Strictly maintain `480px` for the left workbench panel (`.workbench-layout`).
+- **No Ad-Hoc Styling**: Never style individual controls or inputs separately with bespoke CSS rules. All controls (segmented toggles, selects, copy badges, inputs) must use unified classes and derive from CSS variables in `variables.css`.
+- **Modular Stylesheet Architecture**: Styles must be cleanly divided by category (`forms.css`, `buttons.css`, `badges.css`, `layout.css`, `telemetry.css`) rather than bundled into a single monolithic file.
+- **UI Helper Factories**: Use vanilla TS helper functions in `webapp/src/ui/` for rendering standard controls to guarantee identical DOM structure and styling across tabs.
 
 ---
 

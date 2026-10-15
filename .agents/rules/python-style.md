@@ -7,6 +7,10 @@
 - **Variables**: Concise, domain-specific `snake_case`. Coordinate variables standardly use `n` (Northing/latitude axis), `e` (Easting/longitude axis), and `z` / `h` (elevation/height).
 - **Constants**: `UPPER_SNAKE_CASE` (e.g., `DEG_TO_RAD_FACTOR`, `WGS84_ELL_SMAJ_AXIS`, `FALSE_N`).
 
+## Type Annotations & Signatures
+- **Universal Typing**: All function and method signatures across `pytransdatro/` and `api/` must include complete Python type annotations (e.g., `tuple[float, float]`, `Optional[float]`, `Union[float, list[float]]`, `dict[str, Any]`).
+- **Tuple & Coordinate Typing**: Explicitly type coordinate tuples (e.g., `Tuple2D = tuple[float, float]`, `Tuple3D = tuple[float, float, float]`) for clarity and static analysis safety.
+
 ## Docstrings & Documentation
 - **Format**: Follow Sphinx / reStructuredText (reST) field list conventions:
   - Document parameters with `:param <name>:` and `:type <name>:`.
@@ -14,8 +18,13 @@
   - Document exceptions with `:raises <Error>:`.
   - Use Sphinx directives when applicable (e.g., `.. warning::`).
 - **Module Docstrings**: Every module starts with a triple-quoted docstring outlining its purpose, function/class listings, notes on coordinate units, and basic usage examples.
+- **Mathematical Formulas**: Where complex algorithms are implemented (e.g., Oblique Stereographic projection, bicubic spline polynomial), include the mathematical formula or reference documentation in the docstring.
 
-## Commenting Patterns
+## Exception Handling & Logging
+- **No Bare Pass**: Never use bare `except:` or `except Exception: pass`. Catch specific exceptions (e.g., `ValueError`, `KeyError`, `FileNotFoundError`) and provide informative log messages or re-raise domain-specific errors.
+- **Logging over Print**: Use standard library `logging.getLogger(__name__)` for diagnostic, warning, and error messages rather than raw `print()` statements.
+
+## Commenting Patterns & Purity
 - **Inline Annotations**: Provide brief inline comments clarifying mathematical formulas, units, or algorithm parameters (e.g., `# DMS value`, `# translation on north`, `# scale (ppm)`).
 - **Block Comments**: Use block or section comments to demarcate major algorithmic steps or conditional branches (e.g., `# IF z value provided, apply 1D grid transformation (height correction)`).
-- **Purity**: Rely exclusively on standard library modules (e.g., `math`, `struct`, `functools`, `abc`, `os`).
+- **Standard Library Purity (`pytransdatro/`)**: Rely exclusively on standard library modules (`math`, `struct`, `functools`, `abc`, `pathlib`, `typing`). The only exception is `numpy` strictly for deserializing binary grid files.
