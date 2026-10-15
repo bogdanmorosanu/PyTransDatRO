@@ -30,7 +30,10 @@ from api.schemas.info import (
     GridComparisonResponse,
 )
 from pytransdatro.trans_ro import TransRO
-from tools.export_spg_metadata_json import extract_full_spg_metadata
+try:
+    from tools.export_spg_metadata_json import extract_full_spg_metadata
+except ImportError:
+    extract_full_spg_metadata = None
 
 router = APIRouter(prefix="/api/v1", tags=["Metadata & Telemetry"])
 
@@ -76,10 +79,10 @@ def _load_or_extract_metadata() -> dict:
         except Exception:
             pass
 
-    # Fallback to dynamic extraction if JSON not generated yet
+    # Fallback to dynamic extraction if JSON not generated yet and tools available
     spg_dir = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids"
     spg_candidates = list(spg_dir.glob("*.spg"))
-    if spg_candidates:
+    if spg_candidates and extract_full_spg_metadata is not None:
         return extract_full_spg_metadata(spg_candidates[0])
     return {
         "file_info": {"name": "rom_grid3d_25.09.spg", "size_bytes": 0, "size_formatted": "0 B", "sha256": ""},

@@ -29,8 +29,11 @@ romgeo/
 /transdatonline/
 
 # Telemetry / Local DB
-logs/usage.db*
-logs/*.db*
+logs/
 
 # Scratch directory
 scratch/
+
+# Exported container archives
+*.tar
+*.tar.gz

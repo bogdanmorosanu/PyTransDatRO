@@ -1,0 +1,18 @@
+services:
+  pytransdat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pytransdatro:dev
+    container_name: pytransdatro-app
+    ports:
+      - "8000:8000"
+    volumes:
+      # Named Docker volume ensures native Linux ext4 filesystem locks for SQLite
+      - pytransdat-logs:/app/logs
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  pytransdat-logs:

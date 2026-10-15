@@ -55,7 +55,10 @@ class SqliteUsageLogger:
     def _get_db_connection(self):
         db_path = self.log_dir / "usage.db"
         conn = sqlite3.connect(str(db_path), timeout=5.0)
-        conn.execute("PRAGMA journal_mode = WAL;")
+        try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+        except sqlite3.OperationalError:
+            conn.execute("PRAGMA journal_mode = DELETE;")
         conn.execute("PRAGMA synchronous = NORMAL;")
 
         # 1. Sources dimension lookup table
