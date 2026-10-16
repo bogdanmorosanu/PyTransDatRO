@@ -50,15 +50,15 @@ flowchart TD
 ### Phase 2: Core Geodetic Engine Quality & Typings (`pytransdatro/`)
 **Goal**: Bring the mathematical computation engine to production-grade typing, docstrings, and algorithmic clarity without touching numerical outputs.
 
-- [ ] **Complete Type Annotations**:
+- [x] **Complete Type Annotations**:
   - Add standard `typing` annotations across all core modules:
     - `trans_ro.py`, `trans_grid.py`, `spg_reader.py`, `proj_stereo.py`, `trans_helmert2d.py`, `utils.py`.
     - Typed signatures for 2D/3D tuples, coordinate arrays, and grid metadata.
-- [ ] **Eliminate Silent Errors**:
+- [x] **Eliminate Silent Errors**:
   - Replace bare `except Exception: pass` in `trans_ro.py` with explicit exceptions or structured logging/warnings.
-- [ ] **Refine Docstrings & Mathematical Formulas**:
+- [x] **Refine Docstrings & Mathematical Formulas**:
   - Standardize reST/Sphinx docstrings with mathematical equations for bicubic interpolation and stereographic projection formulas.
-- [ ] **Regression Run**:
+- [x] **Regression Run**:
   - Run `pytest tests/test_trans_ro.py` and numerical comparison scripts to ensure 100.0% zero-regression.
 
 ---

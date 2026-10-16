@@ -1,74 +1,104 @@
-"""This module stores classes for the coordinate conversion of the
-Oblique Stereographic projection used by PyTransDatRO. The projection's
-parameters values were extracted from the document
-Help_TransDatRO_code_source_EN.pdf and are assigned when a StereoProj object is
-instantiated
+"""Oblique Stereographic Cartographic Projection (Stereo 70).
 
-Usage:
-The purpose of proj_stereo is to be  referenced in the trans_ro module as part
-of the Stere70 <-> ETRS89 transformation.
-Code example:
-    st_proj = StereoProj()
-    lat, lon = st_proj.to_geo(n, e)   # (Lat, Long) -> (N, E)
-    n, e = st_proj.to_grid(lat, lon)  # (N, E) -> (Lat, Long)
+This module implements the Oblique Stereographic projection equations on the WGS84
+reference ellipsoid as used by the Romanian national coordinate system (Stereo 70).
 
-Notes:
-    - geographic cooordinates (lat, lon) are expressed in radians
-    - grid (projected) coordinates (n, e) are expressed in meters
+The transformation utilizes the Gauss double projection method:
+1. Conformal mapping of the reference ellipsoid onto a conformal sphere.
+2. Perspective stereographic projection from the conformal sphere to the projection plane.
 
-Classes:
-    - StereoProj
-        - _Ellipsoid
-        - _ConfSph
+Mathematical Formulation:
+-------------------------
+Ellipsoidal Parameters:
+    - Semi-major axis: :math:`a = 6378137.0\\text{ m}`
+    - Inverse flattening: :math:`1/f = 298.257223563`
+    - First eccentricity squared: :math:`e^2 = 2f - f^2`
+    - Meridian curvature radius: :math:`M = \\frac{a(1 - e^2)}{(1 - e^2 \\sin^2\\varphi)^{3/2}}`
+    - Prime vertical curvature radius: :math:`N = \\frac{a}{\\sqrt{1 - e^2 \\sin^2\\varphi}}`
 
+Conformal Sphere Parameters:
+    - Sphere radius: :math:`R = \\sqrt{M_0 N_0}` at natural origin latitude :math:`\\varphi_0 = 46^\\circ\\text{N}`
+    - Scale constant: :math:`n = \\sqrt{1 + \\frac{e^2 \\cos^4\\varphi_0}{1 - e^2}}`
+    - Integration constant :math:`c` and conformal origin latitude :math:`\\chi_0`
+
+Stereographic Forward Projection :math:`(\\varphi, \\lambda) \\to (N, E)`:
+    Conformal sphere coordinates :math:`(\\chi, \\Lambda)`:
+    .. math::
+        \\chi = 2 \\arctan\\left[ c \\left( \\frac{1 + \\sin\\varphi}{1 - \\sin\\varphi} \\right)^{n/2}
+        \\left( \\frac{1 - e\\sin\\varphi}{1 + e\\sin\\varphi} \\right)^{ne/2} \\right] - \\frac{\\pi}{2}
+
+    .. math::
+        \\Lambda = n(\\lambda - \\lambda_0) + \\lambda_0
+
+    Projected Plane Coordinates:
+    .. math::
+        B = 1 + \\sin\\chi \\sin\\chi_0 + \\cos\\chi \\cos\\chi_0 \\cos(\\Lambda - \\lambda_0)
+
+    .. math::
+        N = N_0 + \\frac{2 R k_0 (\\sin\\chi \\cos\\chi_0 - \\cos\\chi \\sin\\chi_0 \\cos(\\Lambda - \\lambda_0))}{B}
+
+    .. math::
+        E = E_0 + \\frac{2 R k_0 \\cos\\chi \\sin(\\Lambda - \\lambda_0)}{B}
+
+Stereographic Inverse Projection :math:`(N, E) \\to (\\varphi, \\lambda)`:
+    Inverts planar coordinates to conformal sphere :math:`(\\chi, \\Lambda)`, derives isometric
+    latitude :math:`q`, and iteratively resolves geodetic latitude :math:`\\varphi` using
+    Newton-Raphson iteration until convergence threshold :math:`\\epsilon < 10^{-11}\\text{ rad}`.
 """
 
 import math
+from typing import Sequence, Tuple
 
 from pytransdatro import constants
 
 
 class StereoProj:
-    """Class which provides functions for Oblique Stereographic projection
-    coordinate conversion.
-    (Lat, Long) -> (N, E)
-    (N, E) -> (Lat, Long)
+    """Provides coordinate conversions for the Oblique Stereographic projection (Stereo 70).
+
+    Supports:
+        - Forward projection: :math:`(\\text{Lat}, \\text{Long}) \\to (N, E)`
+        - Inverse projection: :math:`(N, E) \\to (\\text{Lat}, \\text{Long})`
     """
 
-    # constants which define the WGS84 ellipsoid used by this projection
-    WGS84_ELL_SMAJ_AXIS = constants.WGS84_ELL_SMAJ_AXIS  # ellipsoid's semi-major axis
-    WGS84_ELL_INV_FLAT = constants.WGS84_ELL_INV_FLAT  # ellipsoid's inverse flattening
+    # Reference ellipsoid constants (WGS84)
+    WGS84_ELL_SMAJ_AXIS: float = constants.WGS84_ELL_SMAJ_AXIS
+    WGS84_ELL_INV_FLAT: float = constants.WGS84_ELL_INV_FLAT
 
-    # constants which define the projection parameters (radians, natural origin 46° N, 25° E)
-    ORIG_LAT = constants.STEREO70_ORIG_LAT  # latitude of natural origin (radians)
-    ORIG_LON = constants.STEREO70_ORIG_LON  # longitude of natural origin (radians)
-    FALSE_N = constants.STEREO70_FALSE_N  # false northing
-    FALSE_E = constants.STEREO70_FALSE_E  # false easting
-    PROJ_SCALE = constants.STEREO70_SCALE_FACTOR  # scale factor
+    # Projection parameters (Natural origin 46° N, 25° E)
+    ORIG_LAT: float = constants.STEREO70_ORIG_LAT
+    ORIG_LON: float = constants.STEREO70_ORIG_LON
+    FALSE_N: float = constants.STEREO70_FALSE_N
+    FALSE_E: float = constants.STEREO70_FALSE_E
+    PROJ_SCALE: float = constants.STEREO70_SCALE_FACTOR
 
-    def __init__(self):
-        """Contructor method which sets the parameters of this projection."""
-        self._ell = self._Ellipsoid(StereoProj.WGS84_ELL_SMAJ_AXIS, StereoProj.WGS84_ELL_INV_FLAT)
-        self._orig_lat = StereoProj.ORIG_LAT
-        self._orig_lon = StereoProj.ORIG_LON
-        self._f_n = StereoProj.FALSE_N
-        self._f_e = StereoProj.FALSE_E
-        self._s = StereoProj.PROJ_SCALE
-        self.__conf_sphere = self._ConfSph(self)
+    def __init__(self) -> None:
+        """Initialize projection engine with WGS84 ellipsoid and conformal sphere parameters."""
+        self._ell: StereoProj._Ellipsoid = self._Ellipsoid(
+            StereoProj.WGS84_ELL_SMAJ_AXIS,
+            StereoProj.WGS84_ELL_INV_FLAT,
+        )
+        self._orig_lat: float = StereoProj.ORIG_LAT
+        self._orig_lon: float = StereoProj.ORIG_LON
+        self._f_n: float = StereoProj.FALSE_N
+        self._f_e: float = StereoProj.FALSE_E
+        self._s: float = StereoProj.PROJ_SCALE
+        self.__conf_sphere: StereoProj._ConfSph = self._ConfSph(self)
 
-    def to_grid(self, lat, lon):
-        """Returns the grid coordinates (projected) of the input geodetic
-        (geographic) coordinates (sequences).
-        (Lat, Long) -> (N, E)
+    def to_grid(
+        self,
+        lat: Sequence[float],
+        lon: Sequence[float],
+    ) -> Tuple[list[float], list[float]]:
+        """Converts geodetic (geographic) coordinates in radians to projected grid coordinates (meters).
 
-        :param lat: sequence of latitudes
-        :type lat: sequence of floats
+        :math:`(\\text{Lat}, \\text{Long}) \\to (N, E)`
 
-        :param lon: sequence of longitudes
-        :type lon: sequence of floats
-
-        :return: (n_out, e_out) lists of northing and easting coordinates
-        :rtype: tuple of lists
+        :param lat: Sequence of geodetic latitudes in radians
+        :type lat: Sequence[float]
+        :param lon: Sequence of geodetic longitudes in radians
+        :type lon: Sequence[float]
+        :return: Tuple of ``(n_out, e_out)`` lists in meters
+        :rtype: Tuple[list[float], list[float]]
         """
         lat_c_arr, lon_c_arr = self.__conf_sphere.get_latlon_from_geo(lat, lon)
         lat_c0 = self.__conf_sphere.orig_lat
@@ -81,8 +111,8 @@ class StereoProj:
         _sin = math.sin
         _cos = math.cos
 
-        n_out = []
-        e_out = []
+        n_out: list[float] = []
+        e_out: list[float] = []
         for lat_c, lon_c in zip(lat_c_arr, lon_c_arr):
             sin_lat_c = _sin(lat_c)
             cos_lat_c = _cos(lat_c)
@@ -94,19 +124,21 @@ class StereoProj:
             e_out.append(f_e + r2s * cos_lat_c * _sin(dlon) / b)
         return n_out, e_out
 
-    def to_geo(self, n, e):
-        """Returns the geodetic (geographic) coordinates of the input grid
-        (projected) coordinates (sequences).
-        (N, E) -> (Lat, Long)
+    def to_geo(
+        self,
+        n: Sequence[float],
+        e: Sequence[float],
+    ) -> Tuple[list[float], list[float]]:
+        """Converts projected grid coordinates in meters to geodetic (geographic) coordinates in radians.
 
-        :param n: sequence of northings
-        :type n: sequence of floats
+        :math:`(N, E) \\to (\\text{Lat}, \\text{Long})`
 
-        :param e: sequence of eastings
-        :type e: sequence of floats
-
-        :return: (lat_out, lon_out) lists of latitudes and longitudes
-        :rtype: tuple of lists
+        :param n: Sequence of northings in meters
+        :type n: Sequence[float]
+        :param e: Sequence of eastings in meters
+        :type e: Sequence[float]
+        :return: Tuple of ``(lat_out, lon_out)`` lists in radians
+        :rtype: Tuple[list[float], list[float]]
         """
         lat_c_arr, lon_c_arr = self.__conf_sphere.get_latlon_from_grid(n, e)
 
@@ -128,8 +160,8 @@ class StereoProj:
         tol = constants.STEREO70_CONV_TOLERANCE
         max_iter = constants.STEREO70_MAX_ITERATIONS
 
-        lat_out = []
-        lon_out = []
+        lat_out: list[float] = []
+        lon_out: list[float] = []
         for lat_c, lon_c in zip(lat_c_arr, lon_c_arr):
             sin_lat_c = _sin(lat_c)
             iso_lat = (0.5 * _log((1 + sin_lat_c) / (c_conf * (1 - sin_lat_c)))) / n_conf
@@ -153,104 +185,86 @@ class StereoProj:
         return lat_out, lon_out
 
     class _Ellipsoid:
-        """Class which provides functionality for computation of basic
-        ellipsoid's elements.
-        """
+        """Internal helper calculating geometric elements of the reference ellipsoid."""
 
-        def __init__(self, smaj_axis, inv_flat):
-            """
-            :param smaj_axis: semi-major axis of the ellipsoid
+        def __init__(self, smaj_axis: float, inv_flat: float) -> None:
+            """Initialize reference ellipsoid dimensions.
+
+            :param smaj_axis: Semi-major axis :math:`a` in meters
             :type smaj_axis: float
-
-            :param inv_flat: inverse flattening of the ellipsoid (1/flattening)
+            :param inv_flat: Inverse flattening :math:`1/f`
             :type inv_flat: float
-
-            :ivar flat: flattening
-            :ivar smin_axis: flattening
-            :ivar first_ecc2: # first eccentricity squared
-            :ivar first_ecc: first eccentricity
-            :ivar sec_ecc2: second eccentricity squared
-            :ivar sec_ecc: second eccentricity
             """
-            self.smaj_axis = smaj_axis
-            self.inv_flat = inv_flat
-            self.flat = 1 / inv_flat
-            self.smin_axis = smaj_axis * (1 - 1 / inv_flat)
-            self.first_ecc2 = 2 * self.flat - self.flat * self.flat
-            self.first_ecc = math.sqrt(self.first_ecc2)
-            self.sec_ecc2 = self.first_ecc2 / (1 - self.first_ecc2)
-            self.sec_ecc = math.sqrt(self.sec_ecc2)
+            self.smaj_axis: float = smaj_axis
+            self.inv_flat: float = inv_flat
+            self.flat: float = 1.0 / inv_flat
+            self.smin_axis: float = smaj_axis * (1.0 - 1.0 / inv_flat)
+            self.first_ecc2: float = 2.0 * self.flat - self.flat * self.flat
+            self.first_ecc: float = math.sqrt(self.first_ecc2)
+            self.sec_ecc2: float = self.first_ecc2 / (1.0 - self.first_ecc2)
+            self.sec_ecc: float = math.sqrt(self.sec_ecc2)
 
-        def get_rad_M_N(self, lat):
-            """Calculates the radius of curvature in meridian - north-south
-            direction (M) and the radius of curvature in prime vertical -
-            east-west direction (N)
+        def get_rad_M_N(self, lat: float) -> Tuple[float, float]:
+            """Calculates meridian curvature radius :math:`M` and prime vertical radius :math:`N`.
 
-            :param lat: the latitude for which M and N values are computed
+            .. math::
+                M = \\frac{a(1 - e^2)}{(1 - e^2 \\sin^2\\varphi)^{3/2}}, \\quad
+                N = \\frac{a}{\\sqrt{1 - e^2 \\sin^2\\varphi}}
+
+            :param lat: Geodetic latitude in radians
             :type lat: float
-
-            :return: The values of M and N - (M,N)
-            :rtype: tuple of floats
+            :return: Tuple of ``(M, N)`` curvature radii in meters
+            :rtype: Tuple[float, float]
             """
-            # temporary value used for computation of both M and N
-            # sqrt(1 - e^2 * sin^2(lat)), where e = first_ecc
-            tmp_v = math.sqrt((1 - self.first_ecc2 * math.pow(math.sin(lat), 2)))
-            m = self.smaj_axis * (1 - self.first_ecc2) / math.pow(tmp_v, 3)
+            tmp_v = math.sqrt(1.0 - self.first_ecc2 * math.pow(math.sin(lat), 2))
+            m = self.smaj_axis * (1.0 - self.first_ecc2) / math.pow(tmp_v, 3)
             n = self.smaj_axis / tmp_v
             return m, n
 
     class _ConfSph:
-        """Class defining a conformal sphere.
-        Provides methods to compute the equivalent conformal latitude and
-        longitude of a given point
-        """
+        """Internal helper defining the conformal sphere for the Gauss double projection."""
 
-        def __init__(self, proj):
-            """
-            :param proj: the projection associated with the conformal sphere
-            :type proj: StereoOblProj
-            """
+        def __init__(self, proj: "StereoProj") -> None:
+            """Compute conformal sphere constants based on ellipsoid and natural origin latitude.
 
-            # calculate parameters defining the conformal sphere (tagged CSP)
-            ## some vars used in calculus (precompute values to optimize
-            ## computation and improve readability)
+            :param proj: Parent StereoProj instance
+            :type proj: StereoProj
+            """
             r_m, r_n = proj._ell.get_rad_M_N(proj._orig_lat)
             e2 = proj._ell.first_ecc2
             e = proj._ell.first_ecc
             sin_orig_lat = math.sin(proj._orig_lat)
             s1 = (1 + sin_orig_lat) / (1 - sin_orig_lat)
             s2 = (1 - e * sin_orig_lat) / (1 + e * sin_orig_lat)
-            r = math.sqrt(r_m * r_n)  # CSP
-            n = math.sqrt(1 + (e2 * math.pow(math.cos(proj._orig_lat), 4) / (1 - e2)))  # CSP
+            r = math.sqrt(r_m * r_n)
+            n = math.sqrt(1 + (e2 * math.pow(math.cos(proj._orig_lat), 4) / (1 - e2)))
             w1 = math.pow(s1, n) * math.pow(s2, e * n)
             sin_chi0 = (w1 - 1) / (w1 + 1)
-            c = (n + sin_orig_lat) * (1 - sin_chi0) / ((n - sin_orig_lat) * (1 + sin_chi0))  # CSP
+            c = (n + sin_orig_lat) * (1 - sin_chi0) / ((n - sin_orig_lat) * (1 + sin_chi0))
             w2 = c * w1
 
-            self.__proj = proj
-            self.r = r
-            self.n = n
-            self.c = c
-            self.orig_lat = math.asin((w2 - 1) / (w2 + 1))
-            self.orig_lon = proj._orig_lon
+            self.__proj: StereoProj = proj
+            self.r: float = r
+            self.n: float = n
+            self.c: float = c
+            self.orig_lat: float = math.asin((w2 - 1) / (w2 + 1))
+            self.orig_lon: float = proj._orig_lon
 
-        def get_latlon_from_grid(self, n, e):
-            """Computes the equivalent conformal latitude and longitude for a
-            given point with stereographic grid coordinates (N,E)
+        def get_latlon_from_grid(
+            self,
+            n: Sequence[float],
+            e: Sequence[float],
+        ) -> Tuple[list[float], list[float]]:
+            """Computes equivalent conformal latitude and longitude on sphere from grid coordinates.
 
-            :param n: northing
-            :type n: float
-
-            :param e: easting
-            :type e: float
-
-            :return: the values of latitude and longitude (lat,lon)
-            :rtype: tuple of floats
+            :param n: Sequence of northing coordinates in meters
+            :type n: Sequence[float]
+            :param e: Sequence of easting coordinates in meters
+            :type e: Sequence[float]
+            :return: Tuple of ``(lat_out, lon_out)`` lists of conformal coordinates on sphere
+            :rtype: Tuple[list[float], list[float]]
             """
-
-            # some vars used in calculus (precompute values to optimize
-            # computation and improve readability)
-            sf = self.__proj._s  # projection scale factor
+            sf = self.__proj._s
             r = self.r
             g = 2 * r * sf * math.tan((math.pi / 4) - (self.orig_lat / 2))
             h = 4 * r * sf * math.tan(self.orig_lat) + g
@@ -262,8 +276,8 @@ class StereoProj:
             _atan = math.atan
             _tan = math.tan
 
-            lat_out = []
-            lon_out = []
+            lat_out: list[float] = []
+            lon_out: list[float] = []
             for n_val, e_val in zip(n, e):
                 dn = n_val - f_n
                 de = e_val - f_e
@@ -273,18 +287,19 @@ class StereoProj:
                 lon_out.append(j + 2 * i + orig_lon)
             return lat_out, lon_out
 
-        def get_latlon_from_geo(self, lat, lon):
-            """Computes the equivalent conformal latitude and longitude for
-            sequences of geodetic geographic coordinates (latitudes, longitudes).
+        def get_latlon_from_geo(
+            self,
+            lat: Sequence[float],
+            lon: Sequence[float],
+        ) -> Tuple[list[float], list[float]]:
+            """Computes equivalent conformal coordinates on sphere from ellipsoidal coordinates.
 
-            :param lat: sequence of latitudes in radians
-            :type lat: sequence of floats
-
-            :param lon: sequence of longitudes in radians
-            :type lon: sequence of floats
-
-            :return: (lat_out, lon_out) lists of conformal latitudes and longitudes
-            :rtype: tuple of lists
+            :param lat: Sequence of geodetic latitudes in radians
+            :type lat: Sequence[float]
+            :param lon: Sequence of geodetic longitudes in radians
+            :type lon: Sequence[float]
+            :return: Tuple of ``(lat_out, lon_out)`` lists on conformal sphere
+            :rtype: Tuple[list[float], list[float]]
             """
             e = self.__proj._ell.first_ecc
             n = self.n
@@ -294,8 +309,8 @@ class StereoProj:
             _asin = math.asin
             _pow = math.pow
 
-            lat_out = []
-            lon_out = []
+            lat_out: list[float] = []
+            lon_out: list[float] = []
             for lat_val, lon_val in zip(lat, lon):
                 sin_lat = _sin(lat_val)
                 sa = (1 + sin_lat) / (1 - sin_lat)

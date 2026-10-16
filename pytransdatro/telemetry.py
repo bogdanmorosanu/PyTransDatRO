@@ -1,10 +1,10 @@
+import atexit
+import calendar
+import datetime
+import math
+import queue
 import sqlite3
 import threading
-import queue
-import datetime
-import calendar
-import math
-import atexit
 from pathlib import Path
 
 
@@ -69,15 +69,18 @@ class SqliteUsageLogger:
                 description TEXT
             );
         """)
-        conn.executemany("""
+        conn.executemany(
+            """
             INSERT OR IGNORE INTO sources (id, name, description)
             VALUES (?, ?, ?);
-        """, [
-            (0, "unknown", "Default / Unspecified origin"),
-            (1, "rest_api", "REST API Service"),
-            (2, "web_map", "Web Map Application"),
-            (3, "desktop_cli", "Desktop / CLI App"),
-        ])
+        """,
+            [
+                (0, "unknown", "Default / Unspecified origin"),
+                (1, "rest_api", "REST API Service"),
+                (2, "web_map", "Web Map Application"),
+                (3, "desktop_cli", "Desktop / CLI App"),
+            ],
+        )
 
         # 2. Operations dimension lookup table
         conn.execute("""
@@ -87,13 +90,16 @@ class SqliteUsageLogger:
                 description TEXT
             );
         """)
-        conn.executemany("""
+        conn.executemany(
+            """
             INSERT OR IGNORE INTO operations (id, name, description)
             VALUES (?, ?, ?);
-        """, [
-            (1, "st70_to_etrs89", "Stereo70 to ETRS89"),
-            (2, "etrs89_to_st70", "ETRS89 to Stereo70"),
-        ])
+        """,
+            [
+                (1, "st70_to_etrs89", "Stereo70 to ETRS89"),
+                (2, "etrs89_to_st70", "ETRS89 to Stereo70"),
+            ],
+        )
 
         # 3. Telemetry window configuration registry table
         conn.execute("""
@@ -111,13 +117,30 @@ class SqliteUsageLogger:
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM telemetry_config")
         if cursor.fetchone()[0] == 0:
-            conn.executemany("""
+            conn.executemany(
+                """
                 INSERT INTO telemetry_config (metric_type, window_days, anchor_date, valid_from, valid_to, description)
                 VALUES (?, ?, ?, ?, ?, ?);
-            """, [
-                ("computation", 1, "2023-01-01", "2023-01-01", None, "Daily computation usage (calls & points)"),
-                ("spatial", 30, "2023-01-01", "2023-01-01", None, "Monthly approximated spatial cell usage"),
-            ])
+            """,
+                [
+                    (
+                        "computation",
+                        1,
+                        "2023-01-01",
+                        "2023-01-01",
+                        None,
+                        "Daily computation usage (calls & points)",
+                    ),
+                    (
+                        "spatial",
+                        30,
+                        "2023-01-01",
+                        "2023-01-01",
+                        None,
+                        "Monthly approximated spatial cell usage",
+                    ),
+                ],
+            )
 
         # 4. Computation volume metrics table
         conn.execute("""
@@ -132,7 +155,9 @@ class SqliteUsageLogger:
                 PRIMARY KEY (period_start, operation, is_3d, source)
             );
         """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_comp_usage_period ON computation_usage(period_start);")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_comp_usage_period ON computation_usage(period_start);"
+        )
 
         # 5. Spatial usage aggregation table (~1 km geographic cells)
         conn.execute("""
@@ -150,7 +175,9 @@ class SqliteUsageLogger:
                 PRIMARY KEY (period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
             );
         """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_spatial_usage_period ON spatial_usage(period_start);")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_spatial_usage_period ON spatial_usage(period_start);"
+        )
 
         # Automatic migration from legacy schema (daily_stats -> computation_usage, usage -> spatial_usage)
         self._migrate_legacy_tables_if_needed(conn)
@@ -166,15 +193,15 @@ class SqliteUsageLogger:
         # Migrate daily_stats -> computation_usage
         if "daily_stats" in existing_tables:
             cursor.execute("""
-                INSERT OR IGNORE INTO computation_usage 
+                INSERT OR IGNORE INTO computation_usage
                     (period_start, period_end, operation, is_3d, source, count_calls, count_points)
-                SELECT 
-                    date, 
-                    date, 
-                    1, 
-                    0, 
-                    source, 
-                    count_calls, 
+                SELECT
+                    date,
+                    date,
+                    1,
+                    0,
+                    source,
+                    count_calls,
                     count_points
                 FROM daily_stats;
             """)
@@ -197,15 +224,20 @@ class SqliteUsageLogger:
                     last_day = calendar.monthrange(y, m)[1]
                     p_start = f"{y:04d}-{m:02d}-01"
                     p_end = f"{y:04d}-{m:02d}-{last_day:02d}"
-                    migrated_rows.append((p_start, p_end, lat_d, lat_g, lon_d, lon_g, op, is_3d, src, cnt))
+                    migrated_rows.append(
+                        (p_start, p_end, lat_d, lat_g, lon_d, lon_g, op, is_3d, src, cnt)
+                    )
 
-                cursor.executemany("""
-                    INSERT INTO spatial_usage 
+                cursor.executemany(
+                    """
+                    INSERT INTO spatial_usage
                         (period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
                     DO UPDATE SET count = count + excluded.count;
-                """, migrated_rows)
+                """,
+                    migrated_rows,
+                )
 
             cursor.execute("DROP TABLE usage;")
 
@@ -216,8 +248,12 @@ class SqliteUsageLogger:
             # Temporary renumbering to avoid primary key conflict
             cursor.execute("UPDATE sources SET id = -1 WHERE id = 1;")
             cursor.execute("UPDATE sources SET id = -2 WHERE id = 2;")
-            cursor.execute("UPDATE sources SET id = 2, name = 'web_map', description = 'Web Map Application' WHERE id = -1;")
-            cursor.execute("UPDATE sources SET id = 1, name = 'rest_api', description = 'REST API Service' WHERE id = -2;")
+            cursor.execute(
+                "UPDATE sources SET id = 2, name = 'web_map', description = 'Web Map Application' WHERE id = -1;"
+            )
+            cursor.execute(
+                "UPDATE sources SET id = 1, name = 'rest_api', description = 'REST API Service' WHERE id = -2;"
+            )
 
             # Swap in computation_usage
             cursor.execute("UPDATE computation_usage SET source = -1 WHERE source = 1;")
@@ -233,12 +269,15 @@ class SqliteUsageLogger:
 
     def _get_active_config(self, conn, target_date_str):
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT metric_type, window_days, anchor_date
             FROM telemetry_config
             WHERE valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?)
             ORDER BY id DESC
-        """, (target_date_str, target_date_str))
+        """,
+            (target_date_str, target_date_str),
+        )
 
         configs = {}
         for metric_type, window_days, anchor_date in cursor.fetchall():
@@ -277,13 +316,17 @@ class SqliteUsageLogger:
         configs = self._get_active_config(conn, today_str)
 
         comp_window_days, comp_anchor = configs.get("computation", (1, "2023-01-01"))
-        comp_start, comp_end = self._calculate_period_window(today_date, comp_window_days, comp_anchor)
+        comp_start, comp_end = self._calculate_period_window(
+            today_date, comp_window_days, comp_anchor
+        )
 
         spatial_window_days, spatial_anchor = configs.get("spatial", (30, "2023-01-01"))
-        spatial_start, spatial_end = self._calculate_period_window(today_date, spatial_window_days, spatial_anchor)
+        spatial_start, spatial_end = self._calculate_period_window(
+            today_date, spatial_window_days, spatial_anchor
+        )
 
         computation_stats = {}  # (comp_start, comp_end, op, is_3d, src) -> [calls, points]
-        spatial_counts = {}     # (spatial_start, spatial_end, lat_d, lat_g, lon_d, lon_g, op, is_3d, src) -> count
+        spatial_counts = {}  # (spatial_start, spatial_end, lat_d, lat_g, lon_d, lon_g, op, is_3d, src) -> count
 
         for operation, lats, lons, is_3d, source in batch:
             try:
@@ -322,15 +365,20 @@ class SqliteUsageLogger:
                 lon_grad = total_lon % 100
 
                 spatial_key = (
-                    spatial_start, spatial_end,
-                    lat_deg, lat_grad, lon_deg, lon_grad,
-                    op_int, is_3d_int, source_int
+                    spatial_start,
+                    spatial_end,
+                    lat_deg,
+                    lat_grad,
+                    lon_deg,
+                    lon_grad,
+                    op_int,
+                    is_3d_int,
+                    source_int,
                 )
                 spatial_counts[spatial_key] = spatial_counts.get(spatial_key, 0) + 1
 
         comp_params = [
-            (k[0], k[1], k[2], k[3], k[4], v[0], v[1])
-            for k, v in computation_stats.items()
+            (k[0], k[1], k[2], k[3], k[4], v[0], v[1]) for k, v in computation_stats.items()
         ]
 
         spatial_params = [
@@ -342,7 +390,7 @@ class SqliteUsageLogger:
         INSERT INTO computation_usage (period_start, period_end, operation, is_3d, source, count_calls, count_points)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(period_start, operation, is_3d, source)
-        DO UPDATE SET 
+        DO UPDATE SET
             count_calls = count_calls + excluded.count_calls,
             count_points = count_points + excluded.count_points;
         """
