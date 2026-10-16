@@ -3,11 +3,11 @@ Cleans existing out-of-grid records, preserves existing valid data, and simulate
 usage trends from November 2023 to October 2026.
 """
 
+import datetime
 import math
 import random
 import shutil
 import sqlite3
-import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -58,7 +58,7 @@ def clean_corrupt_records(conn):
     """Remove records where coordinates fall outside Romania's geographic bounds."""
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT COUNT(*) FROM usage 
+        SELECT COUNT(*) FROM usage
         WHERE lat_deg < 43 OR lat_deg > 48 OR lon_deg < 20 OR lon_deg > 29;
     """)
     corrupt_count = cursor.fetchone()[0]
@@ -66,7 +66,7 @@ def clean_corrupt_records(conn):
 
     if corrupt_count > 0:
         cursor.execute("""
-            DELETE FROM usage 
+            DELETE FROM usage
             WHERE lat_deg < 43 OR lat_deg > 48 OR lon_deg < 20 OR lon_deg > 29;
         """)
         conn.commit()
@@ -77,15 +77,15 @@ def get_seasonal_multiplier(month):
     """Seasonal surveying activity factor in Romania."""
     # Low activity in winter freeze, peak in spring/autumn construction season
     factors = {
-        1: 0.55,   # Jan: snow/frozen ground, minimal field surveying
-        2: 0.65,   # Feb
-        3: 1.15,   # Mar: spring construction starts
-        4: 1.35,   # Apr: peak surveying
-        5: 1.40,   # May: high activity
-        6: 1.30,   # Jun
-        7: 1.05,   # Jul
-        8: 0.80,   # Aug: vacation season
-        9: 1.35,   # Sep: autumn surveying surge
+        1: 0.55,  # Jan: snow/frozen ground, minimal field surveying
+        2: 0.65,  # Feb
+        3: 1.15,  # Mar: spring construction starts
+        4: 1.35,  # Apr: peak surveying
+        5: 1.40,  # May: high activity
+        6: 1.30,  # Jun
+        7: 1.05,  # Jul
+        8: 0.80,  # Aug: vacation season
+        9: 1.35,  # Sep: autumn surveying surge
         10: 1.50,  # Oct: high cadastral submission volume
         11: 1.45,  # Nov: year-end deadline rush
         12: 0.65,  # Dec: holidays after Dec 15
@@ -135,7 +135,9 @@ def populate_telemetry(conn):
     end_date = datetime.date(2026, 10, 8)
     total_days = (end_date - start_date).days + 1
 
-    print(f"\nGenerating 3 years of synthetic telemetry from {start_date} to {end_date} ({total_days:,} days)...")
+    print(
+        f"\nGenerating 3 years of synthetic telemetry from {start_date} to {end_date} ({total_days:,} days)..."
+    )
 
     daily_stats_data = []
     # (year, month, lat_deg, lat_grad, lon_deg, lon_grad, is_st70_to_etrs89, is_3d, source) -> count
@@ -154,7 +156,7 @@ def populate_telemetry(conn):
         # Fraction of progress from day 0 to end (0.0 to 1.0)
         t = day_index / total_days
         # Base daily calls grow from ~80 (late 2023) to ~4,500 (late 2026)
-        base_calls = 80 + (4400 * (t ** 1.8))
+        base_calls = 80 + (4400 * (t**1.8))
 
         # Apply seasonal and weekly multipliers
         season_mult = get_seasonal_multiplier(month)
@@ -265,7 +267,7 @@ def verify_database(conn):
 
     # Verify corrupt rows count
     cursor.execute("""
-        SELECT COUNT(*) FROM usage 
+        SELECT COUNT(*) FROM usage
         WHERE lat_deg < 43 OR lat_deg > 48 OR lon_deg < 20 OR lon_deg > 29;
     """)
     corrupt = cursor.fetchone()[0]

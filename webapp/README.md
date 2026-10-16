@@ -185,9 +185,23 @@ webapp/
 
 ## 4. Verification & Testing
 
-To verify code quality and build integrity:
+To verify code quality, test suite passes, and build integrity:
 
 ```bash
-# Type check and verify production bundle compiles cleanly
+# Run automated utility and UI unit tests (Vitest)
+npm test
+
+# Run tests in interactive watch mode during development
+npm run test:watch
+
+# Type check TypeScript and verify production bundle compiles cleanly
 npm run build
 ```
+
+The automated test suite runs 65 tests in $< 350\text{ ms}$ covering:
+- **`dmsParser.test.ts`**: Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), whitespace handling, degree symbol variations, sexagesimal conversion.
+- **`pointParser.test.ts`**: Delimiter detection (tabs, spaces, commas, semicolons), point IDs, coordinate ordering (`NE(H)` vs `EN(H)`).
+- **`gridBounds.test.ts`**: Romania envelope pre-flight bounding box validation.
+- **`exporters.test.ts`**: Pure client-side CSV, GeoJSON, and AutoCAD DXF R12 generator output fidelity.
+- **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu`, `renderSegmentedControl`, etc.).
+

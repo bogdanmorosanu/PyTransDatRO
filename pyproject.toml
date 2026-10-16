@@ -45,3 +45,8 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["pytransdatro", "api"]
+
+[tool.ruff.lint.per-file-ignores]
+"tools/*" = ["E402"]
+"tests/*" = ["E402"]
+

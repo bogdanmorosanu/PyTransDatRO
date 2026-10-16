@@ -2,15 +2,13 @@
 """
 Extract and report metadata from Romgeo SPG grid files (.spg).
 
-This tool reads the compiled 3D binary grid file (.spg) located in the 
-pytransdatro/grids/ directory, extracts all embedded metadata, parameters, 
+This tool reads the compiled 3D binary grid file (.spg) located in the
+pytransdatro/grids/ directory, extracts all embedded metadata, parameters,
 and grid layer properties, and generates a structured text report.
 """
 
-import os
-import sys
-import glob
 import datetime
+import sys
 from pathlib import Path
 
 # Add project root to path
@@ -23,18 +21,18 @@ except ImportError:
     print("Error: numpy is required to read and unpickle .spg files.")
     sys.exit(1)
 
-from pytransdatro.utils import rad_to_sexa, DEG_TO_RAD_FACTOR
+from pytransdatro.utils import DEG_TO_RAD_FACTOR, rad_to_sexa
 
 
 def decdeg_to_dms(dd: float, is_lat: bool = True) -> str:
     """Convert decimal degrees to human-readable DMS string using rad_to_sexa from utils."""
     rad_val = dd * DEG_TO_RAD_FACTOR
     sexa_str = rad_to_sexa(rad_val)
-    parts = sexa_str.split(' ')
+    parts = sexa_str.split(" ")
     deg = int(parts[0])
     minute = int(parts[1])
     second = float(parts[2])
-    
+
     sign = -1 if dd < 0 else 1
     if is_lat:
         hemi = "N" if sign >= 0 else "S"
@@ -66,6 +64,7 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     file_size_kb = file_size_bytes / 1024.0
 
     lines = []
+
     def add_line(text=""):
         lines.append(text)
 
@@ -92,13 +91,17 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line(f"Author / Creator    : {metadata.get('created_by', 'N/A')}")
     add_line(f"License             : {metadata.get('license', 'N/A')}")
     add_line(f"Abstract / Copyright: {metadata.get('abstract', 'N/A')}")
-    
+
     release = metadata.get("release", {})
     if release:
-        add_line(f"Release Version     : {release.get('major', 'N/A')}.{release.get('minor', 'N/A'):02d} (Revision: {release.get('revision', 0)}, Legacy: {release.get('legacy', 'no')})")
+        add_line(
+            f"Release Version     : {release.get('major', 'N/A')}.{release.get('minor', 'N/A'):02d} (Revision: {release.get('revision', 0)}, Legacy: {release.get('legacy', 'no')})"
+        )
     add_line(f"Release Date        : {metadata.get('release_date', 'N/A')}")
-    add_line(f"Validity Period     : From {metadata.get('valid_from', 'N/A')} to {metadata.get('valid_to', 'Indefinite (None)')}")
-    
+    add_line(
+        f"Validity Period     : From {metadata.get('valid_from', 'N/A')} to {metadata.get('valid_to', 'Indefinite (None)')}"
+    )
+
     notes = metadata.get("notes", "")
     if notes:
         add_line(f"Release Notes       : {notes}")
@@ -128,7 +131,7 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     method_names = {
         0: "INTERP_COLOCATE (Nearest-Neighbor)",
         1: "INTERP_BILINEAR (Bilinear)",
-        2: "INTERP_BICUBIC (Bicubic Spline)"
+        2: "INTERP_BICUBIC (Bicubic Spline)",
     }
     h_desc = method_names.get(h_interp, f"Method {h_interp}")
     v_desc = method_names.get(v_interp, f"Method {v_interp}")
@@ -171,19 +174,23 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line()
     add_line("Planimetric Extents:")
     add_line(f"  - Easting  (E) Min : {geo_meta.get('mine', 0.0):12.3f} m")
-    add_line(f"  - Easting  (E) Max : {geo_meta.get('maxe', 0.0):12.3f} m (Span: {geo_meta.get('maxe', 0.0) - geo_meta.get('mine', 0.0):,.1f} m)")
+    add_line(
+        f"  - Easting  (E) Max : {geo_meta.get('maxe', 0.0):12.3f} m (Span: {geo_meta.get('maxe', 0.0) - geo_meta.get('mine', 0.0):,.1f} m)"
+    )
     add_line(f"  - Northing (N) Min : {geo_meta.get('minn', 0.0):12.3f} m")
-    add_line(f"  - Northing (N) Max : {geo_meta.get('maxn', 0.0):12.3f} m (Span: {geo_meta.get('maxn', 0.0) - geo_meta.get('minn', 0.0):,.1f} m)")
+    add_line(
+        f"  - Northing (N) Max : {geo_meta.get('maxn', 0.0):12.3f} m (Span: {geo_meta.get('maxn', 0.0) - geo_meta.get('minn', 0.0):,.1f} m)"
+    )
     add_line()
     add_line("Grid Resolution & Dimensions:")
     add_line(f"  - Step Easting (E) : {geo_meta.get('stepe', 0.0):12.3f} m")
     add_line(f"  - Step Northing(N) : {geo_meta.get('stepn', 0.0):12.3f} m")
-    ncols_geo = geo_meta.get('ncols', 0)
-    nrows_geo = geo_meta.get('nrows', 0)
+    ncols_geo = geo_meta.get("ncols", 0)
+    nrows_geo = geo_meta.get("nrows", 0)
     add_line(f"  - Columns (East)   : {ncols_geo}")
     add_line(f"  - Rows (North)     : {nrows_geo}")
     add_line(f"  - Total Grid Nodes : {ncols_geo * nrows_geo:,} nodes")
-    
+
     if isinstance(geo_grid, np.ndarray):
         add_line()
         add_line("Data Array Properties:")
@@ -198,12 +205,18 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
 
         add_line()
         add_line("Statistical Distribution:")
-        add_line(f"  - Valid Nodes      : {len(valid_n):,} / {ncols_geo * nrows_geo:,} ({len(valid_n) / (ncols_geo * nrows_geo) * 100:.1f}%)")
+        add_line(
+            f"  - Valid Nodes      : {len(valid_n):,} / {ncols_geo * nrows_geo:,} ({len(valid_n) / (ncols_geo * nrows_geo) * 100:.1f}%)"
+        )
         add_line(f"  - NoData / NaN     : {np.isnan(band_n).sum():,} nodes")
         if len(valid_n) > 0:
-            add_line(f"  - Northing Shift dN: Min = {valid_n.min():+.4f} m, Max = {valid_n.max():+.4f} m, Mean = {valid_n.mean():+.4f} m, Std = {valid_n.std():.4f} m")
+            add_line(
+                f"  - Northing Shift dN: Min = {valid_n.min():+.4f} m, Max = {valid_n.max():+.4f} m, Mean = {valid_n.mean():+.4f} m, Std = {valid_n.std():.4f} m"
+            )
         if len(valid_e) > 0:
-            add_line(f"  - Easting Shift dE : Min = {valid_e.min():+.4f} m, Max = {valid_e.max():+.4f} m, Mean = {valid_e.mean():+.4f} m, Std = {valid_e.std():.4f} m")
+            add_line(
+                f"  - Easting Shift dE : Min = {valid_e.min():+.4f} m, Max = {valid_e.max():+.4f} m, Mean = {valid_e.mean():+.4f} m, Std = {valid_e.std():.4f} m"
+            )
     add_line()
 
     # ---------------------------------------------------------
@@ -221,14 +234,14 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line(f"Dimension Count     : {geoid_meta.get('ndim', 'N/A')} dimension")
     add_line()
 
-    minla = geoid_meta.get('minla', 0.0)
-    maxla = geoid_meta.get('maxla', 0.0)
-    minphi = geoid_meta.get('minphi', 0.0)
-    maxphi = geoid_meta.get('maxphi', 0.0)
-    stepla = geoid_meta.get('stepla', 0.0)
-    stepphi = geoid_meta.get('stepphi', 0.0)
-    ncols_geoid = geoid_meta.get('ncols', 0)
-    nrows_geoid = geoid_meta.get('nrows', 0)
+    minla = geoid_meta.get("minla", 0.0)
+    maxla = geoid_meta.get("maxla", 0.0)
+    minphi = geoid_meta.get("minphi", 0.0)
+    maxphi = geoid_meta.get("maxphi", 0.0)
+    stepla = geoid_meta.get("stepla", 0.0)
+    stepphi = geoid_meta.get("stepphi", 0.0)
+    ncols_geoid = geoid_meta.get("ncols", 0)
+    nrows_geoid = geoid_meta.get("nrows", 0)
 
     add_line("Geodetic Extents:")
     add_line(f"  - Longitude (Lambda) Min : {decdeg_to_dms(minla, is_lat=False)}")
@@ -257,10 +270,14 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
 
         add_line()
         add_line("Statistical Distribution:")
-        add_line(f"  - Valid Nodes      : {len(valid_h):,} / {ncols_geoid * nrows_geoid:,} ({len(valid_h) / (ncols_geoid * nrows_geoid) * 100:.1f}%)")
+        add_line(
+            f"  - Valid Nodes      : {len(valid_h):,} / {ncols_geoid * nrows_geoid:,} ({len(valid_h) / (ncols_geoid * nrows_geoid) * 100:.1f}%)"
+        )
         add_line(f"  - NoData / NaN     : {np.isnan(h_vals).sum():,} nodes")
         if len(valid_h) > 0:
-            add_line(f"  - Quasigeoid Height: Min = {valid_h.min():.4f} m, Max = {valid_h.max():.4f} m, Mean = {valid_h.mean():.4f} m, Std = {valid_h.std():.4f} m")
+            add_line(
+                f"  - Quasigeoid Height: Min = {valid_h.min():.4f} m, Max = {valid_h.max():.4f} m, Mean = {valid_h.mean():.4f} m, Std = {valid_h.std():.4f} m"
+            )
     add_line()
 
     # ---------------------------------------------------------
@@ -271,7 +288,7 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line()
     add_line(f"1. Horizontal (2D) Shifts: {h_desc}")
     add_line(f"2. Vertical (1D) Heights : {v_desc}")
-    add_line(f"3. 2D Helmert Constants  : Dynamically loaded from params['helmert']")
+    add_line("3. 2D Helmert Constants  : Dynamically loaded from params['helmert']")
     add_line()
     add_line("=" * 80)
     add_line("End of Report")

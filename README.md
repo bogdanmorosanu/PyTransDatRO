@@ -82,16 +82,56 @@ n, e, h = t.etrs89_to_st70(0.832795488097716, 0.3922724455407368, 162.0874)
 
 ## REST API Overview
 
-The service exposes modern JSON and streaming endpoints:
+The service exposes modern JSON, streaming, and backward-compatible endpoints:
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
 | `/api/v1/transform/point` | `POST` | Transform single coordinates (supports deg/rad and 2D/3D). |
 | `/api/v1/transform/batch` | `POST` | High-throughput batch coordinate transformation. |
-| `/api/v1/transform/file` | `POST` | Upload and transform CSV/TXT coordinate files. |
-| `/api/v1/health` | `GET` | Service liveness, readiness, and grid verification. |
-| `/api/v1/info` | `GET` | Grid metadata, distortion models, and version information. |
-| `/transdat/service.php` | `GET`/`POST` | **Legacy TransDatOnline compatibility** for existing GIS plugins and scripts. |
+| `/api/v1/transform/file` | `POST` | Upload and transform CSV/TXT coordinate files with streaming download. |
+| `/api/v1/feedback` | `POST` | Submit discrepancy reports and user feedback. |
+| `/api/v1/grid/info` | `GET` | Active SPG grid metadata, distortion models, and version information. |
+| `/api/v1/telemetry/timeline` | `GET` | Queryable time series analytics filtered by client source and date window. |
+| `/api/v1/telemetry/spatial-matrix` | `GET` | Macroscopic 0.1° density matrix and quadrant distribution. |
+| `/health` | `GET` | Service liveness, readiness, and grid verification. |
+| `/transdatonline/cooOpService`<br/>`/cooOpService` | `GET`/`POST` | **Legacy TransDatOnline compatibility** (100% byte-for-byte emulation for GIS plugins and scripts). |
+
+---
+
+## Local Developer Setup & Quality Workflow
+
+### 1. Python Environment Setup
+Using Conda (recommended, matching project environment):
+```bash
+conda activate pytransdat
+# or install dependencies directly:
+pip install -e .[api,dev]
+```
+
+### 2. Run Test Suites
+```bash
+# Run all 98 Python unit, API, and telemetry tests
+python -m pytest -q
+
+# Run all 65 Frontend Vitest unit tests
+npm --prefix webapp test
+```
+
+### 3. Run Static Analysis & Linter Audits
+```bash
+# Check code style and formatting across the repository
+python -m ruff check pytransdatro api tests tools
+python -m ruff format --check pytransdatro api tests tools
+
+# Verify TypeScript compilation and production bundle
+npm --prefix webapp run build
+```
+
+### 4. Run ANCPI Benchmark Verification
+```bash
+# Validate zero-regression (< 10^-9 tolerance) across 9,046 national control points
+python tools/generate_ancpi_comparison_reports.py
+```
 
 ---
 
@@ -99,18 +139,35 @@ The service exposes modern JSON and streaming endpoints:
 
 ```
 PyTransDatRO/
-├── api/                  # FastAPI web service application & routing layer
-│   ├── routes/           # REST endpoints (point, batch, file, legacy, health)
-│   └── middleware/       # Sliding-window rate limiting & CORS
-├── pytransdatro/         # Pure-Python core geodetic library
-│   ├── grids/            # ANCPI binary transformation grid (.spg) and metadata
-│   ├── trans_ro.py       # Main TransRO transformation engine class
-│   └── telemetry.py      # Background SQLite WAL telemetry logger
-├── webapp/               # Interactive TypeScript + Vite + Leaflet web map
-├── tests/                # Unit, integration, and ANCPI accuracy tests
-├── Dockerfile            # Multi-stage production container build
-├── docker-compose.yml    # One-command developer review launcher
-└── requirements-api.txt  # FastAPI & web service dependencies
+├── api/                      # Decoupled FastAPI web service layer
+│   ├── config.py             # Centralized Pydantic BaseSettings & logging setup
+│   ├── dependencies.py       # FastAPI dependency injection providers
+│   ├── middleware/           # Sliding-window rate limiting & CORS
+│   ├── routes/               # REST routers (point, batch, file, feedback, info, health, legacy)
+│   ├── schemas/              # Pydantic models (request/response schemas, ErrorResponse)
+│   └── services/             # Background services (mailer)
+├── pytransdatro/             # Pure-Python core geodetic library (standard library only)
+│   ├── constants.py          # WGS84 and Stereo 70 geodetic & projection constants
+│   ├── grids/                # ANCPI binary transformation grid (.spg) and metadata
+│   ├── trans_ro.py           # Coordinator transformation engine class (TransRO)
+│   ├── trans_grid.py         # Bicubic spline interpolation (2D shift) & 1D geoid
+│   ├── proj_stereo.py        # Oblique Stereographic projection engine
+│   ├── trans_helmert2d.py    # 4-parameter 2D Helmert transformation
+│   ├── spg_reader.py         # Binary grid reader & auto-discovery
+│   └── telemetry.py          # Asynchronous SQLite WAL telemetry logger
+├── webapp/                   # Interactive TypeScript + Vite + Leaflet web map
+│   ├── src/components/       # UI workbench panels & analytics charts
+│   ├── src/ui/               # Accessible TypeScript UI factory helpers
+│   ├── src/style/            # Pure Vanilla Modular CSS (layout, forms, buttons, badges, menus, telemetry)
+│   └── src/utils/            # Client parsers (DMS, delimiters), exporters (CSV, GeoJSON, DXF), bounds
+├── tests/                    # Pytest test suite (98 tests) & reference datasets
+├── tools/                    # Benchmarking, metadata extraction, and ANCPI comparison reports
+├── docs/                     # Living technical architecture, API, and testing documentation
+├── .env.example              # Documented configuration template
+├── pyproject.toml            # Project build metadata and Ruff linting rules
+├── Dockerfile                # Multi-stage production container build
+├── docker-compose.yml        # One-command developer review launcher
+└── requirements-api.txt      # FastAPI & web service dependencies
 ```
 
 ---
@@ -129,3 +186,4 @@ The following sections will be finalized for the public v1.0.0 release:
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+

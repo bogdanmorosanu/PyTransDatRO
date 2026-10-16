@@ -2,8 +2,9 @@ import calendar
 import datetime
 import math
 import sqlite3
+
 import pytest
-from pathlib import Path
+
 from pytransdatro import TransRO
 from pytransdatro.exceptions import OutOfGridErr
 from pytransdatro.telemetry import SqliteUsageLogger
@@ -50,7 +51,7 @@ def test_telemetry_batching_and_binning(tmp_path):
 
     # Verify computation_usage table
     cursor.execute("""
-        SELECT period_start, period_end, operation, is_3d, source, count_calls, count_points 
+        SELECT period_start, period_end, operation, is_3d, source, count_calls, count_points
         FROM computation_usage
     """)
     comp_rows = cursor.fetchall()
@@ -59,9 +60,9 @@ def test_telemetry_batching_and_binning(tmp_path):
     today_str = now.strftime("%Y-%m-%d")
     assert c_row[0] == today_str
     assert c_row[1] == today_str
-    assert c_row[2] == 1   # operation 1 (st70_to_etrs89)
-    assert c_row[3] == 0   # is_3d 0
-    assert c_row[4] == 2   # source 2 (web_map)
+    assert c_row[2] == 1  # operation 1 (st70_to_etrs89)
+    assert c_row[3] == 0  # is_3d 0
+    assert c_row[4] == 2  # source 2 (web_map)
     assert c_row[5] == 10  # 10 calls
     assert c_row[6] == 10  # 10 points
 
@@ -243,8 +244,8 @@ def test_telemetry_in_grid_both_directions_recorded(tmp_path):
     # op 2, 3D, src 2: 1 call, 1 point
     # op 1, 2D, src 3: 1 call, 2 points
     cursor.execute("""
-        SELECT operation, is_3d, source, count_calls, count_points 
-        FROM computation_usage 
+        SELECT operation, is_3d, source, count_calls, count_points
+        FROM computation_usage
         ORDER BY operation, is_3d, source
     """)
     comp_stats = cursor.fetchall()
@@ -312,12 +313,16 @@ def test_telemetry_legacy_schema_migration(tmp_path):
     assert "spatial_usage" in tables
 
     # Check migrated computation_usage
-    cursor.execute("SELECT period_start, period_end, source, count_calls, count_points FROM computation_usage")
+    cursor.execute(
+        "SELECT period_start, period_end, source, count_calls, count_points FROM computation_usage"
+    )
     comp_row = cursor.fetchone()
     assert comp_row == ("2025-05-15", "2025-05-15", 2, 5, 25)
 
     # Check migrated spatial_usage (legacy is_st70_to_etrs89=0 converted to operation=2)
-    cursor.execute("SELECT period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count FROM spatial_usage")
+    cursor.execute(
+        "SELECT period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count FROM spatial_usage"
+    )
     spat_row = cursor.fetchone()
     assert spat_row == ("2025-05-01", "2025-05-31", 45, 50, 25, 30, 2, 1, 2, 15)
 

@@ -6,10 +6,8 @@ Usage:
 """
 
 import argparse
-import os
 import re
 import sqlite3
-import sys
 from pathlib import Path
 
 
@@ -61,14 +59,16 @@ def parse_statistics_rows(sql_path: Path):
     rows = []
     for match in pattern.finditer(stats_section):
         day, st70_app, st30_app, st70_srv, st30_srv, row_id = match.groups()
-        rows.append((
-            int(row_id),
-            day,
-            int(st70_app),
-            int(st30_app),
-            int(st70_srv),
-            int(st30_srv),
-        ))
+        rows.append(
+            (
+                int(row_id),
+                day,
+                int(st70_app),
+                int(st30_app),
+                int(st70_srv),
+                int(st30_srv),
+            )
+        )
 
     return rows
 
@@ -81,7 +81,7 @@ def create_and_populate_db(output_path: Path, rows: list, quiet: bool = False):
     if output_path.exists():
         try:
             output_path.unlink()
-        except OSError as e:
+        except OSError:
             # If open or locked, try to open and truncate
             pass
 
@@ -101,17 +101,20 @@ def create_and_populate_db(output_path: Path, rows: list, quiet: bool = False):
         CREATE INDEX idx_statistics_day ON statistics(day);
     """)
 
-    cursor.executemany("""
+    cursor.executemany(
+        """
         INSERT INTO statistics (id, day, cooOpAppSt70, cooOpAppSt30, cooOpServiceSt70, cooOpServiceSt30)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, rows)
+    """,
+        rows,
+    )
 
     conn.commit()
 
     if not quiet:
         # Gather summary metrics
         cursor.execute("""
-            SELECT 
+            SELECT
                 COUNT(*),
                 MIN(day),
                 MAX(day),
@@ -151,21 +154,21 @@ def main():
         description="Extract statistics data from legacy TransdatOnline MySQL dump into an SQLite DB."
     )
     parser.add_argument(
-        "--input", "-i",
+        "--input",
+        "-i",
         type=Path,
         default=default_input,
-        help=f"Path to localhost.sql dump (default: {default_input})"
+        help=f"Path to localhost.sql dump (default: {default_input})",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=Path,
         default=default_output,
-        help=f"Path to output SQLite database (default: {default_output})"
+        help=f"Path to output SQLite database (default: {default_output})",
     )
     parser.add_argument(
-        "--quiet", "-q",
-        action="store_true",
-        help="Suppress summary output to stdout"
+        "--quiet", "-q", action="store_true", help="Suppress summary output to stdout"
     )
 
     args = parser.parse_args()

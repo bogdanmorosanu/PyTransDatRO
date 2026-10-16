@@ -31,17 +31,37 @@
 ## Grid Management
 The system automatically discovers and loads the single `.spg` grid located in `pytransdatro/grids/`. If multiple grids or no grids are found, explicit descriptive exceptions (`AmbiguousGridError`, `MissingGridError`) are raised to prevent transformation ambiguity. Legacy binary `.grd` files have been retired.
 
+## Geodetic Constants (`pytransdatro/constants.py`)
+All physical geodetic parameters and projection invariants are extracted into pure standard-library constants:
+- **WGS84 Ellipsoid**: Semi-major axis $a = 6,378,137.0\text{ m}$, flattening $f = 1 / 298.257223563$, eccentricity squared $e^2$.
+- **Stereo 70 Projection Constants**: Central meridian $\lambda_0 = 25^\circ\text{ E}$, origin latitude $\phi_0 = 46^\circ\text{ N}$, scale reduction factor $k_0 = 0.99975$, false easting $E_0 = 500,000.0\text{ m}$, false northing $N_0 = 500,000.0\text{ m}$.
+- Conformal sphere constants and radius of Gaussian mean curvature ($R = \sqrt{MN}$).
+
 ## Web API Layer (`api/`)
 A decoupled REST service built on FastAPI provides public access to the `pytransdatro` transformation pipeline:
-- **Modern Endpoints (`/api/v1`)**: Fast JSON point, batch, and streaming file endpoints supporting radians and decimal degrees.
-- **Legacy Compatibility (`/transdatonline/cooOpService`)**: 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service.
+- **Centralized Configuration (`api/config.py`)**: Environment-driven settings using Pydantic `BaseSettings` (`.env` file support), configuring server ports, CORS origins, SQLite telemetry directories, sliding-window rate limit thresholds, upload file sizes, and logging levels.
+- **Structured Error Handling (`api/schemas/error.py`)**: Uniform `ErrorResponse` schema (`{"detail": "...", "code": "..."}`) with custom exception handlers for `StarletteHTTPException` and `RequestValidationError` (`code: "VALIDATION_ERROR"`).
+- **Modern Endpoints (`/api/v1`)**: Fast JSON point, batch, streaming file (`/transform/file`), feedback (`/feedback`), and telemetry endpoints supporting radians and decimal degrees.
+- **Legacy Compatibility (`/transdatonline/cooOpService` and `/cooOpService`)**: 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service.
+- **Dependency Injection (`api/dependencies.py`)**: Clean inversion of control for `Settings`, `TransRO` singleton engine, and `SqliteUsageLogger`.
 - See [docs/rest_api.md](rest_api.md) for endpoint references and [docs/transdatonline/](transdatonline/README.md) for the historical reverse-engineering analysis.
 
 ## Web Application Layer (`webapp/`)
 A responsive Web GIS client interface built with Vite, TypeScript, Vanilla CSS, and Leaflet:
 - **Interactive Workbench**: Single point, multi-line batch, and drag-and-drop file upload workbenches.
-- **Embedded Web GIS**: Leaflet map with basemap selector, Romania SPG grid boundary, and marker clustering.
+- **Embedded Web GIS**: Leaflet map with basemap selector, Romania SPG grid boundary, custom segmented GIS scale bar, and marker clustering.
+- **Modular Stylesheet Architecture (`webapp/src/style/`)**: Pure CSS custom properties decoupled across `layout.css`, `forms.css`, `buttons.css`, `badges.css`, `menus.css`, `telemetry.css`, and `variables.css`.
+- **Reusable UI Factory Functions (`webapp/src/ui/`)**: Accessible component factories (`renderDropdownMenu`, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`) enforcing ARIA attributes and keyboard navigation.
 - **Client-Side Utilities**: DMS parsing, auto-delimited point parsing, Point ID preservation, and instant multi-format exports (CSV, GeoJSON, AutoCAD DXF).
-- **Production Serving**: Hosted directly from FastAPI root `/` via static file mounting.
+- **Production Serving**: Hosted directly from FastAPI root `/` via static file mounting (`webapp/dist/`).
 - See [docs/web_app.md](web_app.md) for full architectural specifications and [webapp/README.md](../webapp/README.md) for frontend development commands.
+
+## Quality Assurance & Testing Matrix
+The project enforces a cross-layer automated testing and verification strategy:
+- **Core Geodetic Unit Suite (`tests/test_trans_ro.py`)**: 46 tests covering forward, inverse, 2D/3D roundtrips, half-grid verification, out-of-grid bounds, and no-data boundary exceptions.
+- **Web API & Telemetry Suite (`tests/test_api_*.py`, `tests/test_telemetry.py`)**: 52 tests covering modern REST endpoints, legacy servlet emulation, sliding-window rate limiting, configuration defaults, feedback mailer, and SQLite WAL telemetry persistence (98 Python tests total).
+- **Frontend Utility & UI Suite (`webapp/src/utils/*.test.ts`, `webapp/src/ui/*.test.ts`)**: 65 unit tests executed via Vitest verifying unspaced DMS parsing, coordinate auto-delimiters, Romania grid envelope bounds, pure string exporter generators, and accessible UI controls.
+- **Official ANCPI Benchmark Verification (`tools/generate_ancpi_comparison_reports.py`)**: Automated verification against 9,046 national control points ensuring $< 10^{-9}$ tolerance and zero functional regression.
+- **Static Analysis & Linters**: Zero warnings across Ruff (`ruff check .`, `ruff format --check .`) and TypeScript compiler (`tsc`).
+
 

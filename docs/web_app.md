@@ -215,13 +215,23 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
 
 ## 6. Verification & Quality Assurance
 
+- **Frontend Unit Testing (Vitest)**:
+  ```bash
+  npm --prefix webapp test
+  ```
+  Executes the 65 automated Vitest unit tests covering coordinate parsing (`dmsParser.test.ts`, `pointParser.test.ts`), Romania grid envelope checks (`gridBounds.test.ts`), client-side file generators (`exporters.test.ts`), and accessible UI factory helpers (`ui.test.ts`).
+- **Interactive Test Watch Mode**:
+  ```bash
+  npm --prefix webapp run test:watch
+  ```
 - **Frontend Build Verification**:
   ```bash
   npm --prefix webapp run build
   ```
-  Ensures 0 TypeScript type errors and successful Vite bundling into `webapp/dist/`.
+  Ensures 0 TypeScript type errors (`tsc`) and compiles optimized production assets with Vite into `webapp/dist/`.
 - **Backend Test Suite**:
   ```bash
-  D:\anaconda3\envs\pytransdat\python.exe -m pytest tests/
+  D:\anaconda3\envs\pytransdat\python.exe -m pytest -q
   ```
-  Ensures all 76 core, API, streaming, and telemetry tests pass without regressions.
+  Ensures all 98 core geodetic, REST API, rate limiter, configuration, and telemetry tests pass with zero regressions.
+

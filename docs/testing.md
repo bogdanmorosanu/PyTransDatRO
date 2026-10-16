@@ -79,3 +79,80 @@ Edge cases and out-of-boundary behavior are tested using `@pytest.mark.parametri
   - A utility function contained within `test_trans_ro.py` (not a test itself).
   - Iterates through the active 2D grid (`_t_gr2d`), generating points at grid nodes and half-step intervals.
   - Outputs a CSV file that can be loaded directly into the official TransDatRO desktop software to produce new benchmark files.
+
+---
+
+## 3. Web API, Configuration & Telemetry Test Suite
+
+The API layer is thoroughly tested using `pytest` and `starlette.testclient.TestClient`:
+
+| Module | Tests | Focus Areas |
+| :--- | :--- | :--- |
+| **`tests/test_api_modern.py`** | 22 | Point (`/api/v1/transform/point`), batch (`/transform/batch`), file streaming (`/transform/file`), grid metadata (`/grid/info`), health (`/health`), and structured validation errors (`ErrorResponse`). |
+| **`tests/test_api_legacy.py`** | 11 | Byte-for-byte backward compatible emulation of TransDatOnline Java servlet endpoints (`/transdatonline/cooOpService` and `/cooOpService`) for 2D, 3D, form-urlencoded, JSON, and out-of-grid warning contracts. |
+| **`tests/test_api_rate_limiter.py`** | 2 | Sliding-window in-memory rate limiting enforcement (60/min point, 10/min batch) and `Retry-After` headers. |
+| **`tests/test_config.py`** | 7 | Centralized `Settings` resolution, environment variable overrides (`.env`), CORS parsing, and `dictConfig` logging dictionary generation. |
+| **`tests/test_feedback.py`** | 4 | User feedback submission (`/api/v1/feedback`), file persistence (`feedback.jsonl`), and SMTP handler decoupling. |
+| **`tests/test_telemetry.py`** | 6 | Asynchronous background SQLite WAL logging, transaction queues, rolling dynamic window retention, and quadrant coordinate aggregation. |
+
+**Execution Command**:
+```powershell
+D:\anaconda3\envs\pytransdat\python.exe -m pytest -q
+```
+*(Runs all 98 Python unit, integration, and contract tests).*
+
+---
+
+## 4. Frontend Utility & UI Test Suite (`webapp/`)
+
+Client-side parsing, serialization, and UI factory helpers are tested with **Vitest**:
+
+| Test File | Tests | Coverage Scope |
+| :--- | :--- | :--- |
+| **`src/utils/dmsParser.test.ts`** | 13 | Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), edge cases, whitespace tolerance, sexagesimal to decimal conversions. |
+| **`src/utils/pointParser.test.ts`** | 28 | Auto-delimiter detection (tab, space, comma, semicolon), Point ID extraction, 2D vs 3D tuples, coordinate ordering (`NE(H)` vs `EN(H)`). |
+| **`src/utils/gridBounds.test.ts`** | 10 | Romania national bounding envelope checks, coordinate bounds validation, out-of-grid pre-flight filters. |
+| **`src/utils/exporters.test.ts`** | 8 | Pure client-side export generation for CSV, GeoJSON, and AutoCAD DXF R12 ASCII formats. |
+| **`src/ui/ui.test.ts`** | 6 | Accessible UI factory helpers (`renderDropdownMenu`, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`). |
+
+**Execution Commands**:
+```powershell
+# Run Vitest suite once
+npm --prefix webapp test
+
+# Run Vitest in interactive watch mode
+npm --prefix webapp run test:watch
+```
+*(Runs all 65 TypeScript unit tests in $< 350\text{ ms}$).*
+
+---
+
+## 5. Official ANCPI / Romgeo Benchmark Verification
+
+Coordinate transformations must maintain 100% byte-for-byte fidelity against ANCPI benchmark reference sets:
+
+```powershell
+D:\anaconda3\envs\pytransdat\python.exe tools/generate_ancpi_comparison_reports.py
+```
+
+- **Reference Dataset**: 9,046 national geodetic control points across Romania.
+- **Criteria for Success**:
+  - Horizontal planar discrepancy: $< 10^{-6}\text{ m}$ ($< 0.001\text{ mm}$).
+  - Vertical ellipsoidal height discrepancy: $< 10^{-6}\text{ m}$.
+  - Overall status: `PASS` exported to `pytransdatro/grids/ancpi_comparison_summary.json`.
+
+---
+
+## 6. Code Hygiene & Static Analysis Audits
+
+Before committing or releasing changes, execute the static quality audit:
+
+```powershell
+# Ruff linter and formatter check
+D:\anaconda3\envs\pytransdat\python.exe -m ruff check pytransdatro api tests tools
+D:\anaconda3\envs\pytransdat\python.exe -m ruff format --check pytransdatro api tests tools
+
+# TypeScript compilation
+npm --prefix webapp run build
+```
+

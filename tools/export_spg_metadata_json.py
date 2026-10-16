@@ -2,18 +2,17 @@
 """
 Dynamic and resilient SPG grid metadata extractor.
 
-Reads binary 3D SPG grid files (.spg), exhaustively extracts 100% of all 
-embedded parameters, metadata, and grid layer properties (dynamically adapting 
-to new, altered, or removed attributes in future releases), computes layer 
-diagnostics and statistics, and serializes the complete dataset into a 
+Reads binary 3D SPG grid files (.spg), exhaustively extracts 100% of all
+embedded parameters, metadata, and grid layer properties (dynamically adapting
+to new, altered, or removed attributes in future releases), computes layer
+diagnostics and statistics, and serializes the complete dataset into a
 clean, web-ready JSON file.
 """
 
-import os
-import sys
-import json
-import hashlib
 import datetime
+import hashlib
+import json
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -27,8 +26,6 @@ except ImportError:
     print("Error: numpy is required to read and process .spg files.")
     sys.exit(1)
 
-from pytransdatro.utils import rad_to_sexa, DEG_TO_RAD_FACTOR
-
 
 def compute_sha256(file_path: Path) -> str:
     """Computes SHA-256 hash of a file."""
@@ -41,7 +38,7 @@ def compute_sha256(file_path: Path) -> str:
 
 def format_bytes(num_bytes: int) -> str:
     """Formats raw bytes into a human-readable size string."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if abs(num_bytes) < 1024.0:
             return f"{num_bytes:3.2f} {unit}"
         num_bytes /= 1024.0
@@ -87,11 +84,7 @@ def normalize_value(val: Any) -> Any:
         return float(val)
     elif isinstance(val, np.ndarray):
         # Do not dump full raw arrays directly into metadata JSON; summarize them
-        return {
-            "shape": list(val.shape),
-            "dtype": str(val.dtype),
-            "size": int(val.size)
-        }
+        return {"shape": list(val.shape), "dtype": str(val.dtype), "size": int(val.size)}
     elif isinstance(val, (datetime.date, datetime.datetime)):
         return val.isoformat()
     return val
@@ -100,7 +93,7 @@ def normalize_value(val: Any) -> Any:
 def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]:
     """Dynamically inspects a grid layer and computes diagnostics and statistics without hardcoding schemas."""
     layer_summary: Dict[str, Any] = {}
-    
+
     # 1. Copy all non-grid properties dynamically (preserving unknown/future fields)
     for k, v in layer_dict.items():
         if k != "grid":
@@ -126,7 +119,7 @@ def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]
             "memory_bytes": memory_bytes,
             "memory_formatted": format_bytes(memory_bytes),
             "total_nodes": total_nodes,
-            "nodes_per_band": nodes_per_band
+            "nodes_per_band": nodes_per_band,
         }
 
         # Compute statistics per band
@@ -136,7 +129,9 @@ def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]
             valid_mask = ~np.isnan(band_arr)
             valid_count = int(np.count_nonzero(valid_mask))
             nan_count = int(band_arr.size - valid_count)
-            valid_pct = round((valid_count / band_arr.size) * 100.0, 2) if band_arr.size > 0 else 0.0
+            valid_pct = (
+                round((valid_count / band_arr.size) * 100.0, 2) if band_arr.size > 0 else 0.0
+            )
 
             valid_values = band_arr[valid_mask]
             stats = {
@@ -148,19 +143,23 @@ def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]
             }
 
             if len(valid_values) > 0:
-                stats.update({
-                    "min": round(float(valid_values.min()), 6),
-                    "max": round(float(valid_values.max()), 6),
-                    "mean": round(float(valid_values.mean()), 6),
-                    "std": round(float(valid_values.std()), 6),
-                })
+                stats.update(
+                    {
+                        "min": round(float(valid_values.min()), 6),
+                        "max": round(float(valid_values.max()), 6),
+                        "mean": round(float(valid_values.mean()), 6),
+                        "std": round(float(valid_values.std()), 6),
+                    }
+                )
             else:
-                stats.update({
-                    "min": None,
-                    "max": None,
-                    "mean": None,
-                    "std": None,
-                })
+                stats.update(
+                    {
+                        "min": None,
+                        "max": None,
+                        "mean": None,
+                        "std": None,
+                    }
+                )
             band_stats.append(stats)
 
         layer_summary["band_statistics"] = band_stats
@@ -185,7 +184,7 @@ def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]
                         "min_dms": decdeg_to_dms(minla, is_lat=False),
                         "max_dms": decdeg_to_dms(maxla, is_lat=False),
                         "step_deg": stepla,
-                        "step_arcminutes": round(stepla * 60.0, 4)
+                        "step_arcminutes": round(stepla * 60.0, 4),
                     },
                     "latitude": {
                         "min_deg": minphi,
@@ -194,8 +193,8 @@ def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]
                         "min_dms": decdeg_to_dms(minphi, is_lat=True),
                         "max_dms": decdeg_to_dms(maxphi, is_lat=True),
                         "step_deg": stepphi,
-                        "step_arcminutes": round(stepphi * 60.0, 4)
-                    }
+                        "step_arcminutes": round(stepphi * 60.0, 4),
+                    },
                 }
             # Check for planimetric fields (mine, maxe, minn, maxn)
             elif "mine" in meta and "minn" in meta:
@@ -211,14 +210,14 @@ def analyze_layer(layer_name: str, layer_dict: Dict[str, Any]) -> Dict[str, Any]
                         "min_m": mine,
                         "max_m": maxe,
                         "span_m": round(maxe - mine, 3),
-                        "step_m": stepe
+                        "step_m": stepe,
                     },
                     "northing": {
                         "min_m": minn,
                         "max_m": maxn,
                         "span_m": round(maxn - minn, 3),
-                        "step_m": stepn
-                    }
+                        "step_m": stepn,
+                    },
                 }
 
     return layer_summary
@@ -254,7 +253,7 @@ def extract_full_spg_metadata(spg_path: Path) -> Dict[str, Any]:
         },
         "metadata": {},
         "params": {},
-        "grids": {}
+        "grids": {},
     }
 
     # 2. Extract 100% of metadata attributes dynamically
@@ -273,13 +272,13 @@ def extract_full_spg_metadata(spg_path: Path) -> Dict[str, Any]:
             method_names = {
                 0: "INTERP_COLOCATE (Nearest-Neighbor)",
                 1: "INTERP_BILINEAR (Bilinear)",
-                2: "INTERP_BICUBIC (Bicubic Spline)"
+                2: "INTERP_BICUBIC (Bicubic Spline)",
             }
             h_val = interp.get("horizontal")
             v_val = interp.get("vertical")
             result["params"]["interpolation_descriptions"] = {
                 "horizontal": method_names.get(h_val, f"Method {h_val}"),
-                "vertical": method_names.get(v_val, f"Method {v_val}")
+                "vertical": method_names.get(v_val, f"Method {v_val}"),
             }
 
     # 4. Extract and analyze each layer in grids dynamically

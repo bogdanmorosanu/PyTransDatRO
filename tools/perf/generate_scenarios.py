@@ -8,12 +8,11 @@ Scenarios:
   - S4: Large Dispersed (25,000 points) - Dispersed across Romanian territory (countrywide grid stress test).
 """
 
-import os
-import sys
 import csv
-import math
 import json
+import math
 import random
+import sys
 from pathlib import Path
 
 # Ensure pytransdatro is importable from repo root
@@ -22,9 +21,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 import pytransdatro
 
+
 def get_trans_validator():
     """Initializes and returns TransRO instance."""
     return pytransdatro.TransRO()
+
 
 def generate_s1_micro(t, count=10, seed=42):
     """S1: 10 points within a single grid cell (Brașov / Prejmer area, N=455,000, E=565,000)."""
@@ -49,6 +50,7 @@ def generate_s1_micro(t, count=10, seed=42):
             continue
     return pts
 
+
 def generate_s2_small(t, count=250, seed=43):
     """S2: 250 points in a localized urban cluster (Bucharest metropolitan zone, N=335,000, E=585,000)."""
     random.seed(seed)
@@ -71,6 +73,7 @@ def generate_s2_small(t, count=250, seed=43):
             continue
     return pts
 
+
 def generate_s3_medium(t, count=2500, seed=44):
     """S3: 2,500 points along a major transport corridor (Timișoara -> Deva -> Sibiu -> Brașov -> Ploiești -> Bucharest)."""
     random.seed(seed)
@@ -81,9 +84,9 @@ def generate_s3_medium(t, count=2500, seed=44):
         (460000.0, 405000.0),  # Near Sibiu
         (455000.0, 560000.0),  # Near Brașov
         (395000.0, 585000.0),  # Near Ploiești
-        (335000.0, 585000.0)   # Near Bucharest
+        (335000.0, 585000.0),  # Near Bucharest
     ]
-    
+
     # Precompute segment cumulative lengths
     segs = []
     total_len = 0.0
@@ -119,10 +122,11 @@ def generate_s3_medium(t, count=2500, seed=44):
                 break
     return pts
 
+
 def generate_s4_large(t, count=25000, seed=45):
     """S4: 25,000 points uniformly dispersed across the valid national territory of Romania."""
     random.seed(seed)
-    
+
     # Valid grid extent bounds (from SPG metadata with a safe 25 km inward buffer)
     # E_min: 109,783, E_max: 890,783
     # N_min: 213,634, N_max: 785,634
@@ -145,17 +149,19 @@ def generate_s4_large(t, count=25000, seed=45):
             pid += 1
         except Exception:
             continue
-            
-    print(f"Generated {count} dispersed points (acceptance rate: {count/attempts*100:.1f}%)")
+
+    print(f"Generated {count} dispersed points (acceptance rate: {count / attempts * 100:.1f}%)")
     return pts
+
 
 def save_csv(filepath, points):
     """Saves points to CSV: Point_ID,Northing,Easting,Z."""
-    with open(filepath, 'w', newline='', encoding='utf-8') as f:
+    with open(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Point_ID", "Northing", "Easting", "Z"])
         for pt in points:
             writer.writerow([pt[0], f"{pt[1]:.3f}", f"{pt[2]:.3f}", f"{pt[3]:.3f}"])
+
 
 def build_leaflet_map(output_path, scenario_data):
     """Builds a rich, interactive Leaflet HTML map displaying layers S1-S4 using Canvas rendering."""
@@ -170,7 +176,7 @@ def build_leaflet_map(output_path, scenario_data):
                 "z": p[3],
                 "lat": round(p[4], 6),
                 "lon": round(p[5], 6),
-                "h": round(p[6], 3)
+                "h": round(p[6], 3),
             }
             for p in pts
         ]
@@ -359,8 +365,9 @@ def build_leaflet_map(output_path, scenario_data):
 </body>
 </html>
 """
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
+
 
 def main():
     perf_dir = REPO_ROOT / "tools" / "perf"
@@ -403,6 +410,7 @@ def main():
     build_leaflet_map(map_file, scenario_map_data)
     print("Map generated successfully!")
     print("\nAll datasets generated and stored in tools/perf/data/.")
+
 
 if __name__ == "__main__":
     main()

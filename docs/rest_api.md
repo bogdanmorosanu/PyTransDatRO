@@ -186,7 +186,45 @@ Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies:
 
 ---
 
-## 4. Coordinate Conventions & Units
+### 3.4. User Feedback Endpoint
+
+#### `POST /api/v1/feedback`
+Submits user discrepancy reports, coordinate validation findings, and suggestions.
+- **Request Body** (`application/json`):
+  ```json
+  {
+    "sender_name": "Ing. Popescu",
+    "sender_email": "popescu@cadastru.ro",
+    "category": "discrepancy",
+    "subject": "Diferență 1D zona Constanța",
+    "message": "Am observat o deviație de 2mm la borna 124.",
+    "client_context": {"browser": "Chrome", "os": "Windows", "coords": "500000, 500000"}
+  }
+  ```
+- **Response** (HTTP 200): `{"status": "ok", "message": "Feedback received successfully"}`.
+- **Persistence**: Appends structured record to `feedback.jsonl` in the configured `log_dir`, and conditionally relays via SMTP if mail parameters are configured.
+
+---
+
+## 4. Error Handling & Structured Error Schema
+
+All REST API endpoints implement the uniform `ErrorResponse` model defined in `api/schemas/error.py`. Standard error responses return:
+
+```json
+{
+  "detail": "Descriptive human-readable error message",
+  "code": "VALIDATION_ERROR"
+}
+```
+
+- **Validation Errors (HTTP 422)**: Pydantic payload parsing or schema errors return the list of failing fields under `detail` and `code: "VALIDATION_ERROR"`.
+- **Bad Request Errors (HTTP 400)**: Missing parameters or invalid operation identifiers return `detail` explaining the parameter requirement.
+- **Rate Limit Exceeded (HTTP 429)**: Returns rate limit notification with a `Retry-After: <seconds>` response header.
+- **Backward Compatibility Guarantee**: Legacy clients expecting string `detail` properties continue to function without modification.
+
+---
+
+## 5. Coordinate Conventions & Units
 
 | Coordinate System | Type | Order | Units |
 | :--- | :--- | :--- | :--- |
@@ -196,7 +234,7 @@ Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies:
 
 ---
 
-## 5. Rate Limiting
+## 6. Rate Limiting
 
 The built-in sliding-window rate limiter prevents abuse on public deployments:
 - **Point Endpoints** (`/api/v1/transform/point`, legacy GET): **60 requests / minute / IP**.
@@ -205,7 +243,27 @@ The built-in sliding-window rate limiter prevents abuse on public deployments:
 
 ---
 
-## 6. Code Examples for Developers
+## 7. Configuration & Environment Variables
+
+The web API is configured through `api/config.py` using Pydantic `BaseSettings`. Configuration values can be set via `.env` file or environment variables:
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `HOST` | `0.0.0.0` | Server binding address. |
+| `PORT` | `8000` | Server HTTP port. |
+| `CORS_ORIGINS` | `["*"]` | Allowed CORS origins (JSON array or comma-separated string). |
+| `LOG_DIR` | `./logs` | Directory for `usage.db` SQLite telemetry and `feedback.jsonl`. |
+| `LOG_LEVEL` | `INFO` | Python logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+| `RATE_LIMIT_POINT` | `60` | Point transformations per minute per IP. |
+| `RATE_LIMIT_BATCH` | `10` | Batch transformations / file uploads per minute per IP. |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60.0` | Sliding window duration in seconds. |
+| `MAX_FILE_SIZE_BYTES` | `20971520` | Max file upload size (20 MB). |
+| `MAX_FILE_LINES` | `100000` | Max line limit for streaming file transformations. |
+| `SMTP_HOST` | `None` | SMTP mail server for user feedback notifications. |
+
+---
+
+## 8. Code Examples for Developers
 
 ### Python (`requests`)
 ```python
@@ -247,3 +305,4 @@ curl -X POST "http://localhost:8000/api/v1/transform/point" \
 # Legacy GET endpoint
 curl "http://localhost:8000/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=500000;500000;100"
 ```
+

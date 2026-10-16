@@ -1,9 +1,12 @@
 """Tests for 100% backward compatibility of the legacy TransDatOnline endpoint.
 Validates /transdatonline/cooOpService and /cooOpService.
 """
+
 import math
+
 import pytest
 from starlette.testclient import TestClient
+
 from api.main import app
 
 
@@ -118,7 +121,7 @@ def test_legacy_post_form_data(client):
     """Verifies POST with urlencoded form data."""
     payload = {
         "cooOp": "Stereo70ToETRS89",
-        "coosArray": '[{"coos":[500000, 500000, 100]}, {"coos":[5, 1, 1]}]'
+        "coosArray": '[{"coos":[500000, 500000, 100]}, {"coos":[5, 1, 1]}]',
     }
     res = client.post("/transdatonline/cooOpService", data=payload)
     assert res.status_code == 200
@@ -140,9 +143,7 @@ def test_legacy_post_json_payload(client):
     """Verifies POST with direct application/json body (modern client compatibility)."""
     payload = {
         "cooOp": "ETRS89ToStereo70",
-        "coosArray": [
-            {"coos": [0.8028465450500996, 0.43630521911977493, 139.7825537763764]}
-        ]
+        "coosArray": [{"coos": [0.8028465450500996, 0.43630521911977493, 139.7825537763764]}],
     }
     res = client.post("/transdatonline/cooOpService", json=payload)
     assert res.status_code == 200

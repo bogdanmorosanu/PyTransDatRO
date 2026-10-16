@@ -12,13 +12,12 @@ Features:
     so every iteration/improvement is tracked over time against the baseline.
 """
 
-import os
-import sys
+import argparse
 import csv
-import time
 import json
 import platform
-import argparse
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -47,7 +46,7 @@ def load_dataset(filename):
     pts = []
     with open(filepath, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
-        header = next(reader)  # Skip header
+        next(reader)  # Skip header
         for row in reader:
             pts.append((row[0], float(row[1]), float(row[2]), float(row[3])))
     return pts
@@ -169,7 +168,9 @@ def generate_markdown_report(history):
     """Generates a comprehensive markdown log and comparative delta table."""
     md = []
     md.append("# PyTransDatRO Performance & Optimization History Log\n")
-    md.append("This document tracks performance metrics over time across versions and optimization experiments.\n")
+    md.append(
+        "This document tracks performance metrics over time across versions and optimization experiments.\n"
+    )
     md.append(f"*Last Updated:* `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n\n")
 
     md.append("## 1. Run Registry\n\n")
@@ -188,7 +189,9 @@ def generate_markdown_report(history):
     md.append(f"**Cold Initialization:** `{latest['init_time_ms']:.2f} ms`\n\n")
 
     md.append("### Detailed Scenario Metrics\n\n")
-    md.append("| Scenario | Points | Direction | Mode | Cache | Best Time (s) | Throughput (pts/s) | Latency (µs/pt) |\n")
+    md.append(
+        "| Scenario | Points | Direction | Mode | Cache | Best Time (s) | Throughput (pts/s) | Latency (µs/pt) |\n"
+    )
     md.append("|---|---|---|---|---|---|---|---|\n")
 
     for k, res in latest["results"].items():
@@ -202,7 +205,9 @@ def generate_markdown_report(history):
         baseline = history[0]
         md.append("\n---\n")
         md.append(f"## 3. Comparative Evolution vs Baseline (`{baseline['version_tag']}`)\n\n")
-        md.append("| Scenario & Mode | Direction | Cache | Baseline Throughput | Latest Throughput | Speedup (Delta %) |\n")
+        md.append(
+            "| Scenario & Mode | Direction | Cache | Baseline Throughput | Latest Throughput | Speedup (Delta %) |\n"
+        )
         md.append("|---|---|---|---|---|---|\n")
 
         for k, curr_res in latest["results"].items():
@@ -268,12 +273,20 @@ def run_benchmark(tag="baseline", description="Initial unoptimized baseline", ru
     ]
 
     for sc_key, direction, mode, cache_state in test_matrix:
-        with_z = (mode == "3D")
-        is_cold = (cache_state == "Cold")
-        pts = datasets[sc_key]["st70"] if direction == "st70_to_etrs89" else datasets[sc_key]["etrs89"]
-        runner = run_batch_st70_to_etrs89 if direction == "st70_to_etrs89" else run_batch_etrs89_to_st70
+        with_z = mode == "3D"
+        is_cold = cache_state == "Cold"
+        pts = (
+            datasets[sc_key]["st70"]
+            if direction == "st70_to_etrs89"
+            else datasets[sc_key]["etrs89"]
+        )
+        runner = (
+            run_batch_st70_to_etrs89 if direction == "st70_to_etrs89" else run_batch_etrs89_to_st70
+        )
 
-        metrics = benchmark_single_case(t, runner, pts, with_z=with_z, runs=runs, cold_cache=is_cold)
+        metrics = benchmark_single_case(
+            t, runner, pts, with_z=with_z, runs=runs, cold_cache=is_cold
+        )
 
         test_key = f"{sc_key}__{direction}__{mode}__{cache_state}"
         results[test_key] = {
@@ -309,7 +322,7 @@ def run_benchmark(tag="baseline", description="Initial unoptimized baseline", ru
 
     update_history_files(run_record)
     print("\n" + "=" * 70)
-    print(f" Benchmark complete! Log updated in:")
+    print(" Benchmark complete! Log updated in:")
     print(f"   - {LOG_JSON_FILE}")
     print(f"   - {LOG_MD_FILE}")
     print("=" * 70)
@@ -317,9 +330,15 @@ def run_benchmark(tag="baseline", description="Initial unoptimized baseline", ru
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PyTransDatRO Benchmark Runner")
-    parser.add_argument("--tag", default="baseline", help="Version or optimization tag (e.g., baseline, opt_minor)")
-    parser.add_argument("--desc", default="Baseline performance measurement", help="Description of the run")
-    parser.add_argument("--runs", type=int, default=3, help="Number of repetitions per test case (default: 3)")
+    parser.add_argument(
+        "--tag", default="baseline", help="Version or optimization tag (e.g., baseline, opt_minor)"
+    )
+    parser.add_argument(
+        "--desc", default="Baseline performance measurement", help="Description of the run"
+    )
+    parser.add_argument(
+        "--runs", type=int, default=3, help="Number of repetitions per test case (default: 3)"
+    )
     args = parser.parse_args()
 
     run_benchmark(tag=args.tag, description=args.desc, runs=args.runs)

@@ -2,8 +2,8 @@
 recording both spatial usage and daily call/point volume metrics to ./logs/usage.db.
 """
 
-import sys
 import csv
+import sys
 import time
 from pathlib import Path
 
@@ -56,29 +56,21 @@ def main():
 
         northings, eastings, z_values = load_csv_data(filepath)
         n_pts = len(northings)
-        print(f"\nProcessing '{name}' ({filename}) with {n_pts:,} points [Source {source_id}: {source_name}]...")
+        print(
+            f"\nProcessing '{name}' ({filename}) with {n_pts:,} points [Source {source_id}: {source_name}]..."
+        )
 
         # 1. Forward transformation: Stereo70 -> ETRS89
         t0 = time.perf_counter()
-        lats, lons, heights = tr.st70_to_etrs89(
-            northings,
-            eastings,
-            z_values,
-            source=source_id
-        )
+        lats, lons, heights = tr.st70_to_etrs89(northings, eastings, z_values, source=source_id)
         t_fwd = time.perf_counter() - t0
-        print(f"  [+] Stereo70 -> ETRS89 (Forward): {n_pts:,} points in {t_fwd*1000:.2f} ms")
+        print(f"  [+] Stereo70 -> ETRS89 (Forward): {n_pts:,} points in {t_fwd * 1000:.2f} ms")
 
         # 2. Reverse transformation: ETRS89 -> Stereo70
         t0 = time.perf_counter()
-        n_rev, e_rev, h_rev = tr.etrs89_to_st70(
-            lats,
-            lons,
-            heights,
-            source=source_id
-        )
+        n_rev, e_rev, h_rev = tr.etrs89_to_st70(lats, lons, heights, source=source_id)
         t_rev = time.perf_counter() - t0
-        print(f"  [+] ETRS89 -> Stereo70 (Reverse): {n_pts:,} points in {t_rev*1000:.2f} ms")
+        print(f"  [+] ETRS89 -> Stereo70 (Reverse): {n_pts:,} points in {t_rev * 1000:.2f} ms")
 
         total_pts_transformed += n_pts * 2
 
