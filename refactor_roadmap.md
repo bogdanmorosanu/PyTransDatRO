@@ -85,15 +85,15 @@ flowchart TD
 ### Phase 4: Frontend Utility Tests & Parsers (`webapp/src/utils/`)
 **Goal**: Introduce lightweight test coverage for critical client-side parsing and serialization logic before refactoring UI components.
 
-- [ ] **Vitest Setup**:
+- [x] **Vitest Setup**:
   - Add `vitest` to `webapp/package.json` with a minimal `npm test` script.
-- [ ] **Unit Tests for Core Parsers**:
+- [x] **Unit Tests for Core Parsers**:
   - `dmsParser.test.ts`: Test DMS formats, edge cases, symbols (`°`, `'`, `"`), whitespace, decimal variations.
   - `pointParser.test.ts`: Test single-line and batch delimiter auto-detection (tabs, spaces, commas, semicolons), point ID retention, 2D vs 3D tuples.
   - `gridBounds.test.ts`: Test Romania envelope bounds validation and out-of-grid checks.
-- [ ] **Unit Tests for Exporters**:
+- [x] **Unit Tests for Exporters**:
   - `exporters.test.ts`: Validate CSV, GeoJSON, and AutoCAD DXF output formats against reference strings.
-- [ ] **Parser Refactoring & Hardening**:
+- [x] **Parser Refactoring & Hardening**:
   - Clean up parser edge cases with complete test protection.
 
 ---

@@ -21,14 +21,13 @@ function triggerDownload(blob: Blob, filename: string): void {
 }
 
 /**
- * Exports transformed points as a CSV file.
+ * Generates CSV string content for transformed points.
  */
-export function exportToCSV(
+export function generateCSVContent(
   items: ExportPointItem[],
   delimiter: string = ',',
-  order: 'NE' | 'EN' = 'NE',
-  filename: string = 'transformed_coordinates.csv'
-): void {
+  order: 'NE' | 'EN' = 'NE'
+): string {
   const sep = delimiter === ' ' ? ' ' : delimiter;
   const lines: string[] = [];
 
@@ -65,32 +64,57 @@ export function exportToCSV(
     lines.push(parts.join(sep));
   }
 
-  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  return lines.join('\r\n');
+}
+
+/**
+ * Exports transformed points as a CSV file.
+ */
+export function exportToCSV(
+  items: ExportPointItem[],
+  delimiter: string = ',',
+  order: 'NE' | 'EN' = 'NE',
+  filename: string = 'transformed_coordinates.csv'
+): void {
+  const content = generateCSVContent(items, delimiter, order);
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
   triggerDownload(blob, filename);
 }
 
 /**
- * Exports transformed points as a GeoJSON FeatureCollection.
+ * Generates GeoJSON FeatureCollection object for transformed points.
  */
-export function exportToGeoJSON(
-  items: ExportPointItem[],
-  filename: string = 'transformed_coordinates.geojson'
-): void {
+export function generateGeoJSONObject(items: ExportPointItem[]): {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    id: string | number;
+    geometry: {
+      type: 'Point';
+      coordinates: number[];
+    };
+    properties: {
+      id: string;
+      elevation: number | null;
+      system: string;
+    };
+  }>;
+} {
   const features = items
     .filter((it) => it.coords && it.coords.length >= 2 && !it.warning)
     .map((it, idx) => {
       // GeoJSON expects [Longitude/X, Latitude/Y, (Elevation/Z)]
-      const x = it.isGeo ? it.coords[1] : it.coords[1]; // Easting or Longitude
-      const y = it.isGeo ? it.coords[0] : it.coords[0]; // Northing or Latitude
+      const x = it.coords[1]; // Easting or Longitude
+      const y = it.coords[0]; // Northing or Latitude
       const z = it.coords[2] !== undefined ? it.coords[2] : null;
 
       const coordinates = z !== null ? [x, y, z] : [x, y];
 
       return {
-        type: 'Feature',
+        type: 'Feature' as const,
         id: it.pointId || idx + 1,
         geometry: {
-          type: 'Point',
+          type: 'Point' as const,
           coordinates,
         },
         properties: {
@@ -101,11 +125,20 @@ export function exportToGeoJSON(
       };
     });
 
-  const geojson = {
+  return {
     type: 'FeatureCollection',
     features,
   };
+}
 
+/**
+ * Exports transformed points as a GeoJSON FeatureCollection.
+ */
+export function exportToGeoJSON(
+  items: ExportPointItem[],
+  filename: string = 'transformed_coordinates.geojson'
+): void {
+  const geojson = generateGeoJSONObject(items);
   const blob = new Blob([JSON.stringify(geojson, null, 2)], {
     type: 'application/geo+json;charset=utf-8;',
   });
@@ -113,12 +146,9 @@ export function exportToGeoJSON(
 }
 
 /**
- * Exports transformed points as an AutoCAD ASCII DXF file.
+ * Generates AutoCAD ASCII DXF string content for transformed points.
  */
-export function exportToDXF(
-  items: ExportPointItem[],
-  filename: string = 'transformed_coordinates.dxf'
-): void {
+export function generateDXFContent(items: ExportPointItem[]): string {
   const dxfLines: string[] = [
     '0', 'SECTION',
     '2', 'HEADER',
@@ -131,8 +161,8 @@ export function exportToDXF(
     if (!it.coords || it.coords.length < 2 || it.warning) continue;
 
     // CAD coordinate convention: X = Easting, Y = Northing, Z = Elevation
-    const x = it.isGeo ? it.coords[1] : it.coords[1];
-    const y = it.isGeo ? it.coords[0] : it.coords[0];
+    const x = it.coords[1];
+    const y = it.coords[0];
     const z = it.coords[2] !== undefined ? it.coords[2] : 0.0;
 
     // POINT entity
@@ -159,8 +189,18 @@ export function exportToDXF(
   }
 
   dxfLines.push('0', 'ENDSEC', '0', 'EOF');
+  return dxfLines.join('\r\n');
+}
 
-  const blob = new Blob([dxfLines.join('\r\n')], {
+/**
+ * Exports transformed points as an AutoCAD ASCII DXF file.
+ */
+export function exportToDXF(
+  items: ExportPointItem[],
+  filename: string = 'transformed_coordinates.dxf'
+): void {
+  const dxfContent = generateDXFContent(items);
+  const blob = new Blob([dxfContent], {
     type: 'application/dxf;charset=utf-8;',
   });
   triggerDownload(blob, filename);

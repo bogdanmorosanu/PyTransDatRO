@@ -25,27 +25,50 @@ export function parseAngleToDeg(input: string): number {
   const raw = input.trim();
   if (!raw) throw new Error('Empty coordinate input');
 
-  // Check cardinal directions
+  // Check negative sign and cardinal directions
   let sign = 1;
-  let clean = raw.toUpperCase();
-  if (clean.includes('S') || clean.includes('W') || clean.startsWith('-')) {
-    sign = -1;
-  }
-  clean = clean.replace(/[NSWE\-+]/g, '').trim();
+  let clean = raw.trim();
 
-  // If simple double
+  if (/^[-]\s*/.test(clean) || /^[SW]\s*\d/i.test(clean) || /^[SW]\b/i.test(clean)) {
+    // Leading negative or S/W (e.g., "-45.5", "S 45.5", "S45°...")
+    sign = -1;
+    clean = clean.replace(/^[-+]\s*|^[NSWE]\s*/i, '');
+  } else if (/\s+[SW]$/i.test(clean) || /["'`]\s*[SW]$/i.test(clean)) {
+    // Trailing cardinal direction after whitespace or quote: e.g. "45° 30' S", "45.5 S", "45° 30' 00\" S"
+    sign = -1;
+    clean = clean.replace(/\s*[NSWE]$/i, '');
+  } else if (/[SW]$/i.test(clean) && !/[d°m']/i.test(clean)) {
+    // Trailing S/W directly attached to a decimal without dms symbols: e.g. "45.5S"
+    sign = -1;
+    clean = clean.replace(/[NSWE]$/i, '');
+  } else {
+    // Strip trailing N or E if present
+    clean = clean.replace(/\s*[NE]$/i, '');
+    if (/[NE]$/i.test(clean) && !/[d°m']/i.test(clean)) {
+      clean = clean.replace(/[NE]$/i, '');
+    }
+    // Strip leading + or N/E
+    clean = clean.replace(/^[+]\s*|^[NE]\s*/i, '');
+  }
+
+  clean = clean.trim();
+  if (!clean) {
+    throw new Error(`Invalid coordinate input: "${input}"`);
+  }
+
+  // If simple double without any symbols or separators
   const simpleDouble = Number(clean);
-  if (!isNaN(simpleDouble) && !clean.includes('°') && !clean.includes("'") && !clean.includes('"') && !clean.includes('D') && !clean.includes(' ')) {
+  if (!isNaN(simpleDouble) && !/[°'"`dms\s]/i.test(clean)) {
     return sign * simpleDouble;
   }
 
-  // Split DMS components by delimiters
+  // Split DMS components by delimiters (case-insensitive for d, m, s)
   const tokens = clean
-    .split(/[°'"`dms\s]+/)
+    .split(/[°'"`dms\s]+/i)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-  if (tokens.length === 0) {
+  if (tokens.length === 0 || tokens.length > 3) {
     throw new Error(`Invalid DMS format: "${input}"`);
   }
 
@@ -78,6 +101,7 @@ export function parseAngleToRad(input: string): number {
  * Formats decimal degrees into standard geodetic DMS string: DD°MM'SS.sssss" (no spaces)
  */
 export function formatDegToDMS(deg: number, precision: number = 5): string {
+  if (isNaN(deg)) throw new Error('Cannot format NaN to DMS');
   const sign = deg < 0 ? '-' : '';
   let absDeg = Math.abs(deg);
 
@@ -100,7 +124,9 @@ export function formatDegToDMS(deg: number, precision: number = 5): string {
     }
   }
 
-  const sStr = s.toFixed(precision).padStart(precision + 3, '0');
+  const sStr = precision > 0
+    ? s.toFixed(precision).padStart(precision + 3, '0')
+    : String(Math.round(s)).padStart(2, '0');
   const mStr = String(m).padStart(2, '0');
   const dStr = String(d);
 

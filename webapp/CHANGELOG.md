@@ -9,6 +9,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Frontend Utility Unit Test Infrastructure (`webapp/package.json`, `webapp/src/utils/*.test.ts`)**:
+  - Integrated `vitest` v5.0.5 for ultra-fast, zero-config TypeScript unit testing directly using the existing Vite setup.
+  - Added `dmsParser.test.ts` (13 tests) validating angular conversions, symbol variations (`°`, `'`, `"`), letter notations (`d/m/s` and `D/M/S`), whitespace separation, cardinal directions, and seconds rollover formatting.
+  - Added `pointParser.test.ts` (28 tests) validating decimal verification, automatic delimiter detection (comma, semicolon, tab, space), coordinate order normalization (`NE` vs `EN`), 2D vs 3D detection, point ID preservation, and blank/comment line tracking.
+  - Added `gridBounds.test.ts` (10 tests) validating the official Stereo 70 and ETRS89 Romania bounding envelopes against national city coordinates, edge thresholds, and exterior points.
+  - Added `exporters.test.ts` (8 tests) validating structured exports for CSV (delimiters, coordinate precision), GeoJSON (`FeatureCollection`, `Point` geometries, properties), and AutoCAD ASCII DXF (`POINT` entities on `POINTS` layer, `TEXT` labels on `LABELS` layer).
+
+### Changed
+- **Decoupled Data Exporters (`webapp/src/utils/exporters.ts`)**:
+  - Extracted pure generator functions (`generateCSVContent`, `generateGeoJSONObject`, `generateDXFContent`) from DOM-dependent download triggers, enabling pure headless testing while retaining backward-compatible wrappers (`exportToCSV`, `exportToGeoJSON`, `exportToDXF`).
+
+### Fixed
+- **DMS Parser Seconds vs South Indicator Collision (`webapp/src/utils/dmsParser.ts`)**:
+  - Resolved bug where lowercase/uppercase `s` designating seconds in letter DMS notation (e.g. `45d 59m 58.99s`) was misinterpreted as South, incorrectly inverting the coordinate sign.
+  - Added case-insensitive splitting for `D`, `M`, `S` components.
+- **Point Parser Label Classification (`webapp/src/utils/pointParser.ts`)**:
+  - Fixed regex heuristic where point labels containing the characters `d`, `m`, or `s` (such as `GPS_BASE`, `STATION`, or `Base`) were erroneously treated as coordinate angle symbols.
 - **Refined Floating Feedback System & REST API Health Synchronization (`FeedbackPanel.ts`, `components.css`, `api/routes/feedback.py`, `api/services/mailer.py`, `en.ts`, `ro.ts`)**:
   - Replaced the static `FeedbackModal.ts` with a non-modal, draggable, resizable floating panel matching `GridMetadataPanel.ts` and `GeodeticHelpPanel.ts`.
   - Dropped Name and Contact Email fields for complete GDPR exemption and user privacy.
