@@ -25,14 +25,19 @@ export const en = {
     gridInfo: 'Grid Metadata',
     officialSoftwareTitle: 'ANCPI / ROMPOS Resources',
     romposPortal: 'Rompos Downloads Portal',
-    romgeoGui: 'RomGeo Desktop (GUI Conversion)',
-    romgeoGrid: 'RomGeo Grid Binary Files',
+    romgeoGui: 'RomGEO Desktop (GUI Conversion)',
+    romgeoGrid: 'RomGEO Grid Binary Files',
+    romgeoWebApi: 'RomGEO Web API',
     apiDocs: 'REST API Reference',
     feedback: 'Feedback',
     apiOnline: 'API Online',
     apiOffline: 'API Offline',
     reportOffline: '⚠ API service is offline. Please report via Feedback.',
     poweredBy: 'Open Source',
+    poweredByLabel: 'powered by',
+    poweredByBrand: 'PyTransDatRO',
+    langRo: 'Română (RO)',
+    langEn: 'English (EN)',
     githubLink: 'GitHub',
   },
   gridMetadata: {
@@ -173,9 +178,9 @@ export const en = {
     
     // Card 1: About & Disclaimer
     aboutTitle: 'About & Disclaimer',
-    aboutP1: 'PyTransDatRO is an independent, open-source project (MIT License) developed as an accessible alternative and modern replica of the official ANCPI applications, TransDatRO and its successor RomGeo.',
+    aboutP1: 'PyTransDatRO is an independent, open-source project (MIT License) developed as an accessible alternative and modern replica of the official ANCPI applications, TransDatRO and its successor RomGEO.',
     disclaimerLabel: 'Disclaimer:',
-    disclaimerText: 'This is not an official ANCPI software product. The engine faithfully replicates official transformation algorithms, but official cadastral and legal deliverables should be verified with official RomGeo releases.',
+    disclaimerText: 'This is not an official ANCPI software product. The engine faithfully replicates official transformation algorithms, but official cadastral and legal deliverables should be verified with official RomGEO releases.',
     
     // Card 2: Official Engine Benchmark
     benchmarkTitle: 'Official Engine Replication Benchmark',
@@ -256,7 +261,7 @@ Input Coordinates:
 PyTransDatRO Result:
   - N / E / H: 
 
-Expected Result (Official ANCPI RomGeo / GNSS Benchmark):
+Expected Result (Official ANCPI RomGEO / GNSS Benchmark):
   - N / E / H: 
 
 Benchmark Station / Reference Source:
@@ -265,7 +270,7 @@ Observations & Notes:
       grid_update: `[NEW GRID RELEASE REPORT]
 Currently Loaded Grid in PyTransDatRO: {currentGrid}
 
-New Official ANCPI / RomGeo Release:
+New Official ANCPI / RomGEO Release:
   - Version / Release Date: 
   - Official Download Link / Portal: https://rompos.ro/index.php/download
   

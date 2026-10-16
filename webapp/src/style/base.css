@@ -78,7 +78,7 @@ html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: #0f172a;
+  background-color: var(--bg-app);
 }
 
 /* Mobile & Tablet Responsive Layout */

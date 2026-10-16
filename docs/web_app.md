@@ -45,23 +45,31 @@ flowchart TD
 
 ## 2. Technology Stack & Key Invariants
 
-1. **Vanilla CSS Design System & Modular Stylesheets**:
+1. **Vanilla CSS Design System, GitHub Primer Neutral Palette & Modular Stylesheets**:
    - Zero bulky CSS frameworks (no Bootstrap, no Tailwind runtime overhead).
    - Driven entirely by custom CSS design tokens defined in [`webapp/src/style/variables.css`](../webapp/src/style/variables.css) and documented in [`webapp/design_guide.md`](../webapp/design_guide.md).
+   - **GitHub Primer Dual-Theme Palette & Subtle Surface + Border (`#8`) Primary Button (`data-theme="dark | light"`)**:
+     - Dark mode uses neutral carbon-slate `#0d1117` (`--bg-app`) and `#161b22` (`--bg-surface`); Light mode uses `#f6f8fa` (`--bg-app`) and `#ffffff` (`--bg-surface`).
+     - The full-width `Transform` primary button uses the **Subtle Surface + Border (`#8`)** token set (`--btn-primary-bg: #1f2630`, `--btn-primary-border: #48586a`, `--btn-primary-text: #e6edf3` in dark mode; `--btn-primary-bg: #eaeef2`, `--btn-primary-border: #8c959f`, `--btn-primary-text: #1f2328` in light mode).
    - **Modular Stylesheet Architecture (`webapp/src/style/`)**:
-     - `layout.css`: 480px workbench panel, top navigation bar, folder bookmark tabs, studio cards, modals, and toasts.
-     - `forms.css`: Text inputs, selects, sliding direction toggle, segmented switches, and dropzone.
-     - `buttons.css`: High-contrast theme-native CTA (`.btn-primary`), secondary, outline, copy buttons, and action buttons.
+     - `variables.css`: GitHub Primer Dark/Light tokens, Subtle Surface + Border (`#8`) primary button tokens, technical metric tokens, and dual-theme logo tokens (`--logo-*`).
+     - `base.css`: CSS reset, body defaults, custom scrollbars, and selection styling.
+     - `layout.css`: 480px workbench panel, top navigation bar, 2-line lowercase `"powered by"` / `"PyTransDatRO"` left-zone attribution, folder bookmark tabs, studio cards, modals, and toasts.
+     - `forms.css`: Text inputs, selects, high-contrast ON/OFF sliding direction toggle, segmented switches, and dropzone.
+     - `buttons.css`: Primary CTA (`.btn-primary`), secondary, outline, copy buttons, and action buttons.
      - `badges.css`: Status pills, Quasigeoid height metric field, angle format badges, and quality report cards.
-     - `menus.css`: Top navigation menu item triggers (`.nav-menu-trigger`), dropdown panels, menu items, and dividers.
-     - `telemetry.css`: KPI cards, SVG timeline chart styling, and spatial matrix canvas deck.
-   - **The Trinity Balance**: Simplicity (zero decorative emojis), Optimal ergonomics (480px workbench panel, asymmetrical 3-column coordinate layout), and Modern engineering precision.
-   - **Theme-Native High-Contrast CTA**: Porcelain `#f8fafc` on dark obsidian; slate `#0f172a` on light porcelain.
-   - **Metric Color Isolation**: Physical scalar measurements (e.g., Quasigeoid Height $\zeta = h - H$) use dedicated technical cyan (`--color-metric-text: #38bdf8;`), strictly isolated from status colors (never green or red).
+     - `menus.css`: Top navigation menu item triggers (`.nav-menu-trigger`), dropdown panels, active checkmarks (`.menu-check-icon`), menu items, and dividers.
+     - `panels.css`: Draggable and resizable non-modal floating windows (`.floating-grid-panel`, `.floating-help-panel`, `.floating-feedback-panel`).
+     - `telemetry.css`: KPI cards, high-contrast ON/OFF filter toggles with `6px × 6px` status dot indicators, SVG timeline chart styling with interactive `.legend-color-popover` swatch pickers, and spatial matrix canvas deck.
+     - `map.css`: Theme-synchronized Leaflet map widgets, docks, drawers, scale bar, and popups.
+   - **Dual-Theme Brand Logo (`Map Projection Graticule`, `webapp/src/assets/logos.ts`)**:
+     - The official **Map Projection Graticule** vector mark is rendered inline via CSS variables (`getLogoInlineSvg(36)`) in the header and synchronized dynamically with the browser favicon (`syncFaviconWithTheme`).
+   - **The Trinity Balance**: Simplicity (zero decorative emojis), Optimal ergonomics (480px workbench panel, asymmetrical 3-column coordinate layout), and Modern GIS/Cartographic engineering precision.
+   - **Metric Color Isolation**: Physical scalar measurements (e.g., Quasigeoid Height $\zeta = h - H$) use the dedicated cyan/teal metric token (`--color-metric-text`), strictly isolated from status colors (never green or red).
    - **Seamless Folder Bookmark Tabs**: Physical continuity between the `.tabs-bar` and the active card container below with zero background gap.
 
 2. **Reusable TypeScript UI Factory System (`webapp/src/ui/`)**:
-   - `renderDropdownMenu(props)`: Generates accessible dropdown menus with `.nav-menu-trigger` menu-item aesthetics, rotating chevron animations, ARIA semantics, and keyboard navigation (`Escape`, `ArrowDown`, `ArrowUp`).
+   - `renderDropdownMenu(props)`: Generates accessible dropdown menus with `.nav-menu-trigger` menu-item aesthetics, rotating chevron animations, optional `active` radio checkmarks (`role="menuitemradio"`, `.menu-check-icon`), custom `menuWidth`, ARIA semantics, and keyboard navigation (`Escape`, `ArrowDown`, `ArrowUp`).
    - `renderSegmentedControl(props)`: Accessible radio-switch controls with keyboard arrow navigation.
    - `renderSelect(props)`: Type-safe dropdown selects with focus ring management.
    - `renderCopyBadge(props)`: Interactive copyable text badges with clipboard integration.
@@ -158,10 +166,15 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **GeoJSON**: Standard WGS84/ETRS89 `Point` FeatureCollections with coordinate properties.
 - **AutoCAD DXF**: R12 ASCII DXF generating native `POINT` entities for immediate drag-and-drop import into AutoCAD and Civil 3D.
 
-### G. Header Navigation & Documentation Modals (`Header.ts`)
-- **Grid Info (`StatsView.ts`)**: Operational telemetry, daily point volume charts, and active `.spg` grid metadata.
-- **Geodetic Help (`GeodeticHelpModal.ts`)**: Interactive reference guide documenting Romanian datums (Stereo 70, ETRS89, MN75, GRS80), Quasigeoid undulation ($\zeta = h - H$), and syntax conventions.
-- **Feedback Dialog (`FeedbackModal.ts`)**: Discrepancy reporting against desktop TransDat or national GNSS stations.
+### G. Header Navigation, Floating Panels & Telemetry Dashboard (`Header.ts`, `GridMetadataPanel.ts`, `GeodeticHelpPanel.ts`, `FeedbackPanel.ts`, `TelemetryDashboard.ts`)
+- **Header Attribution, Help Menu & Language Dropdown (`Header.ts`)**:
+  - 2-line stacked lowercase `"powered by"` / `"PyTransDatRO"` repository link placed in the left header zone immediately after the brand block without an oblique arrow (`.ext-icon` is reserved strictly for external items inside dropdown menus).
+  - Status-displaying **Language Selector Dropdown Menu** (`#header-lang-details`, `renderDropdownMenu`) with globe icon, `RO`/`EN` status label, and active checkmarks (`Română (RO)`, `English (EN)`), visually distinct from the single-click Theme Toggle icon button (`#header-theme-btn`).
+  - **Help Menu (`#header-help-details`)**: Includes interactive guides (`PyTransDatRO Help & Benchmark`, `Grid Metadata Inspector`, `REST API Docs`) and official `ANCPI / ROMPOS Resources` (`ROMPOS Portal`, `RomGEO Desktop (Win)`, `RomGEO Desktop (Mac)`, `RomGEO 3D Grid (.txt)`, and `RomGEO Web API` at `https://api.romgeo.ro/api/v1/`).
+- **Grid Metadata Floating Panel (`GridMetadataPanel.ts`)**: Non-modal, draggable, and resizable floating panel inspecting active `.spg` binary grid metadata and SHA-256 checksums via `/api/v1/grid/info`.
+- **Geodetic Help & Benchmark Floating Panel (`GeodeticHelpPanel.ts`)**: Non-modal, draggable, and resizable reference guide documenting Romanian datums (Stereo 70, ETRS89, MN75, GRS80), Quasigeoid undulation ($\zeta = h - H$), syntax conventions, and live 9,046-point ANCPI replication benchmarks (`/api/v1/grid/comparison`).
+- **Feedback & Discrepancy Floating Panel (`FeedbackPanel.ts`)**: Non-modal, draggable, and resizable reporting tool with 5 report templates, in-browser math bot verification, and 1-click GitHub Issue / clipboard sharing.
+- **Usage Telemetry Dashboard (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`)**: Full-page analytics view with interactive SVG dual-metric timeline charts, native date clamping (`2023-11-01` to present), and a theme-reactive $0.1^\circ$ spatial matrix canvas heatmap across Romania.
 
 ---
 
@@ -173,7 +186,7 @@ The application is fully bilingual:
 
 ### Reactive State Flow:
 ```
-User clicks RO/EN Switcher
+User selects language from RO/EN Dropdown Menu
    │
    ▼
 i18nStore.setLanguage('en')
@@ -219,7 +232,7 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
   ```bash
   npm --prefix webapp test
   ```
-  Executes the 65 automated Vitest unit tests covering coordinate parsing (`dmsParser.test.ts`, `pointParser.test.ts`), Romania grid envelope checks (`gridBounds.test.ts`), client-side file generators (`exporters.test.ts`), and accessible UI factory helpers (`ui.test.ts`).
+  Executes the 67 automated Vitest unit tests covering coordinate parsing (`dmsParser.test.ts`, `pointParser.test.ts`), Romania grid envelope checks (`gridBounds.test.ts`), client-side file generators (`exporters.test.ts`), accessible UI factory helpers (`renderDropdownMenu` with `active` checkmarks, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`), and the dual-theme `Map Projection Graticule` brand logo (`ui.test.ts`).
 - **Interactive Test Watch Mode**:
   ```bash
   npm --prefix webapp run test:watch
@@ -234,4 +247,6 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
   D:\anaconda3\envs\pytransdat\python.exe -m pytest -q
   ```
   Ensures all 98 core geodetic, REST API, rate limiter, configuration, and telemetry tests pass with zero regressions.
+
+
 

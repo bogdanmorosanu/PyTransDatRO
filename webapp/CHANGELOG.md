@@ -9,23 +9,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **GitHub Primer Neutral Dual-Theme Palette & Subtle Surface + Border (`#8`) Primary Button (`webapp/src/style/variables.css`)**:
+  - Adopted the GitHub Primer neutral Dark (`#0d1117` app canvas, `#161b22` card surface, `#21262d` elevated controls) and Light (`#f6f8fa` app canvas, `#ffffff` card surface, `#f3f4f6` elevated controls) theme tokens, eliminating dark navy-blue backgrounds (`#090d16` / `#0f172a` / `#1e293b`).
+  - Set Option `#8` (**Subtle Surface + Border**) as the permanent primary action button style (`--btn-primary-bg: #1f2630`, `--btn-primary-hover: #28313e`, `--btn-primary-text: #e6edf3`, `--btn-primary-border: #48586a` in Dark mode; `--btn-primary-bg: #eaeef2`, `--btn-primary-hover: #dde3ea`, `--btn-primary-text: #1f2328`, `--btn-primary-border: #8c959f` in Light mode).
+- **Interactive Computation Chart Legend Color Picker & Dual-Theme Line Palette (`TimelineChart.ts`, `TelemetryDashboard.ts`, `telemetry.css`)**:
+  - Replaced the low-contrast pale yellow (`#fde68a` / `#f59e0b`) on `Desktop / CLI` (`desktop_cli`) with high-contrast Coral Rose (`#fb7185`) / Crimson Rose (`#e11d48`), legible on both Dark and Light backgrounds.
+  - Added click-to-change 10-swatch color popovers (`.legend-color-popover`, matching the Web Map layer widget UX) on every line item in the Computation chart legend, persisting custom line colors in `localStorage['pytransdat_timeline_colors']`.
+- **Enhanced ON/OFF Toggle State Visibility (`forms.css`, `telemetry.css`)**:
+  - Added a `6px × 6px` circular ON/OFF status dot (`::before`), elevated `--btn-primary-bg` active surface, and crisp `--btn-primary-border` outline on standalone Usage filter toggles (`REST API`, `Web App`, `Desktop / CLI`, `Points`, `Calls`), while recessed/dimming (`opacity: 0.62`) inactive buttons.
+  - Increased ON/OFF contrast on the Transform direction `.sliding-toggle` glider and `.segmented-control` coordinate order pills.
+- **Official Dual-Theme Brand Logo (`Map Projection Graticule`, `webapp/src/assets/logos.ts`, `logo.svg`, `public/favicon.svg`)**:
+  - Adopted **C2: Map Projection Graticule** as the official dual-theme vector logo, featuring curved stereographic graticule arcs intersecting a projection frame with a central origin node, rendered inline via CSS variables (`getLogoInlineSvg(36)`) and synchronized dynamically with the browser tab favicon (`syncFaviconWithTheme`).
+- **Status-Displaying Language Selector Dropdown Menu (`Header.ts`, `ui/menu.ts`, `menus.css`)**:
+  - Converted the header Language control into a disclosure Dropdown Menu (`#header-lang-details`, `renderDropdownMenu`) with a globe SVG icon, active language code (`RO` / `EN`), rotating chevron (`▾`), and `Română (RO)` / `English (EN)` menu items (`role="menuitemradio"`, `aria-checked`) with an active checkmark (`✓`, `.menu-check-icon`), visually distinguishing status-displaying menus from the immediate-action Theme Toggle button.
+- **`RomGEO Web API` Link & `RomGEO` Capitalization (`Header.ts`, `i18n/en.ts`, `i18n/ro.ts`)**:
+  - Added `RomGEO Web API` (`https://api.romgeo.ro/api/v1/`, `isExternal: true`) at the bottom of the `ANCPI / ROMPOS Resources` section in the Help menu and standardized all `RomGeo` references to `RomGEO`.
+- **Dedicated Floating Windows Stylesheet (`webapp/src/style/panels.css`)**:
+  - Restored and unified full CSS rules for `.floating-grid-panel`, `.floating-help-panel`, and `.floating-feedback-panel` (draggable headers, JSON tree inspector, benchmark comparison table, and feedback templates).
 - **Modular Stylesheet Architecture (`webapp/src/style/`)**:
-  - Deconstructed the monolithic 3,561-line `components.css` into 6 maintainable, category-focused stylesheets:
+  - Deconstructed the monolithic 3,561-line `components.css` into maintainable, category-focused stylesheets:
     - `layout.css`: Header, workbench layout, tabs bar, studio cards, modals, and toast notifications.
     - `forms.css`: Form groups, labels, inputs, selects, sliding direction toggle, segmented switches, format popovers, and file dropzone.
     - `buttons.css`: Theme-native primary CTA, secondary, outline, copy buttons, action buttons, and format pills.
     - `badges.css`: Status pills, Quasigeoid height metric field, angle format badges, file status pills, health dots, and quality report cards.
-    - `menus.css`: Top navigation menu item triggers (`.nav-menu-trigger`), dropdown menu panels, menu items, category headings, and dividers.
-    - `telemetry.css`: KPI cards, controls decks, interactive SVG timeline charts, and spatial matrix canvas deck.
+    - `menus.css`: Top navigation menu item triggers (`.nav-menu-trigger`), dropdown menu panels, active checkmarks, menu items, category headings, and dividers.
+    - `telemetry.css`: KPI cards, controls decks, interactive SVG timeline charts, legend color popovers, and spatial matrix canvas deck.
 - **Reusable UI Factory System (`webapp/src/ui/`)**:
-  - `menu.ts`: Generic `renderDropdownMenu` helper supporting sleek top navigation menu item triggers (`.nav-menu-trigger`), rotating chevron animations, ARIA semantics (`role="menu"`, `role="menuitem"`), keyboard navigation (`Escape`, `ArrowDown`, `ArrowUp`), and automated dismissal.
+  - `menu.ts`: Generic `renderDropdownMenu` helper supporting sleek top navigation menu item triggers (`.nav-menu-trigger`), rotating chevron animations, optional `active` radio checkmarks (`role="menuitemradio"`), custom `menuWidth`, ARIA semantics (`role="menu"`, `role="menuitem"`), keyboard navigation (`Escape`, `ArrowDown`, `ArrowUp`), and automated dismissal.
   - `segmentedControl.ts`: Accessible `renderSegmentedControl` helper for radio-switch toggles with ARIA attributes and arrow-key cycling.
   - `selectControl.ts`: `renderSelect` helper ensuring uniform styling and focus rings.
   - `copyBadge.ts`: `renderCopyBadge` helper for interactive copyable chips with keyboard activation.
   - `copyButton.ts`: `renderCopyButton` helper providing standard code-block copy actions with animated checkmark feedback.
-  - `ui.test.ts`: Added 6 unit tests covering all UI factories (65/65 tests passing overall).
+  - `ui.test.ts`: Added unit tests covering all UI factories and the dual-theme `Map Projection Graticule` brand logo (67/67 tests passing overall).
 
 ### Changed
+- **2-Line Lowercase Header Attribution & External Link Rule (`Header.ts`, `layout.css`, `design_guide.md`)**:
+  - Replaced `"by PyTransDatRO"` with a 2-line stacked lowercase `"powered by"` / `"PyTransDatRO"` attribution link without an oblique arrow (`↗`), positioned in the left header zone right after the brand block.
+  - Updated the external link indicator rule so `↗` (`.ext-icon`) applies strictly to external links inside dropdown menus (e.g., Help menu links to ROMPOS, RomGEO, and `/docs`).
+- **Web GIS Map Widget & Spatial Matrix Theme Synchronization (`map.css`, `SpatialMatrixChart.ts`)**:
+  - Synchronized all Leaflet map overlay docks, drawers, scale bars, and geodetic popups with the active theme tokens (`--bg-glass`, `--bg-surface`, `--border-medium`, `--radius-*`).
+  - Added `MutationObserver` theme reactivity to `SpatialMatrixChart.ts` so ghost cells, hover borders, and the 5-tier color ramp adapt cleanly to both Dark and Light themes.
+- **Design System Manual Overhaul (`webapp/design_guide.md`, `docs/web_app.md`)**:
+  - Rewrote `webapp/design_guide.md` with the GitHub Primer dual-theme palette, the `Subtle Surface + Border` (`#8`) primary button, the 24-item Component Catalogue (`C1`–`C6`), enhanced ON/OFF toggle states, interactive Computation chart legend color pickers, header navigation rules, and the `Map Projection Graticule` dual-theme logo while preserving the `480px` workbench width and `1.35fr 1.35fr 0.8fr` coordinate input geometry, and relocated pure algorithmic/parser specs to `docs/web_app.md`.
 - **Header Help Menu Redesign (`Header.ts`, `menus.css`)**:
   - Redesigned the Help dropdown trigger from an isolated `.btn.btn-outline` button to a seamless `.nav-menu-trigger` menu item, giving it clean top-navigation aesthetics while maintaining full accessibility and dropdown capability.
 - **Component Unification (`main.ts`, `PointConverter.ts`, `BatchConverter.ts`)**:

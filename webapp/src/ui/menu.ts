@@ -11,6 +11,7 @@ export type MenuItem =
       onClick: () => void;
       id?: string;
       danger?: boolean;
+      active?: boolean;
     }
   | {
       type: 'link';
@@ -36,6 +37,7 @@ export interface DropdownMenuProps {
   triggerVariant?: 'menu-item' | 'btn-outline';
   items: MenuItem[];
   align?: 'left' | 'right';
+  menuWidth?: string;
   className?: string;
   ariaLabel?: string;
   onOpenChange?: (isOpen: boolean) => void;
@@ -44,6 +46,12 @@ export interface DropdownMenuProps {
 const EXTERNAL_LINK_ICON = `
   <svg class="ext-icon" width="11" height="11" viewBox="0 0 12 12" fill="none">
     <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+`;
+
+const ACTIVE_CHECK_ICON = `
+  <svg class="menu-check-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/>
   </svg>
 `;
 
@@ -80,13 +88,19 @@ export function renderDropdownMenu(props: DropdownMenuProps): HTMLDetailsElement
   const menuContainer = document.createElement('div');
   menuContainer.className = `header-dropdown-menu ${props.align === 'left' ? 'align-left' : ''}`.trim();
   menuContainer.setAttribute('role', 'menu');
+  if (props.menuWidth) {
+    menuContainer.style.width = props.menuWidth;
+  }
 
   props.items.forEach((item) => {
     if (item.type === 'action') {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `dropdown-item ${item.danger ? 'danger' : ''}`.trim();
-      btn.setAttribute('role', 'menuitem');
+      btn.className = `dropdown-item ${item.danger ? 'danger' : ''} ${item.active ? 'active' : ''}`.trim();
+      btn.setAttribute('role', item.active !== undefined ? 'menuitemradio' : 'menuitem');
+      if (item.active !== undefined) {
+        btn.setAttribute('aria-checked', item.active ? 'true' : 'false');
+      }
       if (item.id) btn.id = item.id;
 
       let btnHtml = '';
@@ -94,6 +108,9 @@ export function renderDropdownMenu(props: DropdownMenuProps): HTMLDetailsElement
         btnHtml += `<span class="menu-item-left">${item.iconSvg}<span>${item.label}</span></span>`;
       } else {
         btnHtml += `<span>${item.label}</span>`;
+      }
+      if (item.active) {
+        btnHtml += ACTIVE_CHECK_ICON;
       }
       btn.innerHTML = btnHtml;
 

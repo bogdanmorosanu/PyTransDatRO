@@ -25,14 +25,19 @@ export const ro = {
     gridInfo: 'Metadate Grilă',
     officialSoftwareTitle: 'ANCPI / ROMPOS Resources',
     romposPortal: 'Portal Descărcări Rompos',
-    romgeoGui: 'RomGeo Desktop (GUI Conversie)',
-    romgeoGrid: 'Fișiere Grilă RomGeo',
+    romgeoGui: 'RomGEO Desktop (GUI Conversie)',
+    romgeoGrid: 'Fișiere Grilă RomGEO',
+    romgeoWebApi: 'RomGEO Web API',
     apiDocs: 'Referință REST API',
     feedback: 'Feedback',
     apiOnline: 'API Conectat',
     apiOffline: 'API Neconectat',
     reportOffline: '⚠ Serviciul API nu răspunde. Raportează prin Feedback.',
     poweredBy: 'Open Source',
+    poweredByLabel: 'powered by',
+    poweredByBrand: 'PyTransDatRO',
+    langRo: 'Română (RO)',
+    langEn: 'English (EN)',
     githubLink: 'GitHub',
   },
   gridMetadata: {
@@ -173,9 +178,9 @@ export const ro = {
     
     // Card 1: About & Disclaimer
     aboutTitle: 'Despre Proiect & Declinare de Responsabilitate',
-    aboutP1: 'PyTransDatRO este un proiect independent, gratuit și cu sursă deschisă (Licență MIT), dezvoltat ca o alternativă modernă și o replică a aplicațiilor oficiale ANCPI, TransDatRO și succesorul său RomGeo.',
+    aboutP1: 'PyTransDatRO este un proiect independent, gratuit și cu sursă deschisă (Licență MIT), dezvoltat ca o alternativă modernă și o replică a aplicațiilor oficiale ANCPI, TransDatRO și succesorul său RomGEO.',
     disclaimerLabel: 'Declinare de responsabilitate:',
-    disclaimerText: 'Această aplicație nu este un produs software oficial ANCPI. Motorul de calcul reproduce fidel algoritmii oficiali, însă pentru documentații cadastrale oficiale și cu valoare juridică se recomandă verificarea cu aplicația oficială RomGeo.',
+    disclaimerText: 'Această aplicație nu este un produs software oficial ANCPI. Motorul de calcul reproduce fidel algoritmii oficiali, însă pentru documentații cadastrale oficiale și cu valoare juridică se recomandă verificarea cu aplicația oficială RomGEO.',
     
     // Card 2: Official Engine Benchmark
     benchmarkTitle: 'Fidelitatea Replicării față de Motorul Oficial ANCPI',
@@ -256,7 +261,7 @@ Coordonate de intrare:
 Rezultat PyTransDatRO:
   - N / E / H: 
 
-Rezultat Așteptat (RomGeo Oficial ANCPI / Bornă GNSS):
+Rezultat Așteptat (RomGEO Oficial ANCPI / Bornă GNSS):
   - N / E / H: 
 
 Denumire Bornă / Sursă de referință:
@@ -265,7 +270,7 @@ Observații & note:
       grid_update: `[NOTIFICARE VERSIUNE NOUĂ DE GRILĂ]
 Grilă încărcată în prezent în PyTransDatRO: {currentGrid}
 
-Versiune nouă oficială ANCPI / RomGeo detectată:
+Versiune nouă oficială ANCPI / RomGEO detectată:
   - Versiune / Dată lansare: 
   - Link oficial descărcare: https://rompos.ro/index.php/download
   

@@ -84,10 +84,10 @@
   bottom: 3px;
   left: 3px;
   width: calc(50% - 3px);
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-medium);
+  background-color: var(--btn-primary-bg);
+  border: 1px solid var(--btn-primary-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
   z-index: 1;
@@ -108,7 +108,7 @@
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-dim);
   cursor: pointer;
   text-align: center;
   position: relative;
@@ -122,7 +122,7 @@
 }
 
 .sliding-toggle-btn.active {
-  color: var(--text-main);
+  color: var(--btn-primary-text);
   font-weight: 600;
 }
 
@@ -145,12 +145,12 @@
 
 .segmented-btn {
   flex: 1;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-dim);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -180,11 +180,11 @@
 }
 
 .segmented-btn.active {
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-main);
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
   font-weight: 600;
-  border: 1px solid var(--border-medium);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--btn-primary-border);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .segmented-btn:focus-visible {

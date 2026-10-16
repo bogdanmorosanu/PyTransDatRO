@@ -10,46 +10,61 @@ export interface SourceDisplayConfig {
 
 export const KNOWN_SOURCE_COLORS: Record<string, { calls: string; points: string; labelKey: string }> = {
   rest_api: {
-    calls: '#a5b4fc',    // Soft Lavender / Light Indigo (Lighter)
-    points: '#6366f1',   // Tech Indigo (Darker)
+    calls: '#818cf8',    // Bright Indigo (calls)
+    points: '#4f46e5',   // Deep Indigo (points)
     labelKey: 'stats.sourceRestApi',
   },
   web_app: {
-    calls: '#6ee7b7',    // Mint / Light Emerald (Lighter)
-    points: '#10b981',   // Emerald Green (Darker)
+    calls: '#34d399',    // Emerald (calls)
+    points: '#059669',   // Deep Emerald (points)
     labelKey: 'stats.sourceWebMap',
   },
   web_map: {
-    calls: '#6ee7b7',    // Mint / Light Emerald (Lighter)
-    points: '#10b981',   // Emerald Green (Darker)
+    calls: '#34d399',    // Emerald (calls)
+    points: '#059669',   // Deep Emerald (points)
     labelKey: 'stats.sourceWebMap',
   },
   desktop_cli: {
-    calls: '#fde68a',    // Warm Yellow (Lighter)
-    points: '#f59e0b',   // Amber (Darker)
+    calls: '#fb7185',    // Coral Rose (calls — high-contrast on Dark & Light)
+    points: '#e11d48',   // Deep Crimson Rose (points — high-contrast on Dark & Light)
     labelKey: 'stats.sourceDesktopCli',
   },
   unknown: {
-    calls: '#cbd5e1',    // Light Slate
-    points: '#94a3b8',   // Medium Slate
+    calls: '#94a3b8',    // Medium Slate
+    points: '#64748b',   // Deep Slate
     labelKey: 'stats.sourceUnknown',
   },
 };
 
+export const TIMELINE_COLOR_PRESETS = [
+  '#818cf8', // Bright Indigo
+  '#4f46e5', // Deep Indigo
+  '#34d399', // Emerald
+  '#059669', // Deep Emerald
+  '#fb7185', // Coral Rose
+  '#e11d48', // Crimson Rose
+  '#c084fc', // Bright Purple
+  '#9333ea', // Deep Purple
+  '#38bdf8', // Sky Cyan
+  '#f97316', // Vibrant Orange
+];
+
+const TIMELINE_COLORS_STORAGE_KEY = 'pytransdat_timeline_colors';
+
 // Distinct fallback palette pairs for dynamic sources beyond the known ones (calls lighter, points darker)
 const FALLBACK_PALETTE_PAIRS = [
-  { calls: '#fbcfe8', points: '#ec4899' }, // Pink
-  { calls: '#ddd6fe', points: '#8b5cf6' }, // Purple
-  { calls: '#99f6e4', points: '#14b8a6' }, // Teal
-  { calls: '#fed7aa', points: '#f97316' }, // Bright Orange
-  { calls: '#a5f3fc', points: '#06b6d4' }, // Cyan
+  { calls: '#f472b6', points: '#db2777' }, // Pink
+  { calls: '#c084fc', points: '#9333ea' }, // Purple
+  { calls: '#2dd4bf', points: '#0d9488' }, // Teal
+  { calls: '#fb923c', points: '#ea580c' }, // Bright Orange
+  { calls: '#38bdf8', points: '#0284c7' }, // Cyan
 ];
 
 export const TOTAL_SERIES_CONFIG = {
   key: 'total',
   labelKey: 'stats.seriesTotal',
   callsColor: 'var(--text-main, #f8fafc)',  // Theme-adaptive dashed line for Total Invocations
-  pointsColor: '#38bdf8', // Vibrant Cyan dashed line for Total Coordinates
+  pointsColor: '#0ea5e9', // Vibrant Sky Cyan dashed line for Total Coordinates
 };
 
 export type TimelineMetricFilter = 'both' | 'points' | 'calls';
@@ -64,6 +79,7 @@ export interface TimelineChartOptions {
 export class TimelineChart {
   private container: HTMLElement;
   private data: TimelineSeriesItem[] = [];
+  private customColors: Record<string, string> = {};
   private options: TimelineChartOptions = {
     activeSourceKeys: new Set(['rest_api', 'web_map', 'desktop_cli']),
     availableSources: [],
@@ -74,6 +90,42 @@ export class TimelineChart {
   constructor() {
     this.container = document.createElement('div');
     this.container.className = 'timeline-chart-wrapper';
+    this.loadCustomColors();
+  }
+
+  private loadCustomColors(): void {
+    try {
+      const raw = localStorage.getItem(TIMELINE_COLORS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          this.customColors = parsed as Record<string, string>;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load custom timeline colors from localStorage:', err);
+    }
+  }
+
+  public getLineColor(seriesKey: string, defaultColor: string): string {
+    return this.customColors[seriesKey] || defaultColor;
+  }
+
+  public setLineColor(seriesKey: string, color: string): void {
+    this.customColors[seriesKey] = color;
+    try {
+      localStorage.setItem(TIMELINE_COLORS_STORAGE_KEY, JSON.stringify(this.customColors));
+    } catch (err) {
+      console.warn('Failed to save custom timeline colors to localStorage:', err);
+    }
+    this.render();
+  }
+
+  public getTotalSeriesColors(): { callsColor: string; pointsColor: string } {
+    return {
+      callsColor: this.getLineColor('total:calls', TOTAL_SERIES_CONFIG.callsColor),
+      pointsColor: this.getLineColor('total:points', TOTAL_SERIES_CONFIG.pointsColor),
+    };
   }
 
   public getElement(): HTMLElement {
@@ -97,8 +149,8 @@ export class TimelineChart {
       return {
         key: sourceName,
         label: t(known.labelKey),
-        callsColor: known.calls,
-        pointsColor: known.points,
+        callsColor: this.getLineColor(`${sourceName}:calls`, known.calls),
+        pointsColor: this.getLineColor(`${sourceName}:points`, known.points),
       };
     }
 
@@ -112,8 +164,8 @@ export class TimelineChart {
     return {
       key: sourceName,
       label: formatted,
-      callsColor: pair.calls,
-      pointsColor: pair.points,
+      callsColor: this.getLineColor(`${sourceName}:calls`, pair.calls),
+      pointsColor: this.getLineColor(`${sourceName}:points`, pair.points),
     };
   }
 
@@ -263,6 +315,7 @@ export class TimelineChart {
     }
 
     // 2. Persistent Total Lines (calculated strictly from selected sources)
+    const totalColors = this.getTotalSeriesColors();
     if (this.options.showTotal && activeConfigs.length > 0) {
       const totalCallCoords: { x: number; y: number }[] = [];
       const totalPointCoords: { x: number; y: number }[] = [];
@@ -289,7 +342,7 @@ export class TimelineChart {
           <path 
             d="${totalCallPathD}" 
             fill="none" 
-            stroke="${TOTAL_SERIES_CONFIG.callsColor}" 
+            stroke="${totalColors.callsColor}" 
             stroke-width="2.6" 
             stroke-dasharray="7 5"
             stroke-linecap="round" 
@@ -306,7 +359,7 @@ export class TimelineChart {
           <path 
             d="${totalPointPathD}" 
             fill="none" 
-            stroke="${TOTAL_SERIES_CONFIG.pointsColor}" 
+            stroke="${totalColors.pointsColor}" 
             stroke-width="2.6" 
             stroke-dasharray="7 5"
             stroke-linecap="round" 
@@ -399,6 +452,7 @@ export class TimelineChart {
     const metricMode = this.options.metricFilter;
     const showCalls = metricMode === 'both' || metricMode === 'calls';
     const showPoints = metricMode === 'both' || metricMode === 'points';
+    const totalColors = this.getTotalSeriesColors();
 
     svg.addEventListener('mousemove', (e: MouseEvent) => {
       const rect = svg.getBoundingClientRect();
@@ -458,16 +512,16 @@ export class TimelineChart {
 
       let totalDetailsHtml = '';
       if (showCalls) {
-        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${TOTAL_SERIES_CONFIG.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${totalSelectedCalls.toLocaleString()}</strong></span>`;
+        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${totalColors.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${totalSelectedCalls.toLocaleString()}</strong></span>`;
       }
       if (showPoints) {
-        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${TOTAL_SERIES_CONFIG.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${totalSelectedPoints.toLocaleString()}</strong></span>`;
+        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${totalColors.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${totalSelectedPoints.toLocaleString()}</strong></span>`;
       }
 
       const totalHtml = `
         <div class="tooltip-row total-row">
           <div class="tooltip-source-title">
-            <span class="tooltip-dot dashed" style="background-color: ${showCalls ? TOTAL_SERIES_CONFIG.callsColor : TOTAL_SERIES_CONFIG.pointsColor};"></span>
+            <span class="tooltip-dot dashed" style="background-color: ${showCalls ? totalColors.callsColor : totalColors.pointsColor};"></span>
             <strong>${t('stats.seriesTotal')}</strong>
           </div>
           <div class="tooltip-source-details">

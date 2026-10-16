@@ -5,10 +5,12 @@ import './style/forms.css';
 import './style/buttons.css';
 import './style/badges.css';
 import './style/menus.css';
+import './style/panels.css';
 import './style/telemetry.css';
 import './style/map.css';
 
 import { t, onLanguageChange } from './i18n';
+import { syncFaviconWithTheme } from './assets/logos';
 import { Header } from './components/Header';
 import { PointConverter, type AngularUnitType } from './components/PointConverter';
 import { MapView } from './components/MapView';
@@ -66,8 +68,10 @@ class App {
   }
 
   private initTheme(): void {
-    const savedTheme = localStorage.getItem('pytransdat_theme') || 'dark';
+    const savedTheme = (localStorage.getItem('pytransdat_theme') || 'dark') as 'dark' | 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.removeAttribute('data-btn-color');
+    syncFaviconWithTheme(savedTheme === 'light' ? 'light' : 'dark');
   }
 
   private initLayout(): void {

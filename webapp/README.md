@@ -60,10 +60,11 @@ webapp/
 ├── vite.config.ts          # Vite build options and dev server API proxy
 └── src/
     ├── main.ts             # Application orchestrator & component lifecycle manager
-    ├── assets/             # Vector graphic assets and brand icons
-    │   └── logo.svg        # Official Geodetic Shift Lattice application logo
+    ├── assets/             # Vector graphic assets and dual-theme brand icon
+    │   ├── logo.svg        # Official Map Projection Graticule standalone logo
+    │   └── logos.ts        # Dual-Theme Map Projection Graticule SVG generator & favicon synchronizer
     ├── components/         # Interactive UI workbench components
-    │   ├── Header.ts       # 3-Zone Header (Brand, Navigation, Native Details Help Dropdown, Health)
+    │   ├── Header.ts       # Header (Brand, 2-Line Attribution, Help & Language Dropdown Menus, Theme Toggle)
     │   ├── GridMetadataPanel.ts # Non-modal, draggable & resizable SPG grid metadata tree panel
     │   ├── GeodeticHelpPanel.ts # Non-modal, draggable & resizable geodetic reference & benchmark panel
     │   ├── PointConverter.ts  # Single-point transformation workbench
@@ -80,25 +81,26 @@ webapp/
     ├── i18n/               # Internationalization system
     │   ├── index.ts        # Reactive translation store & persistent state
     │   ├── ro.ts           # Romanian translation dictionary (default)
-    │   └── en.ts           # English translation dictionary
+    └── en.ts               # English translation dictionary
     ├── style/              # Design system & styles (Pure Vanilla Modular CSS)
-    │   ├── variables.css   # Color palette tokens, dark/light themes, typography
-    │   ├── base.css        # CSS reset, body defaults, high-level layouts
+    │   ├── variables.css   # GitHub Primer Dark/Light palette & Subtle Surface + Border (#8) primary button tokens
+    │   ├── base.css        # CSS reset, body defaults, custom scrollbars
     │   ├── layout.css      # Workbench layout (480px), navbar, tabs bar, studio cards, modals, toasts
     │   ├── forms.css       # Inputs, selects, sliding toggles, segmented buttons, dropzone
-    │   ├── buttons.css     # Theme-native CTA buttons, icons, copy buttons, map action buttons
+    │   ├── buttons.css     # Primary CTA buttons, icons, copy buttons, map actions
     │   ├── badges.css      # Status pills, Quasigeoid height metric field, quality report cards
-    │   ├── menus.css       # Top-navigation menu triggers, dropdown menus, menu items, dividers
-    │   ├── telemetry.css   # KPI cards, timeline charts, spatial matrix canvas deck
-    │   └── map.css         # Leaflet container, custom popups & cluster styling
+    │   ├── menus.css       # Top-navigation menu triggers, dropdown menus, active checkmarks, dividers
+    │   ├── panels.css      # Draggable & resizable floating windows (Grid Metadata, Help, Feedback)
+    │   ├── telemetry.css   # KPI cards, timeline charts, interactive legend color popovers, spatial matrix deck
+    │   └── map.css         # Theme-synchronized Leaflet widgets, popups & cluster styling
     ├── ui/                 # Reusable TypeScript UI factory controls
-    │   ├── menu.ts         # renderDropdownMenu with nav-menu-trigger and full ARIA
+    │   ├── menu.ts         # renderDropdownMenu with nav-menu-trigger, active checkmarks, and full ARIA
     │   ├── segmentedControl.ts # renderSegmentedControl with arrow-key keyboard navigation
     │   ├── selectControl.ts # renderSelect for uniform dropdown lists
     │   ├── copyBadge.ts    # renderCopyBadge for interactive copyable chips
     │   ├── copyButton.ts   # renderCopyButton with animated checkmark feedback
     │   ├── index.ts        # Unified re-export entrypoint
-    │   └── ui.test.ts      # Unit tests for UI factory helpers
+    │   └── ui.test.ts      # Unit tests for UI factory helpers & dual-theme brand logo
     └── utils/              # Client-side geodetic & formatting helpers
         ├── apiClient.ts    # Type-safe REST client (passes X-Client-Source: web_app)
         ├── dmsParser.ts    # Unspaced DMS <-> Decimal Degrees converter
@@ -116,13 +118,15 @@ webapp/
    - The frontend communicates with the transformation engine exclusively over HTTP via `src/utils/apiClient.ts`.
    - All requests send the HTTP header `X-Client-Source: web_app`, allowing the backend `SqliteUsageLogger` to attribute telemetry appropriately.
 
-2. **Vanilla CSS Design System & Visual Ergonomics**:
-   - Built with pure CSS custom properties (`src/style/variables.css`).
-   - Detailed specifications, visual tokens, and component guidelines are documented in [design_guide.md](design_guide.md).
-   - Supports **Dark Mode**, **Light Mode**, and **System Preference** with no heavy UI framework dependencies.
-   - Clean, modern geodetic aesthetic: Deep obsidian/slate neutrals, high-contrast theme-native anchor CTA buttons, monospace coordinate typography (`JetBrains Mono`).
+2. **GitHub Primer Dual-Theme Palette & Subtle Surface + Border (`#8`) Primary Button**:
+   - Built with pure CSS custom properties (`src/style/variables.css`) parameterized by `data-theme="dark|light"`.
+   - Detailed specifications and the 24-item Component Catalogue (`C1`–`C6`) are documented in [design_guide.md](design_guide.md).
+   - **GitHub Primer Neutral Palette**:
+     - **Dark Theme (`data-theme="dark"`)**: `--bg-app: #0d1117`, `--bg-surface: #161b22`, `--bg-surface-elevated: #21262d`, `--border-subtle: #21262d`, `--text-main: #e6edf3`, `--btn-primary-bg: #1f2630`, `--btn-primary-border: #48586a`.
+     - **Light Theme (`data-theme="light"`)**: `--bg-app: #f6f8fa`, `--bg-surface: #ffffff`, `--bg-surface-elevated: #f3f4f6`, `--border-subtle: #d0d7de`, `--text-main: #1f2328`, `--btn-primary-bg: #eaeef2`, `--btn-primary-border: #8c959f`.
+   - **Official Dual-Theme Brand Logo (`Map Projection Graticule`, `src/assets/logos.ts`)**: Reactive CSS-variable inline SVG (`getLogoInlineSvg(36)`) and automatic favicon theme synchronization (`syncFaviconWithTheme`).
    - Fixed `480px` left workbench panel width with seamless folder bookmark tabs physically merging with the card container below (zero gap).
-   - Dedicated Quasigeoid Height box ($\zeta = h - H$) styled in technical metric cyan (`--color-metric-text: #38bdf8;`), strictly isolated from status colors.
+   - Dedicated Quasigeoid Height box ($\zeta = h - H$) styled in the technical metric palette (`--color-metric-text`), strictly isolated from status colors.
 
 3. **3-Tier Shared Transformation Configuration**:
    - Elevated above tabs in `main.ts` to globally manage `Point`, `Text`, and `Files` tabs:
@@ -198,10 +202,10 @@ npm run test:watch
 npm run build
 ```
 
-The automated test suite runs 65 tests in $< 350\text{ ms}$ covering:
+The automated test suite runs 67 tests in $< 350\text{ ms}$ covering:
 - **`dmsParser.test.ts`**: Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), whitespace handling, degree symbol variations, sexagesimal conversion.
 - **`pointParser.test.ts`**: Delimiter detection (tabs, spaces, commas, semicolons), point IDs, coordinate ordering (`NE(H)` vs `EN(H)`).
 - **`gridBounds.test.ts`**: Romania envelope pre-flight bounding box validation.
 - **`exporters.test.ts`**: Pure client-side CSV, GeoJSON, and AutoCAD DXF R12 generator output fidelity.
-- **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu`, `renderSegmentedControl`, etc.).
+- **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu` with active checkmarks, `renderSegmentedControl`, etc.) and the dual-theme `Map Projection Graticule` brand logo (`getLogoInlineSvg`, `getLogoStandaloneSvg`).
 

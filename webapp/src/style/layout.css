@@ -58,13 +58,21 @@
   padding: 2px 0;
 }
 
-.brand-logo-img {
+.brand-logo-wrap {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-logo-svg {
+  display: block;
+  width: 36px;
+  height: 36px;
 }
 
 .brand-text-column {
@@ -86,6 +94,42 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+}
+
+/* 2-Line Header Attribution: "powered by / PyTransDatRO" (Left zone right after brand title, no oblique ↗ arrow) */
+.header-repo-link {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  text-decoration: none !important;
+  line-height: 1.15;
+  border-left: 1px solid var(--border-subtle);
+  border-radius: 0;
+  padding: 2px 0 2px 12px;
+  margin-left: -4px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  user-select: none;
+}
+
+.repo-link-prefix {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+}
+
+.repo-link-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: -0.15px;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.header-repo-link:hover .repo-link-name {
+  color: var(--color-primary-light);
 }
 
 .header-offline-alert {
@@ -159,33 +203,15 @@
 }
 
 .header-tab-btn.active .header-tab-indicator {
-  background-color: var(--color-primary-light);
+  background-color: var(--tab-indicator-color, var(--color-primary-light));
 }
 
-/* Zone Right: Attribution, Actions & Utilities */
+/* Zone Right: Resources, Language Menu & Utilities */
 .header-zone-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-}
-
-/* by PyTransDatRO repository link */
-.header-repo-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 4px 6px;
-  margin-right: 4px;
-  transition: color 0.15s;
-}
-
-.header-repo-link:hover {
-  color: var(--color-primary-light);
 }
 
 .header-divider-v {
@@ -266,7 +292,7 @@
   padding: 8px 16px 0;
   gap: 4px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-medium);
   position: relative;
   z-index: 5;
   align-items: center;
@@ -316,7 +342,7 @@
   color: var(--text-main);
   font-weight: 600;
   background-color: var(--bg-surface-elevated);
-  border-color: var(--border-subtle);
+  border-color: var(--border-medium);
   border-bottom: 1px solid var(--bg-surface-elevated);
   box-shadow: none;
   z-index: 6;
@@ -338,7 +364,7 @@
 /* Cards & Sections */
 .studio-card {
   background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-lg);
   padding: 18px;
   margin-bottom: 16px;
@@ -406,8 +432,9 @@
 }
 
 input.form-input[readonly],
+textarea.form-input[readonly],
 .output-grid-3 input.form-input[readonly] {
-  background-color: var(--bg-surface-elevated);
+  background-color: var(--bg-surface-readonly, var(--bg-surface-elevated));
   color: var(--text-main);
   cursor: default;
   border-color: var(--border-medium);

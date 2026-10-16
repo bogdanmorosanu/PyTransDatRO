@@ -1,15 +1,13 @@
+/* ==========================================================================
+   PyTransDatRO — GitHub Primer Neutral Theme (Subtle Surface + Border CTA)
+   ========================================================================== */
+
 :root {
   /* Fonts */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
 
-  /* Precision Tech Blue Accent (Modern Cobalt) */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #60a5fa;
-  --color-primary-glow: rgba(37, 99, 235, 0.22);
-
-  /* Status Colors (Strictly for health, valid/error states) */
+  /* Status Colors (Strictly reserved for API health and grid/syntax states) */
   --color-success: #10b981;
   --color-success-bg: rgba(16, 185, 129, 0.12);
   --color-warning: #f59e0b;
@@ -17,32 +15,12 @@
   --color-danger: #ef4444;
   --color-danger-bg: rgba(239, 68, 68, 0.12);
 
-  /* Data Accents (Neutral technical values like quasigeoid undulation) */
-  --color-metric-accent: #38bdf8;
-  --color-metric-bg: rgba(56, 189, 248, 0.08);
-
-  /* Primary Button Default Fallbacks */
-  --btn-primary-bg: #f8fafc;
-  --btn-primary-text: #090d16;
-  --btn-primary-hover: #e2e8f0;
-
-  /* Metric Tokens Default Fallbacks */
-  --color-metric-text: #38bdf8;
-  --color-metric-border: rgba(56, 189, 248, 0.3);
-
-  /* GIS Scale Bar Tokens (Monochrome Cartographic Default) */
-  --scale-bar-border: #475569;
-  --scale-seg-1: #ffffff;
-  --scale-seg-2: #0f172a;
-  --scale-tick: #94a3b8;
-  --scale-text: #f8fafc;
-
-  /* Cohesive Radii System */
+  /* Curvature Scale (GitHub Primer Structural Geometry) */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
   --radius-full: 9999px;
 
   --transition-fast: 0.15s ease;
@@ -56,84 +34,133 @@
   --z-toast: 1100;
 }
 
-/* Dark Theme (Default) - Deep Obsidian & Charcoal */
-html[data-theme="dark"] {
+/* ==========================================================================
+   1. Dark Theme (GitHub Primer Neutral + Subtle Surface & Accent Border)
+   ========================================================================== */
+
+:root,
+:root[data-theme="dark"] {
   color-scheme: dark;
-  --bg-app: #090d16;
-  --bg-surface: #0f172a;
-  --bg-surface-elevated: #1e293b;
-  --bg-surface-input: #0a0f1d;
-  --bg-surface-hover: #27354f;
 
-  --border-subtle: #1e293b;
-  --border-medium: #334155;
-  --border-focus: #3b82f6;
+  /* Neutral Carbon & Graphite Surfaces (Zero Dark Navy-Blue) */
+  --bg-app: #0e1013;
+  --bg-surface: #14171c;
+  --bg-surface-elevated: #1c2026;
+  --bg-surface-input: #0b0d10;
+  --bg-surface-readonly: #111418;
+  --bg-surface-hover: #252a32;
+  --bg-glass: rgba(20, 23, 28, 0.92);
+  --glass-bg: var(--bg-glass);
 
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  /* Borders */
+  --border-subtle: #22272e;
+  --border-medium: #30363d;
+  --border-focus: #7c93ab;
+  --glass-border: rgba(240, 246, 252, 0.12);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --glass-bg: rgba(15, 23, 42, 0.88);
-  --glass-border: rgba(255, 255, 255, 0.07);
+  /* Text Hierarchy */
+  --text-main: #e6edf3;
+  --text-muted: #8b949e;
+  --text-dim: #6e7681;
 
-  /* High-Contrast Theme-Native Anchor Button */
-  --btn-primary-bg: #f8fafc;
-  --btn-primary-text: #090d16;
-  --btn-primary-hover: #e2e8f0;
+  /* Primary Action & Indicators (Subtle Surface + Crisp Accent Border) */
+  --btn-primary-bg: #1f2630;
+  --btn-primary-hover: #28313e;
+  --btn-primary-text: #e6edf3;
+  --btn-primary-border: #48586a;
+  --color-primary: #7c93ab;
+  --color-primary-hover: #90a6bd;
+  --color-primary-light: #a3b7cc;
+  --color-primary-glow: rgba(124, 147, 171, 0.2);
+  --tab-indicator-color: #7c93ab;
 
-  /* Technical Metric Tokens */
-  --color-metric-text: #38bdf8;
-  --color-metric-border: rgba(56, 189, 248, 0.3);
-  --color-metric-bg: rgba(56, 189, 248, 0.06);
+  /* Technical Metric Token (Quasigeoid Height ζ = h - H) */
+  --color-metric-text: #56b6c2;
+  --color-metric-border: rgba(86, 182, 194, 0.32);
+  --color-metric-bg: rgba(86, 182, 194, 0.08);
 
-  /* GIS Scale Bar Tokens - Dark: Crisp White & Obsidian */
-  --scale-bar-border: rgba(255, 255, 255, 0.4);
-  --scale-seg-1: #ffffff;
-  --scale-seg-2: #090d16;
+  /* GIS Scale Bar Tokens */
+  --scale-bar-border: rgba(255, 255, 255, 0.45);
+  --scale-seg-1: #f8fafc;
+  --scale-seg-2: #08080a;
   --scale-tick: #cbd5e1;
   --scale-text: #f8fafc;
+
+  /* Dual-Theme Brand Logo Tokens (C2: Map Projection Graticule) */
+  --logo-bg: #14171c;
+  --logo-border: #30363d;
+  --logo-grid: #252a32;
+  --logo-node-muted: #8b949e;
+  --logo-accent-1: #8b949e;
+  --logo-accent-2: #56b6c2;
+  --logo-node-main: #e6edf3;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.75);
 }
 
-/* Light Theme - Clean Crisp Porcelain */
-html[data-theme="light"] {
+/* ==========================================================================
+   2. Light Theme (GitHub Primer Daylight + Subtle Surface & Accent Border)
+   ========================================================================== */
+
+:root[data-theme="light"] {
   color-scheme: light;
-  --bg-app: #f8fafc;
+
+  /* Crisp Primer Daylight Surfaces */
+  --bg-app: #f6f8fa;
   --bg-surface: #ffffff;
-  --bg-surface-elevated: #f1f5f9;
+  --bg-surface-elevated: #f3f4f6;
   --bg-surface-input: #ffffff;
-  --bg-surface-hover: #e2e8f0;
+  --bg-surface-readonly: #f6f8fa;
+  --bg-surface-hover: #eaeef2;
+  --bg-glass: rgba(255, 255, 255, 0.92);
+  --glass-bg: var(--bg-glass);
 
-  --border-subtle: #e2e8f0;
-  --border-medium: #cbd5e1;
-  --border-focus: #2563eb;
+  /* Borders */
+  --border-subtle: #d8dee4;
+  --border-medium: #d0d7de;
+  --border-focus: #57606a;
+  --glass-border: rgba(31, 35, 40, 0.12);
 
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-dim: #94a3b8;
+  /* Text Hierarchy */
+  --text-main: #1f2328;
+  --text-muted: #57606a;
+  --text-dim: #6e7781;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
-  --glass-bg: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(0, 0, 0, 0.06);
+  /* Primary Action & Indicators (Subtle Surface + Crisp Accent Border) */
+  --btn-primary-bg: #eaeef2;
+  --btn-primary-hover: #dde3ea;
+  --btn-primary-text: #1f2328;
+  --btn-primary-border: #8c959f;
+  --color-primary: #57606a;
+  --color-primary-hover: #424a53;
+  --color-primary-light: #6e7781;
+  --color-primary-glow: rgba(87, 96, 106, 0.15);
+  --tab-indicator-color: #57606a;
 
-  /* High-Contrast Theme-Native Anchor Button */
-  --btn-primary-bg: #0f172a;
-  --btn-primary-text: #f8fafc;
-  --btn-primary-hover: #1e293b;
+  /* Technical Metric Token (Quasigeoid Height ζ = h - H) */
+  --color-metric-text: #0e7490;
+  --color-metric-border: rgba(14, 116, 144, 0.28);
+  --color-metric-bg: rgba(14, 116, 144, 0.06);
 
-  /* Technical Metric Tokens */
-  --color-metric-text: #0284c7;
-  --color-metric-border: rgba(2, 132, 199, 0.3);
-  --color-metric-bg: rgba(2, 132, 199, 0.06);
-
-  /* GIS Scale Bar Tokens - Light: Solid Black & Pure White */
-  --scale-bar-border: #0f172a;
-  --scale-seg-1: #0f172a;
+  /* GIS Scale Bar Tokens */
+  --scale-bar-border: rgba(24, 24, 27, 0.35);
+  --scale-seg-1: #18181b;
   --scale-seg-2: #ffffff;
-  --scale-tick: #0f172a;
-  --scale-text: #0f172a;
+  --scale-tick: #3f3f46;
+  --scale-text: #18181b;
+
+  /* Dual-Theme Brand Logo Tokens (C2: Map Projection Graticule) */
+  --logo-bg: #ffffff;
+  --logo-border: #d0d7de;
+  --logo-grid: #eaeef2;
+  --logo-node-muted: #6e7781;
+  --logo-accent-1: #57606a;
+  --logo-accent-2: #0e7490;
+  --logo-node-main: #1f2328;
+
+  --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(31, 35, 40, 0.1);
+  --shadow-lg: 0 12px 28px rgba(31, 35, 40, 0.15);
 }

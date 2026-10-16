@@ -8,6 +8,7 @@ import {
 } from '../utils/apiClient';
 import {
   TimelineChart,
+  TIMELINE_COLOR_PRESETS,
   type TimelineMetricFilter,
 } from './TimelineChart';
 import { SpatialMatrixChart } from './SpatialMatrixChart';
@@ -467,6 +468,18 @@ export class TelemetryDashboard {
 
     const sourceGroups: string[] = [];
 
+    const renderSwatchPopover = (seriesKey: string, currentColor: string): string => {
+      const swatches = TIMELINE_COLOR_PRESETS.map((hex) => {
+        const isActive = currentColor.toLowerCase() === hex.toLowerCase();
+        return `<button type="button" class="legend-swatch-option ${isActive ? 'active' : ''}" data-series-key="${seriesKey}" data-swatch-color="${hex}" style="background-color: ${hex};" title="${hex}"></button>`;
+      }).join('');
+      return `
+        <div class="legend-color-popover" role="menu">
+          ${swatches}
+        </div>
+      `;
+    };
+
     // Active source lines grouped by source name
     let idx = 0;
     for (const srcKey of this.activeSourceKeys) {
@@ -479,15 +492,17 @@ export class TelemetryDashboard {
           <span class="legend-group-title">${displayName}:</span>
           <div class="legend-group-items">
             ${showCalls ? `
-              <span class="legend-sub-item">
+              <span class="legend-sub-item interactive-legend-item" data-legend-series="${srcKey}:calls" title="Click to change line color">
                 <span class="legend-line-sample" style="background-color: ${config.callsColor};"></span>
                 <span>${t('stats.metricTypeCalls')}</span>
+                ${renderSwatchPopover(`${srcKey}:calls`, config.callsColor)}
               </span>
             ` : ''}
             ${showPoints ? `
-              <span class="legend-sub-item">
+              <span class="legend-sub-item interactive-legend-item" data-legend-series="${srcKey}:points" title="Click to change line color">
                 <span class="legend-line-sample" style="background-color: ${config.pointsColor};"></span>
                 <span>${t('stats.metricTypePoints')}</span>
+                ${renderSwatchPopover(`${srcKey}:points`, config.pointsColor)}
               </span>
             ` : ''}
           </div>
@@ -498,20 +513,23 @@ export class TelemetryDashboard {
     // Line 2: Dedicated Total row
     let totalHtml = '';
     if (this.activeSourceKeys.size > 0) {
+      const totalColors = this.chart.getTotalSeriesColors();
       totalHtml = `
         <div class="legend-total-row">
           <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
           <div class="legend-group-items">
             ${showCalls ? `
-              <span class="legend-sub-item">
-                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, var(--text-main, #f8fafc) 0, var(--text-main, #f8fafc) 7px, transparent 7px, transparent 12px);"></span>
+              <span class="legend-sub-item interactive-legend-item" data-legend-series="total:calls" title="Click to change line color">
+                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.callsColor} 0, ${totalColors.callsColor} 7px, transparent 7px, transparent 12px);"></span>
                 <span>${t('stats.metricTypeCalls')}</span>
+                ${renderSwatchPopover('total:calls', totalColors.callsColor)}
               </span>
             ` : ''}
             ${showPoints ? `
-              <span class="legend-sub-item">
-                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, #38bdf8 0, #38bdf8 7px, transparent 7px, transparent 12px);"></span>
+              <span class="legend-sub-item interactive-legend-item" data-legend-series="total:points" title="Click to change line color">
+                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.pointsColor} 0, ${totalColors.pointsColor} 7px, transparent 7px, transparent 12px);"></span>
                 <span>${t('stats.metricTypePoints')}</span>
+                ${renderSwatchPopover('total:points', totalColors.pointsColor)}
               </span>
             ` : ''}
           </div>
@@ -611,6 +629,37 @@ export class TelemetryDashboard {
           this.toggleSource(srcName);
         }
       });
+    });
+
+    // Interactive Legend Color Popover Toggles & Swatch Selection
+    this.element.querySelectorAll<HTMLElement>('.interactive-legend-item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const popover = item.querySelector('.legend-color-popover');
+        if (!popover) return;
+        const wasOpen = popover.classList.contains('open');
+        this.element.querySelectorAll('.legend-color-popover.open').forEach((p) => p.classList.remove('open'));
+        if (!wasOpen) {
+          popover.classList.add('open');
+        }
+      });
+    });
+
+    this.element.querySelectorAll<HTMLButtonElement>('.legend-swatch-option').forEach((swatch) => {
+      swatch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const seriesKey = swatch.getAttribute('data-series-key');
+        const color = swatch.getAttribute('data-swatch-color');
+        if (seriesKey && color) {
+          this.chart.setLineColor(seriesKey, color);
+          this.render();
+          this.mountChart();
+        }
+      });
+    });
+
+    this.element.addEventListener('click', () => {
+      this.element.querySelectorAll('.legend-color-popover.open').forEach((p) => p.classList.remove('open'));
     });
   }
 

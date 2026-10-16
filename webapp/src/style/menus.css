@@ -187,6 +187,18 @@ details.menu-dropdown-wrap[open] .menu-dropdown,
   outline: none;
 }
 
+.dropdown-item.active,
+.menu-item.active {
+  color: var(--color-primary-light);
+  font-weight: 600;
+  background-color: var(--color-metric-bg);
+}
+
+.menu-check-icon {
+  color: var(--color-primary-light);
+  flex-shrink: 0;
+}
+
 .dropdown-item.danger:hover,
 .menu-item.danger:hover {
   background-color: var(--color-danger-bg);

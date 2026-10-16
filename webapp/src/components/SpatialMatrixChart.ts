@@ -98,10 +98,29 @@ export class SpatialMatrixChart {
     window.addEventListener('resize', () => {
       if (this.data) this.render();
     });
+
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver(() => {
+        if (this.data) this.render();
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme', 'data-style'],
+      });
+    }
+  }
+
+  private isLightTheme(): boolean {
+    return document.documentElement.getAttribute('data-theme') === 'light';
   }
 
   private render(): void {
     if (!this.ctx) return;
+
+    const isLight = this.isLightTheme();
+    const ghostFill = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.04)';
+    const ghostHoverStroke = isLight ? 'rgba(0, 0, 0, 0.35)' : 'rgba(255, 255, 255, 0.3)';
+    const populatedHoverStroke = isLight ? '#18181b' : '#ffffff';
 
     // Responsive sizing based on container width
     const containerWidth = Math.max(this.container.clientWidth || 800, 320);
@@ -153,17 +172,17 @@ export class SpatialMatrixChart {
           this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
           if (isHovered) {
-            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.strokeStyle = populatedHoverStroke;
             this.ctx.lineWidth = 1.5;
             this.ctx.strokeRect(x - 0.5, y - 0.5, this.cellSize + 1, this.cellSize + 1);
           }
         } else {
           // Ghost cell (unvisited)
-          this.ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+          this.ctx.fillStyle = ghostFill;
           this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
           if (isHovered) {
-            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.strokeStyle = ghostHoverStroke;
             this.ctx.lineWidth = 1;
             this.ctx.strokeRect(x - 0.5, y - 0.5, this.cellSize + 1, this.cellSize + 1);
           }
@@ -193,7 +212,9 @@ export class SpatialMatrixChart {
     const gridBottom = this.paddingTop + (this.rows * (this.cellSize + this.cellGap)) - this.cellGap;
 
     this.ctx.save();
-    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)'; // Subtle cyan divider tone
+    this.ctx.strokeStyle = this.isLightTheme()
+      ? 'rgba(2, 132, 199, 0.5)'
+      : 'rgba(56, 189, 248, 0.45)';
     this.ctx.lineWidth = 1.5;
     this.ctx.setLineDash([4, 4]);
 
@@ -215,7 +236,9 @@ export class SpatialMatrixChart {
   private renderAxisLabels(): void {
     if (!this.ctx) return;
 
-    this.ctx.fillStyle = 'rgba(148, 163, 184, 0.7)'; // muted slate
+    this.ctx.fillStyle = this.isLightTheme()
+      ? 'rgba(87, 96, 106, 0.85)'
+      : 'rgba(139, 148, 158, 0.8)';
     this.ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
 
     // Longitude labels at bottom
@@ -244,7 +267,8 @@ export class SpatialMatrixChart {
   }
 
   private getColorForHits(hits: number): string {
-    if (hits <= 0) return 'rgba(255, 255, 255, 0.04)';
+    const isLight = this.isLightTheme();
+    if (hits <= 0) return isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.04)';
 
     // Compute normalized ratio (0.0 to 1.0)
     let ratio: number;
@@ -256,11 +280,14 @@ export class SpatialMatrixChart {
       ratio = Math.min(Math.max(hits / Math.max(this.maxHits, 1), 0.05), 1.0);
     }
 
+    if (isLight) {
+      if (ratio < 0.25) return '#bae6fd';
+      if (ratio < 0.50) return '#38bdf8';
+      if (ratio < 0.75) return '#0284c7';
+      return '#0369a1';
+    }
+
     // 5-Tier Discrete Color Palette (Obsidian Punchcard / Cyan Glow Ramp)
-    // Level 1 (Low): #1e3a5f (Deep Steel Navy)
-    // Level 2 (Medium): #0284c7 (Sky Blue)
-    // Level 3 (High): #38bdf8 (Vibrant Cyan)
-    // Level 4 (Peak): #a5f3fc (Peak Brilliant Ice)
     if (ratio < 0.25) {
       return '#1e3a5f';
     } else if (ratio < 0.50) {

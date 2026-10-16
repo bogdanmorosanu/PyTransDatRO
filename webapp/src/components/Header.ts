@@ -1,5 +1,5 @@
-import { t, getLanguage, toggleLanguage, onLanguageChange } from '../i18n';
-import logoSvg from '../assets/logo.svg';
+import { t, getLanguage, setLanguage, onLanguageChange } from '../i18n';
+import { getLogoInlineSvg, syncFaviconWithTheme } from '../assets/logos';
 import { renderDropdownMenu } from '../ui';
 
 export interface HeaderCallbacks {
@@ -29,20 +29,24 @@ export class Header {
     this.checkApiHealth();
     this.healthCheckInterval = window.setInterval(() => this.checkApiHealth(), 30000);
 
-    // Global listener for closing dropdown on click outside or escape key
+    // Global listener for closing dropdowns on click outside or escape key
     document.addEventListener('click', (e) => {
-      const details = this.element.querySelector('#header-help-details') as HTMLDetailsElement | null;
-      if (details && details.open && !details.contains(e.target as Node)) {
-        details.open = false;
-      }
+      const dropdowns = this.element.querySelectorAll<HTMLDetailsElement>('details.header-dropdown-wrap');
+      dropdowns.forEach((details) => {
+        if (details.open && !details.contains(e.target as Node)) {
+          details.open = false;
+        }
+      });
     });
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        const details = this.element.querySelector('#header-help-details') as HTMLDetailsElement | null;
-        if (details && details.open) {
-          details.open = false;
-        }
+        const dropdowns = this.element.querySelectorAll<HTMLDetailsElement>('details.header-dropdown-wrap');
+        dropdowns.forEach((details) => {
+          if (details.open) {
+            details.open = false;
+          }
+        });
       }
     });
   }
@@ -89,23 +93,24 @@ export class Header {
   }
 
   public closeDropdown(): void {
-    const details = this.element.querySelector('#header-help-details') as HTMLDetailsElement | null;
-    if (details) {
+    const dropdowns = this.element.querySelectorAll<HTMLDetailsElement>('details.header-dropdown-wrap');
+    dropdowns.forEach((details) => {
       details.open = false;
-    }
+    });
   }
 
   private render(): void {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
     const currentLang = getLanguage();
     const wasHelpOpen = (this.element.querySelector('#header-help-details') as HTMLDetailsElement | null)?.open ?? false;
+    const wasLangOpen = (this.element.querySelector('#header-lang-details') as HTMLDetailsElement | null)?.open ?? false;
 
     this.element.innerHTML = `
-      <!-- Left Cluster: Brand & Primary App Navigation -->
+      <!-- Left Cluster: Brand, Attribution & Primary App Navigation -->
       <div class="header-zone-left">
-        <!-- Brand Cluster: Logo + Stacked Title/Version/Status -->
+        <!-- Brand Cluster: Official C2 Map Projection Graticule Logo + Stacked Title/Version/Status -->
         <a href="/" class="header-brand-link" title="PyTransDatRO Home">
-          <img src="${logoSvg}" alt="PyTransDatRO Logo" class="brand-logo-img" width="36" height="36" />
+          <span class="brand-logo-wrap" id="header-brand-logo-wrap">${getLogoInlineSvg(36)}</span>
           <div class="brand-text-column">
             <span class="brand-title-text">${t('app.title')}</span>
             <div class="brand-meta-subrow">
@@ -132,10 +137,22 @@ export class Header {
           </div>
         </a>
 
+        <!-- 2-Line Attribution: "powered by / PyTransDatRO" (Left Zone, no oblique ↗ arrow) -->
+        <a 
+          href="https://github.com/bogdanmorosanu/PyTransDatRO" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="header-repo-link" 
+          title="PyTransDatRO Open Source Repository"
+        >
+          <span class="repo-link-prefix">${t('header.poweredByLabel')}</span>
+          <span class="repo-link-name">${t('header.poweredByBrand')}</span>
+        </a>
+
         <!-- Subtle Vertical Separator between Brand & Navigation -->
         <div class="header-brand-nav-divider"></div>
 
-        <!-- Primary View Switcher: GitHub-Style Underline Tabs -->
+        <!-- Primary View Switcher: Underline Tabs -->
         <nav class="header-nav-tabs" role="tablist">
           <button 
             type="button"
@@ -160,32 +177,16 @@ export class Header {
         </nav>
       </div>
 
-      <!-- Right Cluster: Attribution, Resources & Utilities -->
+      <!-- Right Cluster: Help Menu, Language Selector Menu & Theme Action -->
       <div class="header-zone-actions">
-        <!-- by PyTransDatRO link -->
-        <a 
-          href="https://github.com/bogdanmorosanu/PyTransDatRO" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          class="header-repo-link" 
-          title="PyTransDatRO Open Source Repository"
-        >
-          <span>by PyTransDatRO</span>
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" class="ext-icon">
-            <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-
         <!-- Reusable Help Menu Slot -->
         <div id="header-help-slot"></div>
 
         <div class="header-divider-v"></div>
 
-        <!-- Utilities: Lang & Theme Toggles -->
+        <!-- Utilities: Language Selector Menu & Theme Action Button -->
         <div class="header-utilities-dock">
-          <button type="button" class="btn-icon header-util-btn" id="header-lang-btn" title="${t('app.langToggle')}">
-            <span style="font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${currentLang.toUpperCase()}</span>
-          </button>
+          <div id="header-lang-slot"></div>
           
           <button type="button" class="btn-icon header-util-btn" id="header-theme-btn" title="${t('app.themeToggle')}">
             ${
@@ -219,6 +220,12 @@ export class Header {
       id: 'header-help-details',
       triggerLabel: t('header.helpMenu'),
       triggerVariant: 'menu-item',
+      onOpenChange: (isOpen) => {
+        if (isOpen) {
+          const langDetails = this.element.querySelector('#header-lang-details') as HTMLDetailsElement | null;
+          if (langDetails) langDetails.open = false;
+        }
+      },
       items: [
         { type: 'group', title: t('header.pytransdatroGroup') },
         {
@@ -269,12 +276,54 @@ export class Header {
           href: 'https://rompos.ro/index.php/download/download/2-software/65-romgeo-grid',
           isExternal: true,
         },
+        {
+          type: 'link',
+          label: t('header.romgeoWebApi'),
+          href: 'https://api.romgeo.ro/api/v1/',
+          isExternal: true,
+        },
       ],
     });
     if (wasHelpOpen) {
       helpDropdown.open = true;
     }
     this.element.querySelector('#header-help-slot')?.replaceWith(helpDropdown);
+
+    // Render Language Selector Dropdown Menu (Status-Displaying Menu Control)
+    const langDropdown = renderDropdownMenu({
+      id: 'header-lang-details',
+      triggerLabel: currentLang.toUpperCase(),
+      triggerVariant: 'menu-item',
+      triggerIconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+      menuWidth: '152px',
+      ariaLabel: t('app.langToggle'),
+      onOpenChange: (isOpen) => {
+        if (isOpen) {
+          const helpDetails = this.element.querySelector('#header-help-details') as HTMLDetailsElement | null;
+          if (helpDetails) helpDetails.open = false;
+        }
+      },
+      items: [
+        {
+          type: 'action',
+          id: 'menu-lang-ro-btn',
+          label: t('header.langRo'),
+          active: currentLang === 'ro',
+          onClick: () => setLanguage('ro'),
+        },
+        {
+          type: 'action',
+          id: 'menu-lang-en-btn',
+          label: t('header.langEn'),
+          active: currentLang === 'en',
+          onClick: () => setLanguage('en'),
+        },
+      ],
+    });
+    if (wasLangOpen) {
+      langDropdown.open = true;
+    }
+    this.element.querySelector('#header-lang-slot')?.replaceWith(langDropdown);
 
     // Attach Event Listeners
     this.element.querySelector('#nav-btn-studio')?.addEventListener('click', () => {
@@ -301,15 +350,12 @@ export class Header {
       }
     });
 
-    this.element.querySelector('#header-lang-btn')?.addEventListener('click', () => {
-      toggleLanguage();
-    });
-
     this.element.querySelector('#header-theme-btn')?.addEventListener('click', () => {
       const current = document.documentElement.getAttribute('data-theme');
       const next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('pytransdat_theme', next);
+      syncFaviconWithTheme(next);
       this.render();
     });
 

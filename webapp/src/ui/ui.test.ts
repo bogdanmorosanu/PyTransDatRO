@@ -6,6 +6,10 @@ import {
   renderCopyBadge,
   renderCopyButton,
 } from './index';
+import {
+  getLogoInlineSvg,
+  getLogoStandaloneSvg,
+} from '../assets/logos';
 
 // Minimal DOM mock environment for Node.js Vitest runner
 class MockClassList {
@@ -222,6 +226,29 @@ describe('UI Factory: renderDropdownMenu', () => {
     const summary = menu.children[0];
     expect(summary.classList.contains('btn-outline')).toBe(true);
   });
+
+  it('supports active menuitemradio items and custom menuWidth', () => {
+    const menu = renderDropdownMenu({
+      triggerLabel: 'RO',
+      menuWidth: '175px',
+      items: [
+        { type: 'action', label: 'Română (RO)', active: true, onClick: vi.fn(), id: 'lang-ro' },
+        { type: 'action', label: 'English (EN)', active: false, onClick: vi.fn(), id: 'lang-en' },
+      ],
+    }) as any;
+
+    const menuPanel = menu.children[1];
+    expect(menuPanel.style.width).toBe('175px');
+
+    const [roBtn, enBtn] = menuPanel.children;
+    expect(roBtn.classList.contains('active')).toBe(true);
+    expect(roBtn.getAttribute('role')).toBe('menuitemradio');
+    expect(roBtn.getAttribute('aria-checked')).toBe('true');
+
+    expect(enBtn.classList.contains('active')).toBe(false);
+    expect(enBtn.getAttribute('role')).toBe('menuitemradio');
+    expect(enBtn.getAttribute('aria-checked')).toBe('false');
+  });
 });
 
 describe('UI Factory: renderSegmentedControl', () => {
@@ -324,3 +351,22 @@ describe('UI Factory: renderCopyButton', () => {
     expect(onCopied).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Dual-Theme Brand Logo (Map Projection Graticule)', () => {
+  it('generates reactive CSS-variable inline SVG and standalone Dark/Light SVGs', () => {
+    const inlineSvg = getLogoInlineSvg(36);
+    expect(inlineSvg).toContain('var(--logo-bg');
+    expect(inlineSvg).toContain('var(--logo-accent-1');
+    expect(inlineSvg).toContain('width="36"');
+
+    const darkSvg = getLogoStandaloneSvg('dark');
+    const lightSvg = getLogoStandaloneSvg('light');
+    expect(darkSvg).toContain('#14171c');
+    expect(darkSvg).toContain('#56b6c2');
+    expect(lightSvg).toContain('#ffffff');
+    expect(lightSvg).toContain('#0e7490');
+    expect(darkSvg).not.toBe(lightSvg);
+  });
+});
+
+
