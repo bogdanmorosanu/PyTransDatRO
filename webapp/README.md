@@ -81,11 +81,24 @@ webapp/
     │   ├── index.ts        # Reactive translation store & persistent state
     │   ├── ro.ts           # Romanian translation dictionary (default)
     │   └── en.ts           # English translation dictionary
-    ├── style/              # Design system & styles (Pure Vanilla CSS)
+    ├── style/              # Design system & styles (Pure Vanilla Modular CSS)
     │   ├── variables.css   # Color palette tokens, dark/light themes, typography
-    │   ├── base.css        # CSS reset, 480px workbench panel layout
-    │   ├── components.css  # Buttons, pills, form inputs, folder tabs, modals, toasts
+    │   ├── base.css        # CSS reset, body defaults, high-level layouts
+    │   ├── layout.css      # Workbench layout (480px), navbar, tabs bar, studio cards, modals, toasts
+    │   ├── forms.css       # Inputs, selects, sliding toggles, segmented buttons, dropzone
+    │   ├── buttons.css     # Theme-native CTA buttons, icons, copy buttons, map action buttons
+    │   ├── badges.css      # Status pills, Quasigeoid height metric field, quality report cards
+    │   ├── menus.css       # Top-navigation menu triggers, dropdown menus, menu items, dividers
+    │   ├── telemetry.css   # KPI cards, timeline charts, spatial matrix canvas deck
     │   └── map.css         # Leaflet container, custom popups & cluster styling
+    ├── ui/                 # Reusable TypeScript UI factory controls
+    │   ├── menu.ts         # renderDropdownMenu with nav-menu-trigger and full ARIA
+    │   ├── segmentedControl.ts # renderSegmentedControl with arrow-key keyboard navigation
+    │   ├── selectControl.ts # renderSelect for uniform dropdown lists
+    │   ├── copyBadge.ts    # renderCopyBadge for interactive copyable chips
+    │   ├── copyButton.ts   # renderCopyButton with animated checkmark feedback
+    │   ├── index.ts        # Unified re-export entrypoint
+    │   └── ui.test.ts      # Unit tests for UI factory helpers
     └── utils/              # Client-side geodetic & formatting helpers
         ├── apiClient.ts    # Type-safe REST client (passes X-Client-Source: web_app)
         ├── dmsParser.ts    # Unspaced DMS <-> Decimal Degrees converter

@@ -1,0 +1,225 @@
+/* ==========================================================================
+   PyTransDatRO - Menus, Dropdowns & Navigation Triggers
+   ========================================================================== */
+
+/* Dropdown Container (Supports native <details> and arbitrary container divs) */
+.header-dropdown-wrap,
+.menu-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+details.header-dropdown-wrap > summary,
+details.menu-dropdown-wrap > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+details.header-dropdown-wrap > summary::-webkit-details-marker,
+details.menu-dropdown-wrap > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.header-dropdown-wrap > summary::marker,
+details.menu-dropdown-wrap > summary::marker {
+  display: none;
+}
+
+/* Nav Menu Item Trigger (Sleek Navbar Item Look) */
+.nav-menu-trigger {
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.nav-menu-trigger:hover,
+details.header-dropdown-wrap[open] > summary.nav-menu-trigger,
+details.menu-dropdown-wrap[open] > summary.nav-menu-trigger,
+.nav-menu-trigger.is-open {
+  color: var(--text-main);
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-subtle);
+}
+
+.nav-menu-trigger:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* Fallback / Classic Button Outline Trigger */
+.header-zone-actions .btn-outline,
+.header-dropdown-trigger.btn-outline {
+  height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.header-zone-actions .btn-outline:hover,
+.header-dropdown-trigger.btn-outline:hover {
+  color: var(--text-main);
+  border-color: var(--border-focus);
+  background-color: var(--bg-surface-hover);
+}
+
+.header-dropdown-wrap.is-open .header-dropdown-trigger,
+details.header-dropdown-wrap[open] > summary.header-dropdown-trigger {
+  border-color: var(--border-focus);
+  color: var(--text-main);
+  background-color: var(--bg-surface-hover);
+}
+
+/* Rotating Chevron Indicator */
+.chevron-icon {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.nav-menu-trigger:hover .chevron-icon,
+.header-dropdown-trigger:hover .chevron-icon {
+  opacity: 1;
+}
+
+.header-dropdown-wrap.is-open .chevron-icon,
+details.header-dropdown-wrap[open] .chevron-icon,
+.menu-dropdown-wrap.is-open .chevron-icon,
+details.menu-dropdown-wrap[open] .chevron-icon {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu Flyout Panel */
+.header-dropdown-menu,
+.menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 250px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  z-index: calc(var(--z-header) + 50);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  backdrop-filter: blur(12px);
+  animation: scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.header-dropdown-menu.align-left,
+.menu-dropdown.align-left {
+  right: auto;
+  left: 0;
+}
+
+details.header-dropdown-wrap[open] .header-dropdown-menu,
+details.menu-dropdown-wrap[open] .menu-dropdown,
+.header-dropdown-wrap.is-open .header-dropdown-menu,
+.menu-dropdown-wrap.is-open .menu-dropdown {
+  display: flex !important;
+}
+
+/* Menu Group Header */
+.dropdown-group-title,
+.menu-group-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  padding: 6px 10px 3px;
+  user-select: none;
+}
+
+/* Menu Item (Buttons & Links) */
+.dropdown-item,
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s;
+  text-align: left;
+  box-sizing: border-box;
+  gap: 8px;
+}
+
+.dropdown-item:hover,
+.menu-item:hover,
+.dropdown-item:focus-visible,
+.menu-item:focus-visible {
+  background-color: var(--bg-surface-elevated);
+  color: var(--color-primary-light);
+  outline: none;
+}
+
+.dropdown-item.danger:hover,
+.menu-item.danger:hover {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.menu-item-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Separators & Dividers */
+.dropdown-divider,
+.menu-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 4px 6px;
+}
+
+.dropdown-divider-dashed,
+.menu-divider-dashed {
+  height: 0;
+  border-top: 1px dashed var(--border-medium);
+  margin: 4px 6px;
+}
+
+.ext-icon {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.dropdown-item:hover .ext-icon,
+.menu-item:hover .ext-icon {
+  opacity: 1;
+}

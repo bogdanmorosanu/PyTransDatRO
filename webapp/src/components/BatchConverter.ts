@@ -4,6 +4,7 @@ import { parseInputLines, detectDelimiter, type CoordinateOrder } from '../utils
 import { formatDegToDMS, degToRad } from '../utils/dmsParser';
 import { exportToCSV, exportToGeoJSON, exportToDXF, type ExportPointItem } from '../utils/exporters';
 import { showToast } from '../utils/toast';
+import { renderCopyButton } from '../ui';
 
 export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
@@ -360,13 +361,7 @@ export class BatchConverter {
           <div class="form-group" style="margin-bottom: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <label class="form-label" style="margin-bottom: 0;">${t('batch.outputLabel')}</label>
-              <button class="copy-code-btn" id="batch-copy-results-btn" title="${t('batch.copyAll')}" aria-label="${t('batch.copyAll')}">
-                <svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span class="copy-feedback hidden">✓ ${t('point.copiedTooltip')}</span>
-              </button>
+              <div id="batch-copy-results-slot"></div>
             </div>
             <textarea 
               class="form-input mono" 
@@ -468,42 +463,21 @@ export class BatchConverter {
       });
     }
 
-    // Top-right Copy Results action button
-    const copyResultsBtn = this.container.querySelector('#batch-copy-results-btn');
-    if (copyResultsBtn) {
-      copyResultsBtn.addEventListener('click', async () => {
-        if (!this.outputText.trim()) return;
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(this.outputText);
-          } else {
-            throw new Error('Clipboard API unavailable');
-          }
-        } catch {
-          const ta = document.createElement('textarea');
-          ta.value = this.outputText;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-        }
-
-        copyResultsBtn.classList.add('copied');
-        const feedback = copyResultsBtn.querySelector('.copy-feedback');
-        const icon = copyResultsBtn.querySelector('.copy-icon');
-        if (feedback && icon) {
-          feedback.classList.remove('hidden');
-          icon.classList.add('hidden');
-          setTimeout(() => {
-            copyResultsBtn.classList.remove('copied');
-            feedback.classList.add('hidden');
-            icon.classList.remove('hidden');
-          }, 2000);
-        }
-        showToast(t('batch.copySuccess'), 'success');
+    // Top-right Copy Results action button using reusable UI factory
+    const copySlot = this.container.querySelector('#batch-copy-results-slot');
+    if (copySlot) {
+      const copyResultsBtn = renderCopyButton({
+        id: 'batch-copy-results-btn',
+        title: t('batch.copyAll'),
+        ariaLabel: t('batch.copyAll'),
+        disabled: !this.outputText.trim(),
+        feedbackText: t('point.copiedTooltip'),
+        getCopyText: () => this.outputText,
+        onCopied: () => {
+          showToast(t('batch.copySuccess'), 'success');
+        },
       });
+      copySlot.replaceWith(copyResultsBtn);
     }
 
     // Transform button

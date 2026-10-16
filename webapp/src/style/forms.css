@@ -1,0 +1,307 @@
+/* ==========================================================================
+   PyTransDatRO - Form Controls, Inputs & Switches
+   ========================================================================== */
+
+/* Form Control Wrappers & Labels */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* Base Text Inputs & Textareas */
+.form-input {
+  width: 100%;
+  padding: 9px 12px;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 13px;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+.form-input.mono {
+  font-family: var(--font-mono);
+}
+
+/* Native Dropdown Select */
+.form-select {
+  padding: 4px 22px 4px 8px;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 11.5px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 11px;
+  transition: all var(--transition-fast);
+}
+
+.form-select:hover {
+  border-color: var(--border-focus);
+}
+
+.form-select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--color-primary-glow);
+}
+
+/* Sliding Direction Toggle (Top of Shared Config Bar) */
+.sliding-toggle {
+  position: relative;
+  display: flex;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  user-select: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sliding-toggle-glider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sliding-toggle[data-direction="etrs"] .sliding-toggle-glider {
+  transform: translateX(0);
+}
+
+.sliding-toggle[data-direction="s70"] .sliding-toggle-glider {
+  transform: translateX(100%);
+}
+
+.sliding-toggle-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.sliding-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+.sliding-toggle-btn.active {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.sliding-toggle-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* Segmented Control / Radio switch with subtle vertical separators */
+.segmented-control {
+  display: flex;
+  align-items: stretch;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.segmented-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  position: relative;
+  white-space: nowrap;
+}
+
+/* Vertical separator line between adjacent inactive buttons */
+.segmented-btn:not(:last-child):not(.active)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background-color: var(--border-subtle);
+  pointer-events: none;
+}
+
+.segmented-btn.active + .segmented-btn::after {
+  display: none;
+}
+
+.segmented-btn:hover {
+  color: var(--text-main);
+}
+
+.segmented-btn.active {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  font-weight: 600;
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--shadow-sm);
+}
+
+.segmented-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* Format Picker & Popovers */
+.format-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.format-picker-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.format-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.format-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 100;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.format-popover.hidden {
+  display: none;
+}
+
+.format-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.format-option-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-main);
+}
+
+.format-option-btn.active {
+  background-color: var(--bg-surface-elevated);
+  color: var(--color-primary-light);
+  font-weight: 600;
+}
+
+.format-option-sample {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.format-option-btn.active .format-option-sample {
+  color: var(--color-primary-light);
+}
+
+/* Error Banner in Form */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+/* Bulk File Dropzone */
+.file-dropzone {
+  border: 2px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  background-color: var(--bg-surface-input);
+  transition: all var(--transition-fast);
+}
+
+.file-dropzone:hover,
+.file-dropzone.drag-over {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-glow);
+}

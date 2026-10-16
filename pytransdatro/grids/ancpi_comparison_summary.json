@@ -1,6 +1,6 @@
 {
   "_generator": "tools/generate_ancpi_comparison_reports.py",
-  "_generated_at": "2026-10-16T05:14:01.472323+00:00",
+  "_generated_at": "2026-10-16T06:24:35.711865+00:00",
   "total_points": 9046,
   "overall_status": "PASS",
   "etrs89_to_st70": {

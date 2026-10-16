@@ -1,5 +1,6 @@
 import { t, getLanguage, toggleLanguage, onLanguageChange } from '../i18n';
 import logoSvg from '../assets/logo.svg';
+import { renderDropdownMenu } from '../ui';
 
 export interface HeaderCallbacks {
   onNavigate: (page: 'studio' | 'telemetry') => void;
@@ -175,68 +176,8 @@ export class Header {
           </svg>
         </a>
 
-        <!-- Help Dropdown using semantic <details><summary> -->
-        <details class="header-dropdown-wrap" id="header-help-details" ${wasHelpOpen ? 'open' : ''}>
-          <summary class="btn btn-outline header-dropdown-trigger" id="header-help-trigger">
-            <span>${t('header.helpMenu')}</span>
-            <svg class="chevron-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </summary>
-
-          <div class="header-dropdown-menu" id="header-help-dropdown">
-            <div class="dropdown-group-title">${t('header.pytransdatroGroup')}</div>
-            <button type="button" class="dropdown-item" id="menu-help-app-btn">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5.5 5.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3v.5M8 13.5h.01"/>
-              </svg>
-              <span>${t('header.helpApp')}</span>
-            </button>
-            <button type="button" class="dropdown-item" id="menu-grid-info-btn">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M2 4h12M2 8h12M2 12h12M4 2v12M8 2v12M12 2v12"/>
-              </svg>
-              <span>${t('header.gridInfo')}</span>
-            </button>
-            <button type="button" class="dropdown-item" id="menu-feedback-btn">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H4l-3 3V4a1 1 0 011-1z"/>
-              </svg>
-              <span>${t('header.feedback')}</span>
-            </button>
-
-            <div class="dropdown-divider-dashed"></div>
-
-            <a href="/docs" target="_blank" rel="noopener noreferrer" class="dropdown-item">
-              <span>${t('header.apiDocs')}</span>
-              <svg class="ext-icon" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </a>
-
-            <div class="dropdown-divider"></div>
-            
-            <div class="dropdown-group-title">${t('header.officialSoftwareTitle')}</div>
-            <a href="https://rompos.ro/index.php/download" target="_blank" rel="noopener noreferrer" class="dropdown-item">
-              <span>${t('header.romposPortal')}</span>
-              <svg class="ext-icon" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </a>
-            <a href="https://rompos.ro/index.php/download/download/2-software/64-romgeo-table-convert-gui" target="_blank" rel="noopener noreferrer" class="dropdown-item">
-              <span>${t('header.romgeoGui')}</span>
-              <svg class="ext-icon" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </a>
-            <a href="https://rompos.ro/index.php/download/download/2-software/65-romgeo-grid" target="_blank" rel="noopener noreferrer" class="dropdown-item">
-              <span>${t('header.romgeoGrid')}</span>
-              <svg class="ext-icon" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M3.5 2H10V8.5M10 2L2 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </a>
-          </div>
-        </details>
+        <!-- Reusable Help Menu Slot -->
+        <div id="header-help-slot"></div>
 
         <div class="header-divider-v"></div>
 
@@ -273,6 +214,68 @@ export class Header {
       </div>
     `;
 
+    // Render Reusable Help Menu (Standard Menu Item Style)
+    const helpDropdown = renderDropdownMenu({
+      id: 'header-help-details',
+      triggerLabel: t('header.helpMenu'),
+      triggerVariant: 'menu-item',
+      items: [
+        { type: 'group', title: t('header.pytransdatroGroup') },
+        {
+          type: 'action',
+          id: 'menu-help-app-btn',
+          label: t('header.helpApp'),
+          iconSvg: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 5.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3v.5M8 13.5h.01"/></svg>`,
+          onClick: () => this.callbacks.onOpenGeodeticHelp(),
+        },
+        {
+          type: 'action',
+          id: 'menu-grid-info-btn',
+          label: t('header.gridInfo'),
+          iconSvg: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12M4 2v12M8 2v12M12 2v12"/></svg>`,
+          onClick: () => this.callbacks.onOpenGridInfo(),
+        },
+        {
+          type: 'action',
+          id: 'menu-feedback-btn',
+          label: t('header.feedback'),
+          iconSvg: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H4l-3 3V4a1 1 0 011-1z"/></svg>`,
+          onClick: () => this.callbacks.onOpenFeedback('discrepancy'),
+        },
+        { type: 'divider', dashed: true },
+        {
+          type: 'link',
+          label: t('header.apiDocs'),
+          href: '/docs',
+          isExternal: true,
+        },
+        { type: 'divider' },
+        { type: 'group', title: t('header.officialSoftwareTitle') },
+        {
+          type: 'link',
+          label: t('header.romposPortal'),
+          href: 'https://rompos.ro/index.php/download',
+          isExternal: true,
+        },
+        {
+          type: 'link',
+          label: t('header.romgeoGui'),
+          href: 'https://rompos.ro/index.php/download/download/2-software/64-romgeo-table-convert-gui',
+          isExternal: true,
+        },
+        {
+          type: 'link',
+          label: t('header.romgeoGrid'),
+          href: 'https://rompos.ro/index.php/download/download/2-software/65-romgeo-grid',
+          isExternal: true,
+        },
+      ],
+    });
+    if (wasHelpOpen) {
+      helpDropdown.open = true;
+    }
+    this.element.querySelector('#header-help-slot')?.replaceWith(helpDropdown);
+
     // Attach Event Listeners
     this.element.querySelector('#nav-btn-studio')?.addEventListener('click', () => {
       this.callbacks.onNavigate('studio');
@@ -280,30 +283,6 @@ export class Header {
 
     this.element.querySelector('#nav-btn-telemetry')?.addEventListener('click', () => {
       this.callbacks.onNavigate('telemetry');
-    });
-
-    this.element.querySelector('#menu-help-app-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.closeDropdown();
-      this.callbacks.onOpenGeodeticHelp();
-    });
-
-    this.element.querySelector('#menu-grid-info-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.closeDropdown();
-      this.callbacks.onOpenGridInfo();
-    });
-
-    this.element.querySelectorAll('#header-help-dropdown a.dropdown-item').forEach((link) => {
-      link.addEventListener('click', () => {
-        this.closeDropdown();
-      });
-    });
-
-    this.element.querySelector('#menu-feedback-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.closeDropdown();
-      this.callbacks.onOpenFeedback('discrepancy');
     });
 
     this.element.querySelector('#header-offline-alert-btn')?.addEventListener('click', (e) => {

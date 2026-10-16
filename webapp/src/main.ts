@@ -1,6 +1,11 @@
 import './style/variables.css';
 import './style/base.css';
-import './style/components.css';
+import './style/layout.css';
+import './style/forms.css';
+import './style/buttons.css';
+import './style/badges.css';
+import './style/menus.css';
+import './style/telemetry.css';
 import './style/map.css';
 
 import { t, onLanguageChange } from './i18n';
@@ -17,6 +22,7 @@ import { VolumeWarningModal } from './components/VolumeWarningModal';
 import { apiClient, type TransformationOp } from './utils/apiClient';
 import type { CoordinateOrder } from './utils/pointParser';
 import { showToast } from './utils/toast';
+import { renderSelect, renderSegmentedControl, renderCopyBadge } from './ui';
 
 type ActiveTab = 'point' | 'batch' | 'file';
 type AppPage = 'studio' | 'telemetry';
@@ -260,12 +266,12 @@ class App {
 
     this.sharedConfigBar.innerHTML = `
       <!-- Tier 1: Sliding Direction Toggle (ETRS89 ➔ Stereo 70 first, Stereo 70 ➔ ETRS89 second) -->
-      <div class="sliding-toggle" data-direction="${isEtrs ? 'etrs' : 's70'}">
+      <div class="sliding-toggle" data-direction="${isEtrs ? 'etrs' : 's70'}" role="radiogroup" aria-label="${t('point.directionLabel')}">
         <div class="sliding-toggle-glider"></div>
-        <button class="sliding-toggle-btn ${isEtrs ? 'active' : ''}" data-op="ETRS89ToStereo70">
+        <button type="button" class="sliding-toggle-btn ${isEtrs ? 'active' : ''}" data-op="ETRS89ToStereo70" role="radio" aria-checked="${isEtrs}">
           ${t('point.opETRSToS70')}
         </button>
-        <button class="sliding-toggle-btn ${!isEtrs ? 'active' : ''}" data-op="Stereo70ToETRS89">
+        <button type="button" class="sliding-toggle-btn ${!isEtrs ? 'active' : ''}" data-op="Stereo70ToETRS89" role="radio" aria-checked="${!isEtrs}">
           ${t('point.opS70ToETRS')}
         </button>
       </div>
@@ -274,26 +280,19 @@ class App {
       <div class="shared-config-row">
         <div class="config-field-group">
           <span class="config-field-label">${t('point.unitLabel')}</span>
-          <select class="form-select" id="angular-unit-select">
-            <option value="degrees" ${this.currentAngularUnit === 'degrees' ? 'selected' : ''}>${t('point.unitDeg')}</option>
-            <option value="dms" ${this.currentAngularUnit === 'dms' ? 'selected' : ''}>${t('point.unitDMS')}</option>
-            <option value="radians" ${this.currentAngularUnit === 'radians' ? 'selected' : ''}>${t('point.unitRad')}</option>
-          </select>
+          <div id="angular-unit-slot"></div>
         </div>
 
         <div class="coord-order-picker">
           <span class="config-field-label">${t('common.coordOrder')}</span>
-          <div class="segmented-control" style="font-size: 11px;">
-            <button class="segmented-btn ${this.currentOrder === 'NE' ? 'active' : ''}" id="shared-order-ne">NE(H)</button>
-            <button class="segmented-btn ${this.currentOrder === 'EN' ? 'active' : ''}" id="shared-order-en">EN(H)</button>
-          </div>
+          <div id="coord-order-slot"></div>
         </div>
       </div>
 
       <!-- Tier 3: Angle Format Example with Isolated Copyable Badge -->
       <div class="format-example-row">
         <span class="format-example-label">${t('point.exampleFormatLabel')}</span>
-        <span class="format-example-badge" id="format-example-badge" title="${t('point.clickToSelect')}">${sampleText}</span>
+        <div id="format-example-slot"></div>
       </div>
     `;
 
@@ -305,38 +304,42 @@ class App {
       });
     });
 
-    // Angular Unit Select Listener
-    const select = this.sharedConfigBar.querySelector('#angular-unit-select') as HTMLSelectElement;
-    if (select) {
-      select.addEventListener('change', () => {
-        const unit = select.value as AngularUnitType;
-        if (unit) this.setAngularUnit(unit);
-      });
-    }
-
-    // Coordinate Order Listeners
-    this.sharedConfigBar.querySelector('#shared-order-ne')?.addEventListener('click', () => {
-      this.setCoordinateOrder('NE');
+    // Tier 2: Reusable renderSelect
+    const select = renderSelect<AngularUnitType>({
+      id: 'angular-unit-select',
+      ariaLabel: t('point.unitLabel'),
+      selectedValue: this.currentAngularUnit,
+      options: [
+        { value: 'degrees', label: t('point.unitDeg') },
+        { value: 'dms', label: t('point.unitDMS') },
+        { value: 'radians', label: t('point.unitRad') },
+      ],
+      onChange: (unit) => this.setAngularUnit(unit),
     });
-    this.sharedConfigBar.querySelector('#shared-order-en')?.addEventListener('click', () => {
-      this.setCoordinateOrder('EN');
-    });
+    this.sharedConfigBar.querySelector('#angular-unit-slot')?.replaceWith(select);
 
-    // Angle Format Example Badge Selection Listener (selects ONLY the number string)
-    const exampleBadge = this.sharedConfigBar.querySelector('#format-example-badge') as HTMLElement;
-    if (exampleBadge) {
-      exampleBadge.addEventListener('click', () => {
-        const range = document.createRange();
-        range.selectNodeContents(exampleBadge);
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(sampleText);
-        }
-        showToast(t('point.copiedToast'), 'success');
-      });
-    }
+    // Tier 2: Reusable renderSegmentedControl
+    const orderControl = renderSegmentedControl<CoordinateOrder>({
+      id: 'shared-order-control',
+      ariaLabel: t('common.coordOrder'),
+      activeValue: this.currentOrder,
+      style: { fontSize: '11px' },
+      options: [
+        { value: 'NE', label: 'NE(H)', id: 'shared-order-ne' },
+        { value: 'EN', label: 'EN(H)', id: 'shared-order-en' },
+      ],
+      onChange: (order) => this.setCoordinateOrder(order),
+    });
+    this.sharedConfigBar.querySelector('#coord-order-slot')?.replaceWith(orderControl);
+
+    // Tier 3: Reusable renderCopyBadge
+    const copyBadge = renderCopyBadge({
+      id: 'format-example-badge',
+      text: sampleText,
+      tooltip: t('point.clickToSelect'),
+      onCopied: () => showToast(t('point.copiedToast'), 'success'),
+    });
+    this.sharedConfigBar.querySelector('#format-example-slot')?.replaceWith(copyBadge);
   }
 
   private renderTabs(): void {

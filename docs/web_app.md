@@ -45,19 +45,33 @@ flowchart TD
 
 ## 2. Technology Stack & Key Invariants
 
-1. **Vanilla CSS Design System & Visual Ergonomics**:
+1. **Vanilla CSS Design System & Modular Stylesheets**:
    - Zero bulky CSS frameworks (no Bootstrap, no Tailwind runtime overhead).
    - Driven entirely by custom CSS design tokens defined in [`webapp/src/style/variables.css`](../webapp/src/style/variables.css) and documented in [`webapp/design_guide.md`](../webapp/design_guide.md).
+   - **Modular Stylesheet Architecture (`webapp/src/style/`)**:
+     - `layout.css`: 480px workbench panel, top navigation bar, folder bookmark tabs, studio cards, modals, and toasts.
+     - `forms.css`: Text inputs, selects, sliding direction toggle, segmented switches, and dropzone.
+     - `buttons.css`: High-contrast theme-native CTA (`.btn-primary`), secondary, outline, copy buttons, and action buttons.
+     - `badges.css`: Status pills, Quasigeoid height metric field, angle format badges, and quality report cards.
+     - `menus.css`: Top navigation menu item triggers (`.nav-menu-trigger`), dropdown panels, menu items, and dividers.
+     - `telemetry.css`: KPI cards, SVG timeline chart styling, and spatial matrix canvas deck.
    - **The Trinity Balance**: Simplicity (zero decorative emojis), Optimal ergonomics (480px workbench panel, asymmetrical 3-column coordinate layout), and Modern engineering precision.
    - **Theme-Native High-Contrast CTA**: Porcelain `#f8fafc` on dark obsidian; slate `#0f172a` on light porcelain.
    - **Metric Color Isolation**: Physical scalar measurements (e.g., Quasigeoid Height $\zeta = h - H$) use dedicated technical cyan (`--color-metric-text: #38bdf8;`), strictly isolated from status colors (never green or red).
    - **Seamless Folder Bookmark Tabs**: Physical continuity between the `.tabs-bar` and the active card container below with zero background gap.
 
-2. **Strict TypeScript & Vite**:
-   - Strict TypeScript compilation (`tsconfig.json`) ensuring robust domain typing for coordinates, operations, units, and API payloads.
-   - Bundled with Vite for instant Hot Module Replacement (HMR) during development and optimized tree-shaken production bundles (~78 KB gzipped).
+2. **Reusable TypeScript UI Factory System (`webapp/src/ui/`)**:
+   - `renderDropdownMenu(props)`: Generates accessible dropdown menus with `.nav-menu-trigger` menu-item aesthetics, rotating chevron animations, ARIA semantics, and keyboard navigation (`Escape`, `ArrowDown`, `ArrowUp`).
+   - `renderSegmentedControl(props)`: Accessible radio-switch controls with keyboard arrow navigation.
+   - `renderSelect(props)`: Type-safe dropdown selects with focus ring management.
+   - `renderCopyBadge(props)`: Interactive copyable text badges with clipboard integration.
+   - `renderCopyButton(props)`: Standard code-block copy buttons with animated checkmark feedback.
 
-3. **Leaflet Web GIS Engine & 3-Layer Architecture**:
+3. **Strict TypeScript & Vite**:
+   - Strict TypeScript compilation (`tsconfig.json`) ensuring robust domain typing for coordinates, operations, units, and API payloads.
+   - Bundled with Vite for instant Hot Module Replacement (HMR) during development and optimized tree-shaken production bundles (~105 KB gzipped).
+
+4. **Leaflet Web GIS Engine & 3-Layer Architecture**:
    - High-performance, lightweight mapping powered by `leaflet` and `leaflet.markercluster`.
    - **3 Independent LayerGroups**: `pointLayer`, `textLayer`, and `filesLayer`, independently managed with live point counters and 6-color customizable swatch pickers (Cyan, Cobalt, Emerald, Amber, Violet, Rose) with `localStorage` persistence.
    - **Full Marker & Cluster Color Synchronization**: Dynamic cluster icons (`custom-cluster-circle`) inherit the exact active swatch color, synchronizing markers, zoom-out cluster bubbles, Layers drawer swatches, and Legend dots.

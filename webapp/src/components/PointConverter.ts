@@ -5,6 +5,7 @@ import { isValidDecimal, type CoordinateOrder } from '../utils/pointParser';
 import { isWithinStereo70Grid, isWithinETRS89Grid } from '../utils/gridBounds';
 import { showToast } from '../utils/toast';
 import { isInsideRomaniaGrid } from './MapView';
+import { renderCopyButton } from '../ui';
 
 export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
@@ -689,22 +690,7 @@ export class PointConverter {
         <!-- Computed Coordinates Micro-Header with Top-Right Code-Block Style Copy Action -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <div class="section-micro-label">${t('point.computedCoords')}</div>
-          <button 
-            class="copy-code-btn" 
-            id="pt-copy-code-btn" 
-            title="${t('point.copyTuple')}" 
-            aria-label="${t('point.copyTuple')}" 
-            data-c1="${outCol1Raw}" 
-            data-c2="${outCol2Raw}" 
-            data-c3="${raw3Str}"
-            ${!this.outputCoords || isOutOfGrid ? 'disabled' : ''}
-          >
-            <svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            <span class="copy-feedback hidden">✓ ${t('point.copiedTooltip')}</span>
-          </button>
+          <div id="pt-copy-btn-slot" data-c1="${outCol1Raw}" data-c2="${outCol2Raw}" data-c3="${raw3Str}"></div>
         </div>
 
         <!-- 3-Column Output Row: Pure Numbers Only -->
@@ -815,51 +801,31 @@ export class PointConverter {
       this.calculate();
     });
 
-    // Top-right code-block copy button
-    const copyBtn = this.container.querySelector('#pt-copy-code-btn');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', async () => {
-        if (copyBtn.hasAttribute('disabled')) return;
-        const c1 = copyBtn.getAttribute('data-c1') || '';
-        const c2 = copyBtn.getAttribute('data-c2') || '';
-        const c3 = copyBtn.getAttribute('data-c3') || '';
+    // Top-right code-block copy button using reusable UI factory
+    const copySlot = this.container.querySelector('#pt-copy-btn-slot');
+    if (copySlot) {
+      const c1 = copySlot.getAttribute('data-c1') || '';
+      const c2 = copySlot.getAttribute('data-c2') || '';
+      const c3 = copySlot.getAttribute('data-c3') || '';
+      const isOutOfGrid = this.outputWarning === 'Out of grid';
 
-        const parts = [c1, c2].filter(Boolean);
-        if (parts.length === 0) return;
-        if (c3) parts.push(c3);
-        const textToCopy = parts.join(', ');
-
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(textToCopy);
-          } else {
-            throw new Error('Clipboard API unavailable');
-          }
-        } catch {
-          const ta = document.createElement('textarea');
-          ta.value = textToCopy;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-        }
-
-        copyBtn.classList.add('copied');
-        const feedback = copyBtn.querySelector('.copy-feedback');
-        const icon = copyBtn.querySelector('.copy-icon');
-        if (feedback && icon) {
-          feedback.classList.remove('hidden');
-          icon.classList.add('hidden');
-          setTimeout(() => {
-            copyBtn.classList.remove('copied');
-            feedback.classList.add('hidden');
-            icon.classList.remove('hidden');
-          }, 2000);
-        }
-        showToast(t('point.copiedToast'), 'success');
+      const copyBtn = renderCopyButton({
+        id: 'pt-copy-code-btn',
+        title: t('point.copyTuple'),
+        ariaLabel: t('point.copyTuple'),
+        disabled: !this.outputCoords || isOutOfGrid,
+        feedbackText: t('point.copiedTooltip'),
+        getCopyText: () => {
+          const parts = [c1, c2].filter(Boolean);
+          if (parts.length === 0) return '';
+          if (c3) parts.push(c3);
+          return parts.join(', ');
+        },
+        onCopied: () => {
+          showToast(t('point.copiedToast'), 'success');
+        },
       });
+      copySlot.replaceWith(copyBtn);
     }
 
     // Center on Map action button

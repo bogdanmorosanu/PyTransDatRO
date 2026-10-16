@@ -1,0 +1,236 @@
+/* ==========================================================================
+   PyTransDatRO - Buttons & Interactive Actions
+   ========================================================================== */
+
+/* Base Button Foundation */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  text-decoration: none !important;
+  user-select: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Primary High-Contrast Anchor CTA */
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover);
+  color: var(--btn-primary-text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--border-medium);
+  color: var(--text-main);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-focus);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Outline Button */
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--border-medium);
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+}
+
+.btn-outline:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: var(--border-focus);
+  background-color: var(--bg-surface-elevated);
+}
+
+.btn-outline:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Icon-Only Button */
+.btn-icon {
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon:hover {
+  color: var(--text-main);
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--border-focus);
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* Header Utilities Dock Buttons */
+.header-util-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+/* Clean Button Link without text underline */
+a.btn,
+.header-btn-link {
+  text-decoration: none !important;
+}
+
+/* Code-Block Style Copy Icon Button */
+.copy-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.copy-code-btn:hover:not(:disabled) {
+  color: var(--text-main);
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-focus);
+}
+
+.copy-code-btn.copied {
+  color: var(--color-success);
+  border-color: var(--color-success);
+  background-color: var(--color-success-bg);
+}
+
+.copy-code-btn .copy-feedback.hidden,
+.copy-code-btn .copy-icon.hidden {
+  display: none;
+}
+
+.copy-code-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.copy-code-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* Center on Map & Zoom to Extents Buttons */
+.center-map-btn,
+.zoom-extents-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  padding: 4px 9px;
+  color: var(--text-muted);
+  border-color: var(--border-medium);
+}
+
+.center-map-btn:hover:not(:disabled),
+.zoom-extents-btn:hover:not(:disabled) {
+  color: var(--color-primary-light);
+  border-color: var(--border-focus);
+  background-color: var(--bg-surface-hover);
+}
+
+.center-map-btn:disabled,
+.zoom-extents-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* File Queue Individual Remove Button */
+.file-queue-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.file-queue-remove:hover {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.file-queue-remove:focus-visible {
+  outline: 2px solid var(--color-danger);
+}
+
+/* Format Pill Button */
+.format-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  color: var(--text-main);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.format-pill-btn:hover {
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--border-focus);
+}
+
+.format-pill-sample {
+  font-family: var(--font-mono);
+  color: var(--color-primary-light);
+  font-size: 11px;
+}

@@ -9,6 +9,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Modular Stylesheet Architecture (`webapp/src/style/`)**:
+  - Deconstructed the monolithic 3,561-line `components.css` into 6 maintainable, category-focused stylesheets:
+    - `layout.css`: Header, workbench layout, tabs bar, studio cards, modals, and toast notifications.
+    - `forms.css`: Form groups, labels, inputs, selects, sliding direction toggle, segmented switches, format popovers, and file dropzone.
+    - `buttons.css`: Theme-native primary CTA, secondary, outline, copy buttons, action buttons, and format pills.
+    - `badges.css`: Status pills, Quasigeoid height metric field, angle format badges, file status pills, health dots, and quality report cards.
+    - `menus.css`: Top navigation menu item triggers (`.nav-menu-trigger`), dropdown menu panels, menu items, category headings, and dividers.
+    - `telemetry.css`: KPI cards, controls decks, interactive SVG timeline charts, and spatial matrix canvas deck.
+- **Reusable UI Factory System (`webapp/src/ui/`)**:
+  - `menu.ts`: Generic `renderDropdownMenu` helper supporting sleek top navigation menu item triggers (`.nav-menu-trigger`), rotating chevron animations, ARIA semantics (`role="menu"`, `role="menuitem"`), keyboard navigation (`Escape`, `ArrowDown`, `ArrowUp`), and automated dismissal.
+  - `segmentedControl.ts`: Accessible `renderSegmentedControl` helper for radio-switch toggles with ARIA attributes and arrow-key cycling.
+  - `selectControl.ts`: `renderSelect` helper ensuring uniform styling and focus rings.
+  - `copyBadge.ts`: `renderCopyBadge` helper for interactive copyable chips with keyboard activation.
+  - `copyButton.ts`: `renderCopyButton` helper providing standard code-block copy actions with animated checkmark feedback.
+  - `ui.test.ts`: Added 6 unit tests covering all UI factories (65/65 tests passing overall).
+
+### Changed
+- **Header Help Menu Redesign (`Header.ts`, `menus.css`)**:
+  - Redesigned the Help dropdown trigger from an isolated `.btn.btn-outline` button to a seamless `.nav-menu-trigger` menu item, giving it clean top-navigation aesthetics while maintaining full accessibility and dropdown capability.
+- **Component Unification (`main.ts`, `PointConverter.ts`, `BatchConverter.ts`)**:
+  - Refactored `main.ts` shared config bar to use `renderSelect`, `renderSegmentedControl`, and `renderCopyBadge`.
+  - Refactored `PointConverter.ts` and `BatchConverter.ts` to replace repetitive manual copy button DOM manipulation with `renderCopyButton`.
 - **Frontend Utility Unit Test Infrastructure (`webapp/package.json`, `webapp/src/utils/*.test.ts`)**:
   - Integrated `vitest` v5.0.5 for ultra-fast, zero-config TypeScript unit testing directly using the existing Vite setup.
   - Added `dmsParser.test.ts` (13 tests) validating angular conversions, symbol variations (`°`, `'`, `"`), letter notations (`d/m/s` and `D/M/S`), whitespace separation, cardinal directions, and seconds rollover formatting.
