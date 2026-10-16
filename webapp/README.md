@@ -23,6 +23,12 @@ npm install
 
 # Start development server (with hot module replacement)
 npm run dev
+
+# Run automated utility unit tests (Vitest)
+npm test
+
+# Run tests in interactive watch mode
+npm run test:watch
 ```
 
 The application will be accessible at:

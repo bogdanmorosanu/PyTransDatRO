@@ -106,7 +106,7 @@ export function parseInputLines(
     } else if (tokens.length === 3) {
       const [t0, t1, t2] = tokens;
       if (isSourceGeo) {
-        const hasAngleSymbol0 = /[°'"`dms]/i.test(t0);
+        const hasAngleSymbol0 = /[°'"`]|(?:\d\s*[dms])/i.test(t0);
         let a0 = false;
         let a1 = false;
         let a2 = false;
