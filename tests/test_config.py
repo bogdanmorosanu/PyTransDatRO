@@ -90,3 +90,32 @@ def test_constants_backward_compatibility():
     assert StereoProj.PROJ_SCALE == constants.STEREO70_SCALE_FACTOR
 
     assert utils.DEG_TO_RAD_FACTOR == constants.DEG_TO_RAD_FACTOR
+
+
+def test_smtp_settings_defaults():
+    """Verifies SMTP settings defaults in Settings."""
+    settings = Settings()
+    assert settings.smtp_host == ""
+    assert settings.smtp_port == 587
+    assert settings.smtp_user == ""
+    assert settings.smtp_password == ""
+    assert settings.smtp_use_tls is True
+    assert settings.feedback_recipient_email == ""
+    assert settings.feedback_sender_email == ""
+
+
+def test_logging_configuration():
+    """Verifies that get_logging_config and configure_logging initialize correctly."""
+    from api.config import configure_logging, get_logging_config
+
+    settings = Settings(log_level="DEBUG")
+    cfg = get_logging_config(settings)
+
+    assert cfg["version"] == 1
+    assert "formatters" in cfg
+    assert "handlers" in cfg
+    assert cfg["loggers"]["api"]["level"] == "DEBUG"
+    assert cfg["loggers"]["pytransdatro"]["level"] == "DEBUG"
+
+    # Should configure without errors
+    configure_logging(settings)

@@ -73,6 +73,22 @@ class Settings(BaseSettings):
         description="Path to user feedback submissions log file",
     )
 
+    # SMTP feedback delivery settings
+    smtp_host: str = Field(
+        default="",
+        description="SMTP server hostname for feedback email delivery (empty disables SMTP)",
+    )
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_user: str = Field(default="", description="SMTP authentication username")
+    smtp_password: str = Field(default="", description="SMTP authentication password")
+    smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS encryption for SMTP")
+    feedback_recipient_email: str = Field(
+        default="", description="Recipient email address for feedback notifications"
+    )
+    feedback_sender_email: str = Field(
+        default="", description="Sender email address for feedback notifications"
+    )
+
     @property
     def parsed_cors_origins(self) -> List[str]:
         """Resolves cors_origins into a list of strings if provided as JSON or comma-separated string."""
@@ -84,9 +100,55 @@ class Settings(BaseSettings):
                 parsed = json.loads(val)
                 if isinstance(parsed, list):
                     return [str(x) for x in parsed]
-            except Exception:
+            except (json.JSONDecodeError, TypeError):
                 pass
         return [item.strip() for item in val.split(",") if item.strip()]
+
+
+def get_logging_config(settings: Settings | None = None) -> dict:
+    """Generates standard dictConfig dictionary driven by application settings."""
+    level = (settings.log_level if settings else "INFO").upper()
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "standard": {
+                "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "standard",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "loggers": {
+            "api": {
+                "handlers": ["console"],
+                "level": level,
+                "propagate": False,
+            },
+            "pytransdatro": {
+                "handlers": ["console"],
+                "level": level,
+                "propagate": False,
+            },
+        },
+        "root": {
+            "handlers": ["console"],
+            "level": level,
+        },
+    }
+
+
+def configure_logging(settings: Settings | None = None) -> None:
+    """Initializes Python standard library logging via dictConfig."""
+    import logging.config
+
+    cfg = get_logging_config(settings)
+    logging.config.dictConfig(cfg)
 
 
 @lru_cache()

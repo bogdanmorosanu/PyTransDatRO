@@ -66,18 +66,18 @@ flowchart TD
 ### Phase 3: API Layer, Pydantic & Error Handling (`api/`)
 **Goal**: Modernize FastAPI endpoints, structure error handling, eliminate code duplication, and configure standard logging.
 
-- [ ] **Standardized Logging (`logging.dictConfig`)**:
+- [x] **Standardized Logging (`logging.dictConfig`)**:
   - Configure Python standard library logging initialized from `api/config.py`.
   - Replace raw `print` statements with `logger.info`, `logger.warning`, and `logger.error`.
-- [ ] **Audit & Eliminate Silent Failures**:
+- [x] **Audit & Eliminate Silent Failures**:
   - Inspect `api/routes/info.py`, `api/routes/file.py`, `api/routes/legacy.py`, and `api/services/mailer.py`.
   - Replace `except Exception: pass` with explicit exception trapping and actionable error responses.
-- [ ] **Pydantic Schemas & Response Models**:
+- [x] **Pydantic Schemas & Response Models**:
   - Audit all request and response schemas in `api/schemas/`.
   - Ensure uniform error response structure (`{"detail": "...", "code": "..."}`).
-- [ ] **FastAPI Dependency Injection**:
+- [x] **FastAPI Dependency Injection**:
   - Use `api/dependencies.py` consistently for `Settings` and `TransRO` singleton access.
-- [ ] **Integration Test Verification**:
+- [x] **Integration Test Verification**:
   - Run `pytest tests/test_api_modern.py`, `tests/test_api_legacy.py`, `tests/test_telemetry.py`.
 
 ---

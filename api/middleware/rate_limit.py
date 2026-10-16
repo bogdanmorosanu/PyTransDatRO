@@ -1,9 +1,11 @@
 """In-memory sliding-window rate limiting middleware for FastAPI.
 Zero external dependencies, standard library only.
 """
+
 import time
 from collections import defaultdict, deque
-from typing import Dict, Deque
+from typing import Deque, Dict
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -11,18 +13,15 @@ from starlette.responses import JSONResponse, Response
 
 class SlidingWindowRateLimiter(BaseHTTPMiddleware):
     """Sliding-window in-memory rate limiter.
-    
+
     Default rules:
     - Point transformations (GET legacy, POST /point): 60 requests / minute / IP
     - Batch and file uploads (POST legacy, POST /batch, POST /file): 10 requests / minute / IP
     - Health, grid info, documentation: unmetered
     """
+
     def __init__(
-        self,
-        app,
-        point_limit: int = 60,
-        batch_limit: int = 10,
-        window_seconds: float = 60.0
+        self, app, point_limit: int = 60, batch_limit: int = 10, window_seconds: float = 60.0
     ):
         super().__init__(app)
         self.point_limit = point_limit
@@ -41,7 +40,9 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
             return request.client.host
         return "127.0.0.1"
 
-    def _check_rate_limit(self, hits_map: Dict[str, Deque[float]], client_ip: str, limit: int) -> int:
+    def _check_rate_limit(
+        self, hits_map: Dict[str, Deque[float]], client_ip: str, limit: int
+    ) -> int:
         """Checks and records request. Returns 0 if allowed, or retry_after in seconds if rate-limited."""
         now = time.time()
         cutoff = now - self.window_seconds
@@ -68,14 +69,13 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
         method = request.method.upper()
 
         # Classify route
-        is_point_route = (
-            ("/api/v1/transform/point" in path) or
-            ("cooopservice" in path and method == "GET")
+        is_point_route = ("/api/v1/transform/point" in path) or (
+            "cooopservice" in path and method == "GET"
         )
         is_batch_route = (
-            ("/api/v1/transform/batch" in path) or
-            ("/api/v1/transform/file" in path) or
-            ("cooopservice" in path and method == "POST")
+            ("/api/v1/transform/batch" in path)
+            or ("/api/v1/transform/file" in path)
+            or ("cooopservice" in path and method == "POST")
         )
 
         client_ip = self._get_client_ip(request)
@@ -85,8 +85,10 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
             if retry_after > 0:
                 return JSONResponse(
                     status_code=429,
-                    content={"detail": "Too Many Requests. Batch rate limit exceeded (10 requests/minute)."},
-                    headers={"Retry-After": str(retry_after)}
+                    content={
+                        "detail": "Too Many Requests. Batch rate limit exceeded (10 requests/minute)."
+                    },
+                    headers={"Retry-After": str(retry_after)},
                 )
 
         elif is_point_route:
@@ -94,8 +96,10 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
             if retry_after > 0:
                 return JSONResponse(
                     status_code=429,
-                    content={"detail": "Too Many Requests. Point rate limit exceeded (60 requests/minute)."},
-                    headers={"Retry-After": str(retry_after)}
+                    content={
+                        "detail": "Too Many Requests. Point rate limit exceeded (60 requests/minute)."
+                    },
+                    headers={"Retry-After": str(retry_after)},
                 )
 
         return await call_next(request)

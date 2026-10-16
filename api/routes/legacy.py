@@ -1,17 +1,24 @@
 """Legacy TransDatOnline compatibility router.
+
 Reproduces the 10+ year-old Java servlet contract at /transdatonline/cooOpService and /cooOpService.
 """
+
 import json
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, Request
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from api.dependencies import get_client_source
+
 import pytransdatro.exceptions as exc
+from api.dependencies import get_client_source, get_trans_engine
+from pytransdatro.trans_ro import TransRO
 
 router = APIRouter(tags=["Legacy TransDatOnline Compatibility"])
 
 
-def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float], source: int = 1) -> Dict[str, Any]:
+def _transform_legacy_point(
+    trans: TransRO, coo_op: str, raw_coords: List[float], source: int = 1
+) -> Dict[str, Any]:
     """Transforms a single coordinate according to legacy rules and warning strings."""
     dim = len(raw_coords)
     if dim < 2:
@@ -42,13 +49,13 @@ def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float], source:
     elif coo_op in ("Stereo30ToETRS89", "ETRS89ToStereo30"):
         return {
             "coos": raw_coords,
-            "warning": "Stereo30 transformation is obsolete and unsupported"
+            "warning": "Stereo30 transformation is obsolete and unsupported",
         }
 
     else:
         raise HTTPException(
             status_code=400,
-            detail=f"There is no defined transformation with name {coo_op}"
+            detail=f"There is no defined transformation with name {coo_op}",
         )
 
 
@@ -57,13 +64,15 @@ def _transform_legacy_point(trans, coo_op: str, raw_coords: List[float], source:
 async def legacy_coo_op_get(
     request: Request,
     cooOp: Optional[str] = Query(None),
-    coos: Optional[str] = Query(None)
+    coos: Optional[str] = Query(None),
+    trans: TransRO = Depends(get_trans_engine),
+    source: int = Depends(get_client_source),
 ):
     """Legacy GET coordinate transformation endpoint."""
     if not cooOp or not coos:
         raise HTTPException(
             status_code=400,
-            detail="Invalid request! cooOp or coos variable is missing!"
+            detail="Invalid request! cooOp or coos variable is missing!",
         )
 
     # Semicolon-delimited coordinate string
@@ -81,15 +90,17 @@ async def legacy_coo_op_get(
     if len(parsed_coords) < 2:
         return JSONResponse(content={"coos": parsed_coords, "warning": "Wrong dimension"})
 
-    trans = request.app.state.trans
-    source = get_client_source(request)
     result = _transform_legacy_point(trans, cooOp, parsed_coords, source=source)
     return JSONResponse(content=result)
 
 
 @router.post("/transdatonline/cooOpService")
 @router.post("/cooOpService")
-async def legacy_coo_op_post(request: Request):
+async def legacy_coo_op_post(
+    request: Request,
+    trans: TransRO = Depends(get_trans_engine),
+    source: int = Depends(get_client_source),
+):
     """Legacy POST coordinate transformation endpoint with dual form/JSON content-type support."""
     coo_op: Optional[str] = None
     raw_coos_array: Any = None
@@ -102,7 +113,7 @@ async def legacy_coo_op_post(request: Request):
             if isinstance(body, dict):
                 coo_op = body.get("cooOp")
                 raw_coos_array = body.get("coosArray")
-        except Exception:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             raise HTTPException(status_code=400, detail="Invalid JSON payload")
     else:
         # Form-urlencoded or multipart form data
@@ -113,22 +124,20 @@ async def legacy_coo_op_post(request: Request):
     if not coo_op or raw_coos_array is None:
         raise HTTPException(
             status_code=400,
-            detail="Invalid request! cooOp or coosArray variable is missing!"
+            detail="Invalid request! cooOp or coosArray variable is missing!",
         )
 
     # If coosArray arrived as a string, parse it
     if isinstance(raw_coos_array, str):
         try:
             items = json.loads(raw_coos_array)
-        except Exception:
+        except (json.JSONDecodeError, TypeError):
             raise HTTPException(status_code=400, detail="Malformed JSON in coosArray")
     elif isinstance(raw_coos_array, list):
         items = raw_coos_array
     else:
         raise HTTPException(status_code=400, detail="coosArray must be a list or JSON string array")
 
-    trans = request.app.state.trans
-    source = get_client_source(request)
     results: List[Dict[str, Any]] = []
 
     for item in items:

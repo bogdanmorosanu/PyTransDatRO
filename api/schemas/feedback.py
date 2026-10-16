@@ -1,8 +1,8 @@
-"""Pydantic schemas for anonymous, zero-PII feedback and discrepancy reporting.
-"""
-from typing import Optional, Literal
-from pydantic import BaseModel, Field
+"""Pydantic schemas for anonymous, zero-PII feedback and discrepancy reporting."""
 
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
 
 FeedbackReportType = Literal[
     "discrepancy",
@@ -15,6 +15,7 @@ FeedbackReportType = Literal[
 
 class FeedbackSubmitRequest(BaseModel):
     """Payload for submitting anonymous feedback."""
+
     report_type: FeedbackReportType = Field(
         ...,
         description="Category of the report (discrepancy, grid_update, bug, feature, api_down)",
@@ -45,6 +46,7 @@ class FeedbackSubmitRequest(BaseModel):
 
 class FeedbackSubmitResponse(BaseModel):
     """Response returned upon feedback submission."""
+
     status: Literal["success", "logged"] = Field(
         ...,
         description="Result status ('success' if emailed, 'logged' if recorded locally)",

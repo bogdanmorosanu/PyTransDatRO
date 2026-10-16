@@ -1,6 +1,7 @@
-"""Pydantic schemas for grid information and telemetry stats/timeline.
-"""
+"""Pydantic schemas for grid information and telemetry stats/timeline."""
+
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -21,6 +22,7 @@ class SpgFileInfo(BaseModel):
 
 class GridMetadataResponse(BaseModel):
     """Exhaustive, dynamic SPG grid metadata model for public REST consumers and web app."""
+
     file_info: SpgFileInfo
     metadata: Dict[str, Any]
     params: Dict[str, Any]
@@ -168,4 +170,3 @@ class GridComparisonResponse(BaseModel):
     etrs89_to_st70: DirectionComparisonSummary
     st70_to_etrs89: DirectionComparisonSummary
     model_config = {"extra": "allow"}
-

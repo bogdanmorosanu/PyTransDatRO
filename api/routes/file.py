@@ -123,7 +123,7 @@ def _transform_line(
         c1 = _parse_coordinate_token(coord_tokens[0], is_source_geo, is_degrees)
         c2 = _parse_coordinate_token(coord_tokens[1], is_source_geo, is_degrees)
         c3 = float(coord_tokens[2].strip("\"'")) if len(coord_tokens) >= 3 else None
-    except Exception:
+    except (ValueError, TypeError, IndexError):
         return line + " # Invalid coordinate data\n"
 
     dim = len(coord_tokens)

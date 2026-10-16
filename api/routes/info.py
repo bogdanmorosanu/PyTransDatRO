@@ -1,52 +1,62 @@
-"""Grid information and telemetry statistics endpoints.
-"""
-import sqlite3
+"""Grid information and telemetry statistics endpoints."""
+
 import datetime
+import json
+import logging
 import math
+import sqlite3
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, Request
-from api.dependencies import get_trans_engine
-import json
+
+from fastapi import APIRouter, Depends, Query
+
+from api.dependencies import get_db_path, get_trans_engine
 from api.schemas.info import (
     BoundingBox,
+    DailyStatItem,
+    GridComparisonResponse,
     GridInfoResponse,
     GridMetadataResponse,
-    SpgFileInfo,
-    DailyStatItem,
-    TelemetrySummary,
-    TelemetryStatsResponse,
-    TimelineResponse,
-    TimelineSummary,
-    TimelineSeriesItem,
-    TimelineSeriesMetrics,
-    SourceItem,
-    SpatialCellItem,
     QuadrantItem,
     QuadrantSummary,
+    SourceItem,
     SpatialBounds,
-    SpatialMatrixSummary,
+    SpatialCellItem,
     SpatialMatrixResponse,
-    GridComparisonResponse,
+    SpatialMatrixSummary,
+    SpgFileInfo,
+    TelemetryStatsResponse,
+    TelemetrySummary,
+    TimelineResponse,
+    TimelineSeriesItem,
+    TimelineSeriesMetrics,
+    TimelineSummary,
 )
 from pytransdatro.trans_ro import TransRO
+
 try:
     from tools.export_spg_metadata_json import extract_full_spg_metadata
 except ImportError:
     extract_full_spg_metadata = None
 
+logger = logging.getLogger("api.routes.info")
 router = APIRouter(prefix="/api/v1", tags=["Metadata & Telemetry"])
 
 
 def _load_comparison_summary() -> dict:
     """Loads ANCPI replication benchmark JSON from pytransdatro/grids/ancpi_comparison_summary.json."""
-    json_path = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids" / "ancpi_comparison_summary.json"
+    json_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "pytransdatro"
+        / "grids"
+        / "ancpi_comparison_summary.json"
+    )
     if json_path.exists():
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load ANCPI comparison summary from %s: %s", json_path, e)
     return {
         "total_points": 9046,
         "overall_status": "PASS",
@@ -55,29 +65,50 @@ def _load_comparison_summary() -> dict:
             "total_points": 9046,
             "status": "PASS",
             "max_abs_error": {"easting_m": 0.000314, "northing_m": 0.000335, "elevation_m": 0.0005},
-            "mean_abs_error": {"easting_m": 0.00007, "northing_m": 0.00008, "elevation_m": 0.000251},
-            "flags": {"easting": {"0": 9046}, "northing": {"0": 9046}, "elevation": {"0": 9046}}
+            "mean_abs_error": {
+                "easting_m": 0.00007,
+                "northing_m": 0.00008,
+                "elevation_m": 0.000251,
+            },
+            "flags": {"easting": {"0": 9046}, "northing": {"0": 9046}, "elevation": {"0": 9046}},
         },
         "st70_to_etrs89": {
             "direction": "Stereo70 to ETRS89",
             "total_points": 9046,
             "status": "PASS",
-            "max_abs_error": {"latitude_sec": 0.00001006, "longitude_sec": 0.00001007, "elevation_m": 0.0005},
-            "mean_abs_error": {"latitude_sec": 0.00000501, "longitude_sec": 0.000005, "elevation_m": 0.000251},
-            "flags": {"latitude": {"0": 9032, "1": 14}, "longitude": {"0": 9015, "1": 31}, "elevation": {"0": 9046}}
-        }
+            "max_abs_error": {
+                "latitude_sec": 0.00001006,
+                "longitude_sec": 0.00001007,
+                "elevation_m": 0.0005,
+            },
+            "mean_abs_error": {
+                "latitude_sec": 0.00000501,
+                "longitude_sec": 0.000005,
+                "elevation_m": 0.000251,
+            },
+            "flags": {
+                "latitude": {"0": 9032, "1": 14},
+                "longitude": {"0": 9015, "1": 31},
+                "elevation": {"0": 9046},
+            },
+        },
     }
 
 
 def _load_or_extract_metadata() -> dict:
     """Loads metadata JSON from pytransdatro/grids/spg_metadata.json or extracts it dynamically."""
-    json_path = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids" / "spg_metadata.json"
+    json_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "pytransdatro"
+        / "grids"
+        / "spg_metadata.json"
+    )
     if json_path.exists():
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load SPG grid metadata from %s: %s", json_path, e)
 
     # Fallback to dynamic extraction if JSON not generated yet and tools available
     spg_dir = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids"
@@ -85,10 +116,15 @@ def _load_or_extract_metadata() -> dict:
     if spg_candidates and extract_full_spg_metadata is not None:
         return extract_full_spg_metadata(spg_candidates[0])
     return {
-        "file_info": {"name": "rom_grid3d_25.09.spg", "size_bytes": 0, "size_formatted": "0 B", "sha256": ""},
+        "file_info": {
+            "name": "rom_grid3d_25.09.spg",
+            "size_bytes": 0,
+            "size_formatted": "0 B",
+            "sha256": "",
+        },
         "metadata": {},
         "params": {},
-        "grids": {}
+        "grids": {},
     }
 
 
@@ -112,12 +148,12 @@ async def get_grid_info(trans: TransRO = Depends(get_trans_engine)) -> GridInfoR
     grid_filename = Path(grid.file_name).name
     meta_dict = _load_or_extract_metadata()
 
-    file_info = SpgFileInfo(**meta_dict.get("file_info", {
-        "name": grid_filename,
-        "size_bytes": 0,
-        "size_formatted": "0 B",
-        "sha256": ""
-    }))
+    file_info = SpgFileInfo(
+        **meta_dict.get(
+            "file_info",
+            {"name": grid_filename, "size_bytes": 0, "size_formatted": "0 B", "sha256": ""},
+        )
+    )
 
     return GridInfoResponse(
         grid_file=grid_filename,
@@ -129,22 +165,21 @@ async def get_grid_info(trans: TransRO = Depends(get_trans_engine)) -> GridInfoR
         ),
         crs={
             "projected": "EPSG:31700 (Pulkovo 1942(58) / Stereo70)",
-            "geographic": "EPSG:4258 (ETRS89)"
+            "geographic": "EPSG:4258 (ETRS89)",
         },
         quasigeoid_model="Modern Romanian Quasigeoid (1D nearest-neighbor)",
         metadata=meta_dict.get("metadata"),
         params=meta_dict.get("params"),
         grids=meta_dict.get("grids"),
-        file_info=file_info
+        file_info=file_info,
     )
 
 
 @router.get("/telemetry/stats", response_model=TelemetryStatsResponse)
-async def get_telemetry_stats(request: Request) -> TelemetryStatsResponse:
+async def get_telemetry_stats(
+    db_path: Path = Depends(get_db_path),
+) -> TelemetryStatsResponse:
     """Returns high-level, anonymized usage telemetry from SQLite WAL database."""
-    log_dir = Path("./logs")
-    db_path = log_dir / "usage.db"
-
     total_calls = 0
     total_points = 0
     daily_items: List[DailyStatItem] = []
@@ -158,7 +193,7 @@ async def get_telemetry_stats(request: Request) -> TelemetryStatsResponse:
             # Query computation_usage (grouped by period_start and source)
             cursor.execute(
                 """
-                SELECT c.period_start, COALESCE(s.name, 'unknown'), SUM(c.count_calls), SUM(c.count_points) 
+                SELECT c.period_start, COALESCE(s.name, 'unknown'), SUM(c.count_calls), SUM(c.count_points)
                 FROM computation_usage c
                 LEFT JOIN sources s ON c.source = s.id
                 GROUP BY c.period_start, c.source
@@ -176,25 +211,26 @@ async def get_telemetry_stats(request: Request) -> TelemetryStatsResponse:
                         date=date_str,
                         source=src_name,
                         calls=calls_int,
-                        points=points_int
+                        points=points_int,
                     )
                 )
 
             # Query overall totals
-            cursor.execute("SELECT COALESCE(SUM(count_calls), 0), COALESCE(SUM(count_points), 0) FROM computation_usage")
+            cursor.execute(
+                "SELECT COALESCE(SUM(count_calls), 0), COALESCE(SUM(count_points), 0) FROM computation_usage"
+            )
             tot_row = cursor.fetchone()
             if tot_row:
                 total_calls = int(tot_row[0])
                 total_points = int(tot_row[1])
 
             conn.close()
-        except Exception:
-            # If reading telemetry database fails for any reason, return default
-            pass
+        except sqlite3.Error as e:
+            logger.error("Database error querying telemetry stats: %s", e)
 
     return TelemetryStatsResponse(
         summary=TelemetrySummary(total_calls=total_calls, total_points=total_points),
-        daily_trend=daily_items
+        daily_trend=daily_items,
     )
 
 
@@ -202,18 +238,26 @@ async def get_telemetry_stats(request: Request) -> TelemetryStatsResponse:
 async def get_telemetry_timeline(
     from_date: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
-    granularity: str = Query("daily", pattern="^(daily|weekly|monthly)$", description="Aggregation bucket: daily, weekly, or monthly"),
-    source: Optional[int] = Query(None, description="Filter by client source ID (1=rest_api, 2=web_map, 3=desktop_cli)"),
-    operation: Optional[str] = Query(None, description="Filter by operation: 1, 2, Stereo70ToETRS89, or ETRS89ToStereo70"),
+    granularity: str = Query(
+        "daily",
+        pattern="^(daily|weekly|monthly)$",
+        description="Aggregation bucket: daily, weekly, or monthly",
+    ),
+    source: Optional[int] = Query(
+        None,
+        description="Filter by client source ID (1=rest_api, 2=web_map, 3=desktop_cli)",
+    ),
+    operation: Optional[str] = Query(
+        None,
+        description="Filter by operation: 1, 2, Stereo70ToETRS89, or ETRS89ToStereo70",
+    ),
     is_3d: Optional[int] = Query(None, description="Filter by 2D (0) or 3D (1)"),
+    db_path: Path = Depends(get_db_path),
 ) -> TimelineResponse:
     """Returns time-series telemetry data for the Telemetry Visualization Dashboard.
-    
+
     Supports dynamic date filtering, daily, weekly, vs. monthly rollups, and breakdown by client source.
     """
-    log_dir = Path("./logs")
-    db_path = log_dir / "usage.db"
-
     if not db_path.exists():
         return TimelineResponse(
             summary=TimelineSummary(
@@ -222,9 +266,9 @@ async def get_telemetry_timeline(
                 avg_points_per_call=0.0,
                 from_date=from_date,
                 to_date=to_date,
-                days_count=0
+                days_count=0,
             ),
-            series=[]
+            series=[],
         )
 
     try:
@@ -275,7 +319,7 @@ async def get_telemetry_timeline(
             time_expr = "c.period_start"
 
         sql = f"""
-            SELECT 
+            SELECT
                 {time_expr} AS time_bucket,
                 COALESCE(s.name, 'unknown') AS source_name,
                 c.operation,
@@ -294,11 +338,16 @@ async def get_telemetry_timeline(
 
         def create_empty_metrics():
             return {
-                "web_map": 0, "rest_api": 0, "desktop_cli": 0, "unknown": 0,
-                "st70_to_etrs": 0, "etrs_to_st70": 0,
-                "dim_2d": 0, "dim_3d": 0,
+                "web_map": 0,
+                "rest_api": 0,
+                "desktop_cli": 0,
+                "unknown": 0,
+                "st70_to_etrs": 0,
+                "etrs_to_st70": 0,
+                "dim_2d": 0,
+                "dim_3d": 0,
                 "total": 0,
-                "sources": {}
+                "sources": {},
             }
 
         # Aggregate series buckets
@@ -409,13 +458,14 @@ async def get_telemetry_timeline(
                 from_date=resolved_from,
                 to_date=resolved_to,
                 days_count=days_count,
-                period_count=period_count
+                period_count=period_count,
             ),
             series=series_items,
-            available_sources=available_sources
+            available_sources=available_sources,
         )
 
-    except Exception:
+    except sqlite3.Error as e:
+        logger.error("Database error querying telemetry timeline: %s", e)
         return TimelineResponse(
             summary=TimelineSummary(
                 total_calls=0,
@@ -424,9 +474,9 @@ async def get_telemetry_timeline(
                 from_date=from_date,
                 to_date=to_date,
                 days_count=0,
-                period_count=0
+                period_count=0,
             ),
-            series=[]
+            series=[],
         )
 
 
@@ -434,14 +484,21 @@ async def get_telemetry_timeline(
 async def get_telemetry_spatial_matrix(
     from_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
     to_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
-    metric: str = Query("points", pattern="^(points|calls)$", description="Metric to aggregate: 'points' or 'calls'"),
-    sources: Optional[str] = Query(None, description="Comma-separated client source IDs e.g. '1,2'"),
-    operation: Optional[int] = Query(None, description="Operation ID (1: st70_to_etrs89, 2: etrs89_to_st70)"),
+    metric: str = Query(
+        "points",
+        pattern="^(points|calls)$",
+        description="Metric to aggregate: 'points' or 'calls'",
+    ),
+    sources: Optional[str] = Query(
+        None, description="Comma-separated client source IDs e.g. '1,2'"
+    ),
+    operation: Optional[int] = Query(
+        None, description="Operation ID (1: st70_to_etrs89, 2: etrs89_to_st70)"
+    ),
     is_3d: Optional[int] = Query(None, description="0 for 2D, 1 for 3D"),
+    db_path: Path = Depends(get_db_path),
 ) -> SpatialMatrixResponse:
     """Returns aggregated 0.1 degree spatial density cells and mathematical quadrant totals."""
-    log_dir = Path("./logs")
-    db_path = log_dir / "usage.db"
 
     # Default bounding box for Romania
     default_bounds = SpatialBounds(min_lat=43.6, max_lat=48.3, min_lon=20.2, max_lon=29.7)
@@ -509,7 +566,7 @@ async def get_telemetry_spatial_matrix(
 
         # Query aggregating ~1km (lat_deg, lat_grad) to 0.1 degree bins
         query = f"""
-            SELECT 
+            SELECT
                 ROUND(lat_deg + (CAST(lat_grad / 10 AS INTEGER) * 0.1), 1) AS bin_lat,
                 ROUND(lon_deg + (CAST(lon_grad / 10 AS INTEGER) * 0.1), 1) AS bin_lon,
                 {metric_expr} AS hits
@@ -604,5 +661,6 @@ async def get_telemetry_spatial_matrix(
             cells=cells,
         )
 
-    except Exception:
+    except sqlite3.Error as e:
+        logger.error("Database error querying spatial matrix: %s", e)
         return empty_response

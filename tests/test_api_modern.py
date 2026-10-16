@@ -1,10 +1,12 @@
-"""Tests for modern /api/v1 endpoints, file streaming, health, and info.
-"""
+"""Tests for modern /api/v1 endpoints, file streaming, health, and info."""
+
 import io
 import math
-import pytest
 from pathlib import Path
+
+import pytest
 from starlette.testclient import TestClient
+
 from api.main import app
 
 
@@ -18,11 +20,7 @@ def client():
 
 def test_modern_point_stereo70_to_etrs89_degrees(client):
     """Verifies single point conversion with unit=degrees returns ~45.9997, 24.9984."""
-    payload = {
-        "op": "Stereo70ToETRS89",
-        "coos": [500000.0, 500000.0, 100.0],
-        "unit": "degrees"
-    }
+    payload = {"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0, 100.0], "unit": "degrees"}
     res = client.post("/api/v1/transform/point", json=payload)
     assert res.status_code == 200
     data = res.json()
@@ -39,7 +37,7 @@ def test_modern_point_etrs89_to_stereo70_degrees(client):
     payload = {
         "op": "ETRS89ToStereo70",
         "coos": [45.99971862804511, 24.998447635093715, 139.60844039916992],
-        "unit": "degrees"
+        "unit": "degrees",
     }
     res = client.post("/api/v1/transform/point", json=payload)
     assert res.status_code == 200
@@ -53,11 +51,7 @@ def test_modern_point_etrs89_to_stereo70_degrees(client):
 
 def test_modern_point_out_of_grid(client):
     """Verifies out of grid returns coordinates with warning."""
-    payload = {
-        "op": "Stereo70ToETRS89",
-        "coos": [5.0, 1.0, 1.0],
-        "unit": "radians"
-    }
+    payload = {"op": "Stereo70ToETRS89", "coos": [5.0, 1.0, 1.0], "unit": "radians"}
     res = client.post("/api/v1/transform/point", json=payload)
     assert res.status_code == 200
     data = res.json()
@@ -72,9 +66,9 @@ def test_modern_batch_transformation(client):
         "points": [
             [500000.0, 500000.0, 100.0],
             [505000.0, 505000.0, 120.0],
-            [5.0, 1.0, 1.0]  # out of grid
+            [5.0, 1.0, 1.0],  # out of grid
         ],
-        "unit": "degrees"
+        "unit": "degrees",
     }
     res = client.post("/api/v1/transform/batch", json=payload)
     assert res.status_code == 200
@@ -92,11 +86,7 @@ def test_modern_batch_transformation(client):
 def test_modern_file_streaming_csv(client):
     """Verifies file streaming with CSV content, comments, and mixed coordinates."""
     csv_content = (
-        "# Topo test points\n"
-        "\n"
-        "500000.0,500000.0,100.0\n"
-        "505000.0,505000.0,120.0\n"
-        "5.0,1.0,1.0\n"
+        "# Topo test points\n\n500000.0,500000.0,100.0\n505000.0,505000.0,120.0\n5.0,1.0,1.0\n"
     )
     files = {"file": ("test.csv", io.BytesIO(csv_content.encode("utf-8")), "text/csv")}
     data = {"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma"}
@@ -112,13 +102,9 @@ def test_modern_file_streaming_csv(client):
     assert "Out of grid" in lines[3]
 
 
-
 def test_modern_file_streaming_semicolon_auto_detect(client):
     """Verifies delimiter auto-detection with semicolon separated file."""
-    csv_content = (
-        "500000.0;500000.0;100.0\n"
-        "505000.0;505000.0;120.0\n"
-    )
+    csv_content = "500000.0;500000.0;100.0\n505000.0;505000.0;120.0\n"
     files = {"file": ("test.txt", io.BytesIO(csv_content.encode("utf-8")), "text/plain")}
     data = {"op": "Stereo70ToETRS89", "unit": "radians", "delimiter": "auto"}
 
@@ -248,11 +234,7 @@ def test_telemetry_timeline_endpoint(client):
 
 def test_client_source_header_propagation(client):
     """Verifies X-Client-Source header is recognized by the API."""
-    payload = {
-        "op": "Stereo70ToETRS89",
-        "coos": [500000.0, 500000.0],
-        "unit": "degrees"
-    }
+    payload = {"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0], "unit": "degrees"}
     # Request from web_app
     headers = {"X-Client-Source": "web_app"}
     res = client.post("/api/v1/transform/point", json=payload, headers=headers)
@@ -381,3 +363,22 @@ def test_grid_comparison_endpoint(client):
     assert "max_abs_error" in data["etrs89_to_st70"]
     assert "max_abs_error" in data["st70_to_etrs89"]
 
+
+def test_uniform_validation_error_response(client):
+    """Verifies that RequestValidationError returns uniform 422 JSON with code='VALIDATION_ERROR'."""
+    res = client.post("/api/v1/transform/point", json={"op": "InvalidOp", "coos": [500000.0]})
+    assert res.status_code == 422
+    data = res.json()
+    assert "detail" in data
+    assert data.get("code") == "VALIDATION_ERROR"
+
+
+def test_error_response_schema():
+    """Verifies that ErrorResponse Pydantic schema serializes as expected."""
+    from api.schemas.error import ErrorResponse
+
+    err = ErrorResponse(detail="Boundary error", code="OUT_OF_BOUNDS")
+    assert err.detail == "Boundary error"
+    assert err.code == "OUT_OF_BOUNDS"
+    dumped = err.model_dump()
+    assert dumped == {"detail": "Boundary error", "code": "OUT_OF_BOUNDS"}

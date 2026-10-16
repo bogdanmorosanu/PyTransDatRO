@@ -1,8 +1,7 @@
-"""FastAPI dependency providers for accessing application state."""
-
+from pathlib import Path
 from typing import Optional
 
-from fastapi import Request
+from fastapi import Depends, Request
 
 from api.config import Settings, get_settings
 from pytransdatro.telemetry import SqliteUsageLogger
@@ -11,6 +10,7 @@ from pytransdatro.trans_ro import TransRO
 __all__ = [
     "Settings",
     "get_client_source",
+    "get_db_path",
     "get_settings",
     "get_telemetry_logger",
     "get_trans_engine",
@@ -41,3 +41,8 @@ def get_client_source(request: Request) -> int:
     if client_src in ("desktop_cli", "cli", "desktop"):
         return 3
     return 1
+
+
+def get_db_path(settings: Settings = Depends(get_settings)) -> Path:
+    """Resolves the SQLite telemetry database path from application settings."""
+    return Path(settings.log_dir) / "usage.db"

@@ -1,8 +1,10 @@
-"""Tests for anonymous, zero-PII feedback submission and mailer/logger services.
-"""
+"""Tests for anonymous, zero-PII feedback submission and mailer/logger services."""
+
 import json
 from pathlib import Path
+
 from fastapi.testclient import TestClient
+
 from api.main import app
 
 client = TestClient(app)
@@ -66,3 +68,22 @@ def test_submit_feedback_successful_local_logging(tmp_path, monkeypatch):
         assert record["report_type"] == "discrepancy"
         assert record["active_grid"] == "RO_TransDatRO_ETRS89_Stereo70.spg"
         assert "differed by 0.005m" in record["description"]
+
+
+def test_dispatch_feedback_with_custom_settings(tmp_path):
+    """Verifies dispatch_feedback respects injected Settings."""
+    from api.config import Settings
+    from api.services.mailer import dispatch_feedback
+
+    custom_log_dir = tmp_path / "custom_logs"
+    settings = Settings(log_dir=str(custom_log_dir))
+
+    payload = {
+        "report_type": "bug",
+        "description": "Custom settings test description.",
+    }
+    delivered, msg = dispatch_feedback(payload, "127.0.0.1", settings=settings)
+
+    assert delivered is False
+    assert "recorded in server logs" in msg
+    assert (custom_log_dir / "feedback.jsonl").exists()
