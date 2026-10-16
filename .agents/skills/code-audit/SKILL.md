@@ -1,12 +1,12 @@
 ---
 name: code-audit
-description: Audits code quality across pytransdatro, api, and webapp layers using Ruff, TypeScript compiler, and pattern checks. Use when reviewing code quality, checking for regressions or code smells, or before finishing a refactoring chat.
+description: Audits code quality across pytransdatro, api, and webapp layers using Ruff, TypeScript compiler, Vitest, and pattern checks. Use when reviewing code quality, checking for regressions or code smells, or before finishing any significant development session.
 ---
 
 # Code Audit Skill
 
 ## Purpose
-This skill executes a complete, cross-layer static analysis and code hygiene audit across the PyTransDatRO repository. It verifies that Python formatting, type conventions, layer isolation boundaries, and TypeScript builds comply with project invariants.
+This skill executes a complete, cross-layer static analysis and code hygiene audit across the PyTransDatRO repository. It verifies that Python formatting, type conventions, layer isolation boundaries, Vitest test suites, and TypeScript builds comply with project invariants.
 
 ---
 
@@ -19,8 +19,6 @@ Run the Ruff linter and formatter check from the designated environment:
 D:\anaconda3\envs\pytransdat\python.exe -m ruff check pytransdatro api tests tools
 D:\anaconda3\envs\pytransdat\python.exe -m ruff format --check pytransdatro api tests tools
 ```
-
-*Note: If Ruff is not yet installed in Phase 1, verify syntax and basic compilation using `python -m py_compile`.*
 
 ### 2. Forbidden Anti-Pattern Scan
 Check for prohibited anti-patterns across the codebase:
@@ -43,10 +41,11 @@ Check for prohibited anti-patterns across the codebase:
    Get-ChildItem -Path api -Recurse -Filter "*.py" | Select-String -Pattern "localhost:8000|127.0.0.1:8000"
    ```
 
-### 3. Frontend TypeScript & Bundler Check
-Verify that the web application compiles cleanly without type errors:
+### 3. Frontend TypeScript & Vitest Suite
+Verify that all client parsers, bounds checks, exporters, and UI helpers pass unit tests, and that the web application compiles cleanly without type errors:
 
 ```powershell
+npm --prefix webapp test
 npm --prefix webapp run build
 ```
 

@@ -28,7 +28,10 @@ Verifies:
 ---
 
 ### Step 2: REST API Contract & Legacy Emulation Tests
-Run the API integration tests:
+Run the API integration tests (or full suite).
+
+> [!IMPORTANT]
+> **Windows Sandbox Notice**: Always execute Step 2 (and full `pytest`) with `BypassSandbox: true`. Starlette's `TestClient` uses `anyio` to bridge synchronous test calls to asynchronous FastAPI endpoints using background worker threads and local loopback sockets. Under standard Windows sandbox isolation, local loopback socket communication is blocked and the tests will hang indefinitely.
 
 ```powershell
 D:\anaconda3\envs\pytransdat\python.exe -m pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_rate_limiter.py tests/test_telemetry.py -q
@@ -42,7 +45,7 @@ Verifies:
 ---
 
 ### Step 3: ANCPI / Romgeo Official Benchmark Comparison
-Execute the benchmark comparison tool against reference national control point datasets:
+Execute the benchmark comparison tool against reference national control point datasets (can run with `BypassSandbox: false`):
 
 ```powershell
 D:\anaconda3\envs\pytransdat\python.exe tools/generate_ancpi_comparison_reports.py
@@ -55,5 +58,22 @@ Criteria for Success:
 
 ---
 
+### Step 4: Web Application Utility & UI Regression Suite
+Execute the frontend unit test suite to verify coordinate formatting, angle parsing, and exporter integrity (can run with `BypassSandbox: false`):
+
+```powershell
+npm --prefix webapp test
+```
+
+Verifies:
+- DMS format conversions and cardinal notations (`dmsParser.test.ts`).
+- Single and batch delimiter auto-detection (`pointParser.test.ts`).
+- Romania envelope and boundary threshold tests (`gridBounds.test.ts`).
+- CSV, GeoJSON, and AutoCAD DXF serialization (`exporters.test.ts`).
+- Accessible UI factory functions and keyboard navigation (`ui.test.ts`).
+
+---
+
 ## Reporting
-If any test fails or any numerical discrepancy exceeds machine epsilon, the refactor must be reverted or halted immediately until the mathematical deviation is identified.
+If any test fails or any numerical discrepancy exceeds machine epsilon, the change must be reverted or halted immediately until the regression is resolved.
+

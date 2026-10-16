@@ -39,15 +39,15 @@ git diff --stat webapp
 ```
 Also inspect if any backend API routes (`api/routes/`, `api/schemas/`) were modified in tandem with the webapp.
 
-### Step 2: Verify Build Integrity
+### Step 2: Verify Test & Build Integrity
 
-In `webapp/`, verify that TypeScript compiles cleanly and Vite builds the bundle without errors:
+Verify that all frontend unit tests pass and Vite builds the production bundle cleanly without errors:
 ```powershell
-cd webapp
-npm run build
+npm --prefix webapp test
+npm --prefix webapp run build
 ```
 If errors are reported:
-- Resolve any TypeScript type errors or broken imports before recording the changes.
+- Resolve any failing tests, TypeScript type errors, or broken imports before recording the changes.
 
 ### Step 3: Update `webapp/CHANGELOG.md`
 

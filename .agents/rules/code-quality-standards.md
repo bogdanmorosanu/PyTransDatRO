@@ -50,11 +50,20 @@ These standards govern code modifications across all layers of the PyTransDatRO 
 - Use modular CSS stylesheets divided by role (`forms.css`, `buttons.css`, `badges.css`, `layout.css`, `telemetry.css`).
 - Use reusable vanilla TS UI factory functions (`webapp/src/ui/`) for common controls (segmented toggles, select pickers, copy badges).
 
-### Coordinate Parsers & Exporters
-- Any modification to `dmsParser.ts`, `pointParser.ts`, or `exporters.ts` must be covered by unit tests in `vitest`.
+### Coordinate Parsers, Exporters & Unit Testing (Vitest)
+- Any modification to `dmsParser.ts`, `pointParser.ts`, `gridBounds.ts`, `exporters.ts`, or UI factories (`webapp/src/ui/`) must be covered by unit tests in Vitest.
 - Parsers must be resilient to empty lines, comments, and whitespace variations without throwing unhandled exceptions.
+- Run frontend tests before completing tasks:
+  ```powershell
+  npm --prefix webapp test
+  ```
+- Always verify production TypeScript compilation and bundle generation:
+  ```powershell
+  npm --prefix webapp run build
+  ```
 
 ### Accessibility (a11y)
 - All custom toggles and buttons must support keyboard navigation (`Tab`, `Space`, `Enter`).
 - Custom toggles must include `role="switch"` or `role="button"` with `aria-checked` or `aria-label` attributes.
 - High-contrast focus outlines (`var(--focus-border)`) must be maintained on all interactive inputs.
+
