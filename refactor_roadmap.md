@@ -84,17 +84,25 @@ flowchart TD
 
 ### Phase 4: Frontend Utility Tests & Parsers (`webapp/src/utils/`)
 **Goal**: Introduce lightweight test coverage for critical client-side parsing and serialization logic before refactoring UI components.
+**Task Record**: [`.agents/tasks/20_phase4_frontend_utility_tests_and_parsers.md`](.agents/tasks/20_phase4_frontend_utility_tests_and_parsers.md)
 
 - [x] **Vitest Setup**:
-  - Add `vitest` to `webapp/package.json` with a minimal `npm test` script.
+  - Add `vitest` (v5.0.5) to `webapp/package.json` with `npm test` (`vitest run`) and `npm run test:watch` scripts.
 - [x] **Unit Tests for Core Parsers**:
-  - `dmsParser.test.ts`: Test DMS formats, edge cases, symbols (`°`, `'`, `"`), whitespace, decimal variations.
-  - `pointParser.test.ts`: Test single-line and batch delimiter auto-detection (tabs, spaces, commas, semicolons), point ID retention, 2D vs 3D tuples.
-  - `gridBounds.test.ts`: Test Romania envelope bounds validation and out-of-grid checks.
+  - `dmsParser.test.ts`: Test DMS formats, edge cases, symbols (`°`, `'`, `"`), whitespace, decimal variations, cardinal directions (13/13 passed).
+  - `pointParser.test.ts`: Test single-line and batch delimiter auto-detection (tabs, spaces, commas, semicolons), point ID retention, 2D vs 3D tuples, coordinate ordering (28/28 passed).
+  - `gridBounds.test.ts`: Test Romania envelope bounds validation and out-of-grid checks against national cities and boundary thresholds (10/10 passed).
 - [x] **Unit Tests for Exporters**:
-  - `exporters.test.ts`: Validate CSV, GeoJSON, and AutoCAD DXF output formats against reference strings.
+  - `exporters.test.ts`: Validate CSV, GeoJSON, and AutoCAD DXF output formats against reference strings (8/8 passed).
+- [x] **Exporter Decoupling & Pure Generators**:
+  - Extracted `generateCSVContent`, `generateGeoJSONObject`, and `generateDXFContent` in `webapp/src/utils/exporters.ts`, decoupling DOM side-effects and preserving backward-compatible download wrappers.
 - [x] **Parser Refactoring & Hardening**:
-  - Clean up parser edge cases with complete test protection.
+  - Fixed `dmsParser.ts` collision between seconds notation (`s`) and South indicator (`S`), and added case-insensitive `d/m/s/D/M/S` splitting.
+  - Fixed `pointParser.ts` angle regex heuristic to avoid false-positives for point labels containing `d`, `m`, or `s`.
+- [x] **Verification & Zero Regression**:
+  - 59/59 Vitest unit tests passed in 290ms.
+  - 98/98 Python tests passed in 6.46s (100% geodetic numerical precision maintained).
+  - `npm --prefix webapp run build` compiled clean with 0 errors.
 
 ---
 
