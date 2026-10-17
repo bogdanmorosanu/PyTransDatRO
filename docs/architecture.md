@@ -36,6 +36,7 @@ All physical geodetic parameters and projection invariants are extracted into pu
 - **WGS84 Ellipsoid**: Semi-major axis $a = 6,378,137.0\text{ m}$, flattening $f = 1 / 298.257223563$, eccentricity squared $e^2$.
 - **Stereo 70 Projection Constants**: Central meridian $\lambda_0 = 25^\circ\text{ E}$, origin latitude $\phi_0 = 46^\circ\text{ N}$, scale reduction factor $k_0 = 0.99975$, false easting $E_0 = 500,000.0\text{ m}$, false northing $N_0 = 500,000.0\text{ m}$.
 - Conformal sphere constants and radius of Gaussian mean curvature ($R = \sqrt{MN}$).
+- See [docs/core_engine.md](core_engine.md) for the complete mathematical formulation, dual-CRS 6-point extended bounding boxes, 4-stage fault-isolated batch pipeline, and domain exception hierarchy.
 
 ## Web API Layer (`api/`)
 A decoupled REST service built on FastAPI provides public access to the `pytransdatro` transformation pipeline:
@@ -58,9 +59,9 @@ A responsive Web GIS client interface built with Vite, TypeScript, Vanilla CSS, 
 
 ## Quality Assurance & Testing Matrix
 The project enforces a cross-layer automated testing and verification strategy:
-- **Core Geodetic Unit Suite (`tests/test_trans_ro.py`)**: 46 tests covering forward, inverse, 2D/3D roundtrips, half-grid verification, out-of-grid bounds, and no-data boundary exceptions.
-- **Web API & Telemetry Suite (`tests/test_api_*.py`, `tests/test_telemetry.py`)**: 52 tests covering modern REST endpoints, legacy servlet emulation, sliding-window rate limiting, configuration defaults, feedback mailer, and SQLite WAL telemetry persistence (98 Python tests total).
-- **Frontend Utility & UI Suite (`webapp/src/utils/*.test.ts`, `webapp/src/ui/*.test.ts`)**: 65 unit tests executed via Vitest verifying unspaced DMS parsing, coordinate auto-delimiters, Romania grid envelope bounds, pure string exporter generators, and accessible UI controls.
+- **Core Geodetic Unit Suite (`tests/test_trans_ro.py`)**: 54 tests covering forward, inverse, 2D/3D roundtrips, half-grid verification, 6-point extended dual-CRS bounding boxes, `OutOfGrid2DErr` vs `OutOfGrid1DErr`, 4-stage `transform_batch` fault isolation, strict DMS grammar, and no-data boundary exceptions.
+- **Web API & Telemetry Suite (`tests/test_api_*.py`, `tests/test_telemetry.py`)**: 64 tests covering modern REST endpoints, Option B batch fault isolation, legacy servlet emulation, sliding-window rate limiting, configuration defaults, feedback mailer, and SQLite WAL telemetry persistence (118 Python tests total).
+- **Frontend Utility & UI Suite (`webapp/src/utils/*.test.ts`, `webapp/src/ui/*.test.ts`)**: 67 unit tests executed via Vitest verifying unspaced DMS parsing, coordinate auto-delimiters, Romania grid envelope bounds, pure string exporter generators, and accessible UI controls.
 - **Official ANCPI Benchmark Verification (`tools/generate_ancpi_comparison_reports.py`)**: Automated verification against 9,046 national control points ensuring $< 10^{-9}$ tolerance and zero functional regression.
 - **Static Analysis & Linters**: Zero warnings across Ruff (`ruff check .`, `ruff format --check .`) and TypeScript compiler (`tsc`).
 

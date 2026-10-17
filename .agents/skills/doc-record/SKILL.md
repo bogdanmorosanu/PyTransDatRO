@@ -19,7 +19,7 @@ When working on a subsystem, update the corresponding document in `docs/`:
 | Subsystem / Layer | Authoritative Document | Contents to Maintain |
 | :--- | :--- | :--- |
 | **System Architecture** | [`docs/architecture.md`](../docs/architecture.md) | High-level layer topology, class hierarchy, pipeline flow, grid discovery. |
-| **Core Geodetic Engine** | [`docs/pytransdatro_algorithm.md`](../docs/pytransdatro_algorithm.md) | Oblique Stereographic formulas, 2D Helmert, bicubic spline interpolation, quasigeoid undulation. |
+| **Core Geodetic Engine** | [`docs/core_engine.md`](../docs/core_engine.md) | Oblique Stereographic formulas, 2D Helmert, bicubic spline interpolation, quasigeoid undulation, dual-CRS 6-point extended bounding boxes, 4-stage batch pipeline, domain exceptions. |
 | **Grid Management** | [`docs/grid.md`](../docs/grid.md) | `.spg` binary format specification, header offsets, planar shift subgrids. |
 | **REST API Layer** | [`docs/rest_api.md`](../docs/rest_api.md) | Modern endpoints (`/api/v1/*`), Pydantic models, query parameters, error schemas, legacy `/transdatonline` emulation. |
 | **Web Application & UI** | [`docs/web_app.md`](../docs/web_app.md)<br>[`webapp/design_guide.md`](../webapp/design_guide.md) | Web GIS Leaflet architecture, workbench tabs, UI factory helpers, modular CSS tokens, i18n support. |
