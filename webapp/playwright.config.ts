@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import fs from 'node:fs';
+
 const webappDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(webappDir, '..');
 const tmpDir = path.join(webappDir, 'e2e', '.tmp');
@@ -10,9 +12,21 @@ const E2E_HOST = '127.0.0.1';
 const E2E_PORT = 8100;
 const BASE_URL = `http://${E2E_HOST}:${E2E_PORT}`;
 const UNLIMITED_RATE = '100000';
-// Resolved here rather than via `${PYTHON:-python}` so the command also runs under cmd.exe.
+
+// Auto-detect project Python: process.env.PYTHON -> standard Conda env on Windows -> .venv -> system python.
+function resolvePython(): string {
+  if (process.env.PYTHON) return process.env.PYTHON;
+  const defaultCondaWindows = 'D:\\anaconda3\\envs\\pytransdat\\python.exe';
+  if (fs.existsSync(defaultCondaWindows)) return defaultCondaWindows;
+  const localVenvPosix = path.join(repoRoot, '.venv', 'bin', 'python');
+  if (fs.existsSync(localVenvPosix)) return localVenvPosix;
+  const localVenvWindows = path.join(repoRoot, '.venv', 'Scripts', 'python.exe');
+  if (fs.existsSync(localVenvWindows)) return localVenvWindows;
+  return 'python';
+}
+
 // Quoted because Windows conda paths often contain spaces.
-const PYTHON = `"${process.env.PYTHON || 'python'}"`;
+const PYTHON = `"${resolvePython()}"`;
 
 export default defineConfig({
   testDir: './e2e',

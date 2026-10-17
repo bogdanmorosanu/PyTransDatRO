@@ -159,15 +159,27 @@ npm --prefix webapp install
 npx --prefix webapp playwright install chromium
 ```
 
-**Run**:
-```bash
-PYTHON=/path/to/conda/envs/pytransdat/bin/python npm --prefix webapp run test:e2e
-```
-```powershell
-$env:PYTHON = 'D:\anaconda3\envs\pytransdat\python.exe'; npm --prefix webapp run test:e2e
-```
-`PYTHON` selects the interpreter (defaults to `python` on `PATH`). The script typechecks
-`webapp/e2e` (`tsc -p e2e`, separate from the app `tsconfig.json`) and then runs Playwright.
+**Run Options**:
+
+- **Recommended Single-Command Runners (Auto-detects Python & Conda)**:
+  ```powershell
+  # Windows PowerShell
+  .\test-e2e.ps1         # Run all 19 E2E browser tests (headless)
+  .\test-e2e.ps1 -Ui     # Open interactive visual runner with time-travel debugging
+  .\test-all.ps1         # Run Python suite + Vitest unit tests + Playwright E2E in one go
+  ```
+  ```bash
+  # macOS / Linux (POSIX)
+  ./test-e2e.sh          # Run all 19 E2E browser tests (headless)
+  ./test-e2e.sh --ui     # Open interactive visual runner
+  ./test-all.sh          # Run full verification suite
+  ```
+
+- **Direct NPM Command** (Python is auto-detected by `webapp/playwright.config.ts`, or overridden via `PYTHON`):
+  ```bash
+  npm --prefix webapp run test:e2e
+  ```
+The script typechecks `webapp/e2e` (`tsc -p e2e`, separate from the app `tsconfig.json`) and then runs Playwright.
 
 **Server**: `playwright.config.ts` starts one process from the repo root: it builds the frontend
 with `VITE_E2E=true` into `webapp/dist-e2e/` (`npm run build:e2e`) and then serves web + API with

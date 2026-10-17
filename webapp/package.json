@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:e2e": "tsc && vite build --outDir dist-e2e",
-    "test:e2e": "tsc -p e2e && playwright test"
+    "test:e2e": "tsc -p e2e && playwright test",
+    "test:e2e:ui": "tsc -p e2e && playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
