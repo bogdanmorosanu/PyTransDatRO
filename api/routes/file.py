@@ -101,6 +101,8 @@ def _transform_line(
             has_angle1 = any(c in t1 for c in "°'\"")
             try:
                 num0 = float(t0.strip("\"'"))
+                if not math.isfinite(num0):
+                    return line + " # Invalid coordinate data\n"
             except ValueError:
                 num0 = None
             if not has_angle0 and (
@@ -115,6 +117,8 @@ def _transform_line(
                 n0 = float(t0.strip("\"'"))
                 n1 = float(t1.strip("\"'"))
                 n2 = float(t2.strip("\"'"))
+                if not (math.isfinite(n0) and math.isfinite(n1) and math.isfinite(n2)):
+                    return line + " # Invalid coordinate data\n"
                 if n1 > 50000 and n2 > 50000 and n0 < 50000:
                     point_id = t0
                     coord_tokens = [t1, t2]

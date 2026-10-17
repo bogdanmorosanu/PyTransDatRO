@@ -1,7 +1,7 @@
 """Pydantic schemas for single point transformations."""
 
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,7 +26,7 @@ class PointRequest(BaseModel):
     op: OperationEnum = Field(
         ..., description="Transformation direction: Stereo70ToETRS89 or ETRS89ToStereo70"
     )
-    coos: List[float] = Field(
+    coos: List[Any] = Field(
         ...,
         description="Coordinates: [Northing, Easting[, H]] for Stereo70 or [Latitude, Longitude[, h]] for ETRS89",
     )

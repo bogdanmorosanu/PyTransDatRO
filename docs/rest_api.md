@@ -94,10 +94,11 @@ Transforms a single 2D or 3D coordinate.
     "warning": null
   }
   ```
-* **Domain Warning Responses** (HTTP 200 — coordinates echoed back):
-  - **Out of Grid**: `{"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"}`
-  - **No Data on Grid**: `{"coos": [549364.0, 147553.0], "warning": "No data on grid"}`
+* **Domain Warning Responses** (HTTP 200 — coordinates echoed back or cleared on invalid data):
+  - **Out of Grid** (`OutOfGrid2DErr` or `OutOfGrid1DErr`): `{"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"}`
+  - **No Data on Grid** (`NoDataGridErr`): `{"coos": [549364.0, 147553.0], "warning": "No data on grid"}`
   - **Wrong Dimension** ($< 2$ or $> 3$ values): `{"coos": [500000.0], "warning": "Wrong dimension"}`
+  - **Invalid Coordinate Data** (`null`, booleans, non-numeric strings, `NaN`, `Infinity`): `{"coos": [], "warning": "Invalid coordinate data"}`
 
 ---
 
@@ -142,10 +143,10 @@ Streams transformations of an uploaded `.csv` or `.txt` file (up to `settings.ma
 * **Behavior**:
   - Automatically detects delimiter from first non-comment row when `auto` is set.
   - Strips empty lines and preserves `#` comment rows.
-  - Strictly enforces 2–3 coordinate columns (or 3–4 columns when prefixed by a Point ID); rows with $< 2$ or $> 4$ columns are emitted with ` # Wrong dimension` appended, and rows with empty intermediate coordinate columns (e.g. `P1,500000,,100`) are emitted with ` # Invalid coordinate data` appended.
+  - Strictly enforces 2–3 coordinate columns (or 3–4 columns when prefixed by a Point ID); rows with $< 2$ or $> 4$ columns are emitted with ` # Wrong dimension` appended, and rows with empty intermediate coordinate columns (e.g. `P1,500000,,100`) or non-finite values (`NaN`, `Inf`, `-Inf`) are emitted with ` # Invalid coordinate data` appended.
   - Strips balanced outer CSV quotes via `_strip_balanced_quotes()` while preserving trailing `"` arcsecond symbols on unquoted DMS coordinates, and validates DMS strings against strict sexagesimal bounds ($0 \le m < 60, 0 \le s < 60$, no conflicting signs/cardinals, no fractional degrees/minutes when sub-units exist) via `pytransdatro.utils.sexa_dms_chars_to_rad`.
   - Returns streaming file attachment (`transformed_coordinates.csv`).
-  - Lines outside grid are emitted with ` # Out of grid` appended.
+  - Lines outside grid are emitted with ` # Out of grid` appended; lines falling in NaN grid cells are emitted with ` # No data on grid` appended.
 
 ---
 
@@ -160,12 +161,13 @@ Maintains 100% backward compatibility with legacy scripts and GIS plugins, inclu
 * **Responses** (HTTP 200):
   - **Success**: `{"coos": [0.8028465450500997, 0.43630521911977527, 139.60844039916992]}` *(warning omitted)*.
   - **Out of Grid**: `{"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"}` *(coordinates echoed)*.
+  - **No Data on Grid**: `{"coos": [549364.0, 147553.0], "warning": "No data on grid"}` *(coordinates echoed)*.
   - **Wrong Dimension** ($< 2$ or $> 3$ coordinates): `{"coos": [500000.0], "warning": "Wrong dimension"}` *(coordinates echoed)*.
   - **Invalid Data** (non-numeric, `NaN`, `Infinity`, or empty intermediate tokens): `{"coos": [], "warning": "Invalid coordinate data"}`.
   - **Stereo 30**: `{"coos": [...], "warning": "Stereo30 transformation is obsolete and unsupported"}`.
 
 #### `POST /transdatonline/cooOpService` (and `/cooOpService`)
-Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies, validating `cooOp` eagerly before iterating over `coosArray`, enforcing `settings.max_batch_points`, and delegating to `execute_batch_transformation()` for 4-stage fault-isolated batch execution:
+Accepts `application/x-www-form-urlencoded`, `multipart/form-data` (`cooOp`, `coosArray`), and direct `application/json` bodies, validating `cooOp` eagerly before iterating over `coosArray`, enforcing `settings.max_batch_points`, and delegating to `execute_batch_transformation()` for 4-stage fault-isolated batch execution (including string-encoded numbers such as `{"coos": ["500000", "500000", "100"]}` matching Java `CooJSON.jsonToCoo()`):
 ```json
 {
   "cooOp": "ETRS89ToStereo70",
@@ -180,10 +182,12 @@ Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies, va
 
 ### 3.3. Metadata & Monitoring Endpoints
 
-* **`GET /health`**: Returns health probe `{status: "healthy", grid_loaded: true, telemetry_active: true}`.
+* **`GET /health`**: Returns health probe `{status: "healthy", grid_loaded: true, engine_version: "1.0.0", telemetry_active: true}` (or `status: "degraded"` when `trans` is unavailable).
 * **`GET /api/v1/grid/info`**: Returns active SPG file metadata, bounding box coordinates, and CRS definitions.
+* **`GET /api/v1/grid/metadata`**: Returns exhaustive SPG header metadata, Helmert 2D parameters, and subgrid band statistics.
+* **`GET /api/v1/grid/comparison`**: Returns official ANCPI replication benchmark summary and residual statistics.
 * **`GET /api/v1/telemetry/stats`**: Returns high-level call/point volume metrics from `logs/usage.db`.
-* **`GET /api/v1/telemetry/timeline`**: Returns queryable time series with summary KPIs, daily/monthly rollups, and breakdown by client source (`web_map`, `rest_api`, `desktop_cli`). Supports query filters (`from_date`, `to_date`, `granularity`, `source`, `operation`, `is_3d`).
+* **`GET /api/v1/telemetry/timeline`**: Returns queryable time series with summary KPIs, daily/weekly/monthly rollups, and breakdown by client source (`web_map`, `rest_api`, `desktop_cli`). Supports query filters (`from_date`, `to_date`, `granularity`, `source`, `operation`, `is_3d`).
 * **`GET /api/v1/telemetry/spatial-matrix`**: Returns aggregated $0.1^\circ$ (~10 km) macroscopic spatial density cells and mathematical quadrant volume distributions (NW, NE, SW, SE around $45.9^\circ\text{ N}, 24.9^\circ\text{ E}$). Supports filters (`from_date`, `to_date`, `metric`=`points`|`calls`, `sources`, `operation`, `is_3d`).
 
 ---
@@ -191,20 +195,30 @@ Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies, va
 ### 3.4. User Feedback Endpoint
 
 #### `POST /api/v1/feedback`
-Submits user discrepancy reports, coordinate validation findings, and suggestions.
+Submits anonymous, zero-PII user discrepancy reports, bug reports, and feature suggestions (`FeedbackSubmitRequest`).
 - **Request Body** (`application/json`):
   ```json
   {
-    "sender_name": "Ing. Popescu",
-    "sender_email": "popescu@cadastru.ro",
-    "category": "discrepancy",
-    "subject": "Diferență 1D zona Constanța",
-    "message": "Am observat o deviație de 2mm la borna 124.",
-    "client_context": {"browser": "Chrome", "os": "Windows", "coords": "500000, 500000"}
+    "report_type": "discrepancy",
+    "description": "Observed a 2mm difference at control mark 124 near Constanța.",
+    "client_timestamp": "2026-10-17T19:00:00Z",
+    "app_version": "v1.0.0",
+    "active_grid": "rom_grid3d_25.09.spg",
+    "honeypot": ""
   }
   ```
-- **Response** (HTTP 200): `{"status": "ok", "message": "Feedback received successfully"}`.
-- **Persistence**: Appends structured record to `feedback.jsonl` in the configured `log_dir`, and conditionally relays via SMTP if mail parameters are configured.
+  - `report_type`: `"discrepancy"`, `"grid_update"`, `"bug"`, `"feature"`, or `"api_down"`.
+  - `description`: Detailed report text ($10 \le \text{length} \le 5000$ characters).
+  - `honeypot`: Optional bot-trap field; non-empty values return a silent `"success"` response without logging or emailing.
+- **Response** (HTTP 200 `FeedbackSubmitResponse`):
+  ```json
+  {
+    "status": "logged",
+    "delivered_email": false,
+    "message": "Thank you! Your feedback has been recorded."
+  }
+  ```
+- **Persistence**: Always appends a structured JSONL record to `logs/feedback.jsonl` in the configured `log_dir`, and conditionally relays via SMTP TLS if `SMTP_HOST` and `FEEDBACK_RECIPIENT_EMAIL` are configured.
 
 ---
 

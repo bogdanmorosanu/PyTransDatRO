@@ -50,3 +50,9 @@ known-first-party = ["pytransdatro", "api"]
 "tools/*" = ["E402"]
 "tests/*" = ["E402"]
 
+[tool.pytest.ini_options]
+markers = [
+    "legacy_live: Live differential parity tests against the external legacy TransDatOnline service (auto-skipped when offline or decommissioned).",
+]
+
+
