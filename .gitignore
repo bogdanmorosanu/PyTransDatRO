@@ -50,3 +50,9 @@ scratch/
 # Exported container archives
 *.tar
 *.tar.gz
+
+# Playwright e2e artifacts
+webapp/test-results/
+webapp/playwright-report/
+webapp/dist-e2e/
+webapp/e2e/.tmp/

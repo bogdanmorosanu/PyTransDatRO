@@ -343,6 +343,7 @@ export class BatchConverter {
           <textarea 
             class="form-input mono" 
             id="batch-input-area" 
+            aria-label="${t('batch.inputLabel')}"
             rows="6" 
             placeholder="${this.getDynamicPlaceholder()}"
             style="resize: vertical; font-size: 12px; line-height: 1.4;"
@@ -366,6 +367,7 @@ export class BatchConverter {
             <textarea 
               class="form-input mono" 
               id="batch-output-area" 
+              aria-label="${t('batch.outputLabel')}"
               rows="6" 
               readonly 
               style="resize: vertical; font-size: 12px; line-height: 1.4; background-color: var(--bg-surface-elevated);"

@@ -67,7 +67,7 @@ def st70_to_etrs89_input_data():
 def st70_to_etrs89_expected_data():
     file_path = Path(__file__).parent / "data" / "st70_to_etrs89_expected.csv"
     data = []
-    with open(file_path, "r", encoding="ANSI") as f:
+    with open(file_path, "r", encoding="cp1252") as f:
         for line in f:
             vals = [v.strip() for v in line.split(",")]
             data.append(
@@ -84,7 +84,7 @@ def st70_to_etrs89_expected_data():
 def etrs89_to_st70_input_data():
     file_path = Path(__file__).parent / "data" / "etrs89_to_st70_input.csv"
     data = []
-    with open(file_path, "r", encoding="ANSI") as f:
+    with open(file_path, "r", encoding="cp1252") as f:
         for line in f:
             vals = [v.strip() for v in line.split(",")]
             data.append(

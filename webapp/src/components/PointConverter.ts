@@ -516,7 +516,7 @@ export class PointConverter {
     const c3Label = isS70 ? t('point.altitudeLabel') : t('point.heightLabel');
 
     this.container.innerHTML = `
-      <div class="studio-card">
+      <div class="studio-card" role="group" aria-label="${t('point.inputCoordsHint')}">
         <!-- Input Coordinates Micro-Header -->
         <div class="section-micro-label">${t('point.inputCoordsHint')}</div>
 
@@ -524,11 +524,11 @@ export class PointConverter {
         <div class="coord-grid-3">
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${c1Label}</label>
-            <input type="text" class="form-input mono" id="pt-input-1" value="${this.inputCoo1}" />
+            <input type="text" class="form-input mono" id="pt-input-1" aria-label="${c1Label}" value="${this.inputCoo1}" />
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${c2Label}</label>
-            <input type="text" class="form-input mono" id="pt-input-2" value="${this.inputCoo2}" />
+            <input type="text" class="form-input mono" id="pt-input-2" aria-label="${c2Label}" value="${this.inputCoo2}" />
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${c3Label}</label>
@@ -536,6 +536,7 @@ export class PointConverter {
               type="text" 
               class="form-input mono" 
               id="pt-input-3" 
+              aria-label="${c3Label}"
               value="${this.inputCoo3}" 
               placeholder="${t('point.optionalPlaceholder')}" 
             />
@@ -686,7 +687,7 @@ export class PointConverter {
     }
 
     return `
-      <div class="result-card">
+      <div class="result-card" role="group" aria-label="${t('point.computedCoords')}">
         <!-- Computed Coordinates Micro-Header with Top-Right Code-Block Style Copy Action -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <div class="section-micro-label">${t('point.computedCoords')}</div>
@@ -697,22 +698,22 @@ export class PointConverter {
         <div class="output-grid-3">
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${outCol1Label}</label>
-            <input type="text" readonly class="form-input mono" value="${outCol1Val}" />
+            <input type="text" readonly class="form-input mono" aria-label="${outCol1Label}" value="${outCol1Val}" />
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${outCol2Label}</label>
-            <input type="text" readonly class="form-input mono" value="${outCol2Val}" />
+            <input type="text" readonly class="form-input mono" aria-label="${outCol2Label}" value="${outCol2Val}" />
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${label3}</label>
-            <input type="text" readonly class="form-input mono" value="${val3Str}" />
+            <input type="text" readonly class="form-input mono" aria-label="${label3}" value="${val3Str}" />
           </div>
         </div>
 
         <!-- Dedicated Quasigeoid Height Field on its Own Row -->
         <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
           <label class="form-label">${t('point.quasigeoidLabel')}</label>
-          <input type="text" readonly class="form-input mono metric-field" value="${zetaDisplay}" />
+          <input type="text" readonly class="form-input mono metric-field" aria-label="${t('point.quasigeoidLabel')}" value="${zetaDisplay}" />
         </div>
 
         <!-- Unified Quality Report directly beneath outputs -->

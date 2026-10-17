@@ -31,3 +31,6 @@ export const APP_CONFIG: AppConfig = {
   maxFilePoints: 100000,
   maxFileSizeMb: 50,
 };
+
+/** True only in builds made with VITE_E2E=true (Playwright harness); exposes `window.__e2e`. */
+export const E2E_ENABLED: boolean = import.meta.env.VITE_E2E === 'true';

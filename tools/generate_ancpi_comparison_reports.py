@@ -63,7 +63,7 @@ def get_color_for_flag(flag):
 
 def read_csv(filepath, has_sexa_latlon=False):
     data = {}
-    with open(filepath, "r", encoding="ANSI") as f:
+    with open(filepath, "r", encoding="cp1252") as f:
         for line in f:
             if not line.strip():
                 continue

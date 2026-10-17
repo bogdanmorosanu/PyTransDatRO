@@ -1,6 +1,5 @@
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -112,7 +111,7 @@ def create_app() -> FastAPI:
     app.include_router(feedback.router)
 
     # Mount static web application assets if built
-    webapp_dist = Path(__file__).resolve().parent.parent / "webapp" / "dist"
+    webapp_dist = settings.webapp_dist_dir
     if webapp_dist.is_dir():
         app.mount("/", StaticFiles(directory=str(webapp_dist), html=True), name="webapp")
 

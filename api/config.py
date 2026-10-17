@@ -6,10 +6,14 @@ or local .env file, providing sensible out-of-the-box defaults for local develop
 
 import json
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Union
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Repository root; relative paths to repo build artifacts resolve against it, not the CWD.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -73,6 +77,15 @@ class Settings(BaseSettings):
         description="Path to user feedback submissions log file",
     )
 
+    # Static web application assets
+    webapp_dist_dir: Path = Field(
+        default=_REPO_ROOT / "webapp" / "dist",
+        description=(
+            "Directory of the built web application served at '/' (if it exists); "
+            "relative paths resolve against the repository root"
+        ),
+    )
+
     # SMTP feedback delivery settings
     smtp_host: str = Field(
         default="",
@@ -88,6 +101,11 @@ class Settings(BaseSettings):
     feedback_sender_email: str = Field(
         default="", description="Sender email address for feedback notifications"
     )
+
+    @field_validator("webapp_dist_dir")
+    @classmethod
+    def _anchor_webapp_dist_dir(cls, value: Path) -> Path:
+        return value if value.is_absolute() else _REPO_ROOT / value
 
     @property
     def parsed_cors_origins(self) -> List[str]:

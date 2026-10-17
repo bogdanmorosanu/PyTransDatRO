@@ -14,6 +14,7 @@ import { syncFaviconWithTheme } from './assets/logos';
 import { Header } from './components/Header';
 import { PointConverter, type AngularUnitType } from './components/PointConverter';
 import { MapView } from './components/MapView';
+import { E2E_ENABLED } from './config';
 import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
 import { GeodeticHelpPanel } from './components/GeodeticHelpPanel';
@@ -59,6 +60,9 @@ class App {
     this.initTheme();
     this.initLayout();
     this.mapView.initMap();
+    if (E2E_ENABLED) {
+      window.__e2e = { mapView: () => this.mapView.getSnapshot() };
+    }
     this.mapView.setAngularUnit(this.currentAngularUnit);
 
     onLanguageChange(() => {
