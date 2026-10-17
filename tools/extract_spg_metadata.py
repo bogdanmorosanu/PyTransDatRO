@@ -281,9 +281,82 @@ def extract_metadata(spg_path: Path, output_report_path: Path):
     add_line()
 
     # ---------------------------------------------------------
-    # 5. Transformation Pipeline Integration Summary
+    # 5. Metadata vs. Actual Grid Boundary Integrity & Dual-CRS Extents
     # ---------------------------------------------------------
-    add_section("5. Transformation Pipeline Integration Summary")
+    add_section("5. Metadata vs. Actual Grid Boundary Integrity & Dual-CRS Extents")
+    from pytransdatro.trans_ro import TransRO
+
+    tro = TransRO(str(spg_path))
+
+    # 5A. 2D Geodetic Shifts Integrity Check
+    actual_rows_2d = int(geo_grid.shape[1]) if isinstance(geo_grid, np.ndarray) else nrows_geo
+    actual_cols_2d = int(geo_grid.shape[2]) if isinstance(geo_grid, np.ndarray) else ncols_geo
+    mine_2d = float(geo_meta.get("mine", 0.0))
+    maxe_meta_2d = float(geo_meta.get("maxe", 0.0))
+    minn_2d = float(geo_meta.get("minn", 0.0))
+    maxn_meta_2d = float(geo_meta.get("maxn", 0.0))
+    stepe_2d = float(geo_meta.get("stepe", 0.0))
+    stepn_2d = float(geo_meta.get("stepn", 0.0))
+    calc_maxe_2d = mine_2d + (actual_cols_2d - 1) * stepe_2d
+    calc_maxn_2d = minn_2d + (actual_rows_2d - 1) * stepn_2d
+
+    mismatch_2d = (
+        nrows_geo != actual_rows_2d
+        or ncols_geo != actual_cols_2d
+        or abs(maxe_meta_2d - calc_maxe_2d) > 1e-4
+        or abs(maxn_meta_2d - calc_maxn_2d) > 1e-4
+    )
+    status_2d = "MISMATCH DETECTED" if mismatch_2d else "PASS (100% Match)"
+
+    add_line("A. 2D Horizontal Grid ('geodetic_shifts') Boundary Audit:")
+    add_line(f"  - Audit Status            : {status_2d}")
+    add_line(f"  - Rows (Metadata vs Array): {nrows_geo} vs {actual_rows_2d}")
+    add_line(f"  - Cols (Metadata vs Array): {ncols_geo} vs {actual_cols_2d}")
+    add_line(f"  - Max E (Meta vs Actual)  : {maxe_meta_2d:.3f} m vs {calc_maxe_2d:.3f} m")
+    add_line(f"  - Max N (Meta vs Actual)  : {maxn_meta_2d:.3f} m vs {calc_maxn_2d:.3f} m")
+    lat2_min, lat2_max, lon2_min, lon2_max = tro.grid2d_bounds_etrs89
+    add_line(
+        f"  - Native Stereo70 Extents : N = [{minn_2d:.3f}, {calc_maxn_2d:.3f}] m, E = [{mine_2d:.3f}, {calc_maxe_2d:.3f}] m"
+    )
+    add_line(
+        f"  - Extended ETRS89 Extents : Lat = [{(lat2_min / DEG_TO_RAD_FACTOR):.6f}°, {(lat2_max / DEG_TO_RAD_FACTOR):.6f}°], "
+        f"Lon = [{(lon2_min / DEG_TO_RAD_FACTOR):.6f}°, {(lon2_max / DEG_TO_RAD_FACTOR):.6f}°]"
+    )
+    add_line()
+
+    # 5B. 1D Geoid Heights Integrity Check
+    actual_rows_1d = int(geoid_grid.shape[1]) if isinstance(geoid_grid, np.ndarray) else nrows_geoid
+    actual_cols_1d = int(geoid_grid.shape[2]) if isinstance(geoid_grid, np.ndarray) else ncols_geoid
+    calc_maxla_1d = float(minla) + (actual_cols_1d - 1) * float(stepla)
+    calc_maxphi_1d = float(minphi) + (actual_rows_1d - 1) * float(stepphi)
+
+    mismatch_1d = (
+        nrows_geoid != actual_rows_1d
+        or ncols_geoid != actual_cols_1d
+        or abs(float(maxla) - calc_maxla_1d) > 1e-5
+        or abs(float(maxphi) - calc_maxphi_1d) > 1e-5
+    )
+    status_1d = "MISMATCH DETECTED" if mismatch_1d else "PASS (100% Match)"
+
+    add_line("B. 1D Vertical Geoid Grid ('geoid_heights') Boundary Audit:")
+    add_line(f"  - Audit Status            : {status_1d}")
+    add_line(f"  - Rows (Metadata vs Array): {nrows_geoid} vs {actual_rows_1d}")
+    add_line(f"  - Cols (Metadata vs Array): {ncols_geoid} vs {actual_cols_1d}")
+    add_line(f"  - Max Lon (Meta vs Actual): {float(maxla):.8f}° vs {calc_maxla_1d:.8f}°")
+    add_line(f"  - Max Lat (Meta vs Actual): {float(maxphi):.8f}° vs {calc_maxphi_1d:.8f}°")
+    n1_min, n1_max, e1_min, e1_max = tro.grid1d_bounds_st70
+    add_line(
+        f"  - Native ETRS89 Extents   : Lat = [{float(minphi):.6f}°, {calc_maxphi_1d:.6f}°], Lon = [{float(minla):.6f}°, {calc_maxla_1d:.6f}°]"
+    )
+    add_line(
+        f"  - Extended Stereo70 Box   : N = [{n1_min:.3f}, {n1_max:.3f}] m, E = [{e1_min:.3f}, {e1_max:.3f}] m"
+    )
+    add_line()
+
+    # ---------------------------------------------------------
+    # 6. Transformation Pipeline Integration Summary
+    # ---------------------------------------------------------
+    add_section("6. Transformation Pipeline Integration Summary")
     add_line("How PyTransDatRO applies these metadata parameters:")
     add_line()
     add_line(f"1. Horizontal (2D) Shifts: {h_desc}")

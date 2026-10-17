@@ -49,7 +49,7 @@ Stereographic Inverse Projection :math:`(N, E) \\to (\\varphi, \\lambda)`:
 import math
 from typing import Sequence, Tuple
 
-from pytransdatro import constants
+from pytransdatro import constants, exceptions
 
 
 class StereoProj:
@@ -311,8 +311,17 @@ class StereoProj:
 
             lat_out: list[float] = []
             lon_out: list[float] = []
+            half_pi = math.pi / 2.0
             for lat_val, lon_val in zip(lat, lon):
+                if abs(lat_val) >= half_pi or abs(lon_val) > math.pi:
+                    raise exceptions.InvalidCoordinateErr(
+                        "Geographic coordinates must satisfy |lat| < pi/2 and |lon| <= pi radians."
+                    )
                 sin_lat = _sin(lat_val)
+                if abs(sin_lat) >= 1.0:
+                    raise exceptions.InvalidCoordinateErr(
+                        "Latitude cannot lie at the +/-90 degree pole singularity."
+                    )
                 sa = (1 + sin_lat) / (1 - sin_lat)
                 sb = (1 - e * sin_lat) / (1 + e * sin_lat)
                 w = c * _pow((sa * _pow(sb, e)), n)

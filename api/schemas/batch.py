@@ -1,6 +1,6 @@
 """Pydantic schemas for in-memory batch coordinate transformations."""
 
-from typing import List
+from typing import Any, List
 
 from pydantic import BaseModel, Field
 
@@ -11,9 +11,7 @@ class BatchRequest(BaseModel):
     op: OperationEnum = Field(
         ..., description="Transformation direction: Stereo70ToETRS89 or ETRS89ToStereo70"
     )
-    points: List[List[float]] = Field(
-        ..., min_length=1, max_length=20000, description="List of 2D or 3D coordinate arrays"
-    )
+    points: List[Any] = Field(..., min_length=1, description="List of 2D or 3D coordinate arrays")
     unit: AngleUnitEnum = Field(
         default=AngleUnitEnum.RADIANS,
         description="Angular unit for ETRS89 coordinates: 'radians' (default) or 'degrees'",

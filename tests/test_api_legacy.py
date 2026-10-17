@@ -152,3 +152,99 @@ def test_legacy_post_json_payload(client):
     assert isinstance(data, list)
     assert len(data) == 1
     assert math.isclose(data[0]["coos"][0], 500000.0, abs_tol=0.005)
+
+
+def test_legacy_get_4d_wrong_dimension(client):
+    """Verifies >3D coordinates echo all coordinates with warning 'Wrong dimension'."""
+    res = client.get(
+        "/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=500000;500000;100;999"
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["coos"] == [500000.0, 500000.0, 100.0, 999.0]
+    assert data["warning"] == "Wrong dimension"
+
+
+def test_legacy_get_semicolon_token_validation(client):
+    """Verifies Java split(';') semantics: trailing ';' is valid, leading/middle ';;' is invalid."""
+    # Trailing semicolon -> valid 2D
+    res_trailing = client.get(
+        "/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=500000;500000;"
+    )
+    assert res_trailing.status_code == 200
+    data_trailing = res_trailing.json()
+    assert "warning" not in data_trailing
+    assert len(data_trailing["coos"]) == 2
+
+    # Middle empty token -> Invalid coordinate data
+    res_middle = client.get(
+        "/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=500000;;500000"
+    )
+    assert res_middle.status_code == 200
+    assert res_middle.json() == {"coos": [], "warning": "Invalid coordinate data"}
+
+    # Leading empty token -> Invalid coordinate data
+    res_leading = client.get(
+        "/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=;500000;500000"
+    )
+    assert res_leading.status_code == 200
+    assert res_leading.json() == {"coos": [], "warning": "Invalid coordinate data"}
+
+
+def test_legacy_get_nan_and_inf_rejected(client):
+    """Verifies NaN and Infinity strings return 'Invalid coordinate data'."""
+    for bad in ["NaN;500000", "Infinity;500000", "500000;-Infinity"]:
+        res = client.get(f"/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos={bad}")
+        assert res.status_code == 200
+        assert res.json() == {"coos": [], "warning": "Invalid coordinate data"}
+
+
+def test_legacy_post_eager_cooop_validation_on_empty_array(client):
+    """Verifies unknown cooOp returns 400 Bad Request even when coosArray is empty."""
+    payload = {"cooOp": "InvalidOperation", "coosArray": []}
+    res = client.post("/transdatonline/cooOpService", json=payload)
+    assert res.status_code == 400
+    assert "no defined transformation" in res.json()["detail"].lower()
+
+
+def test_legacy_post_per_point_dimension_and_invalid_isolation(client):
+    """Verifies per-point validation in POST batch for 1D, 4D, non-numeric, and NaN."""
+    payload = {
+        "cooOp": "Stereo70ToETRS89",
+        "coosArray": [
+            {"coos": [500000.0]},
+            {"coos": [500000.0, 500000.0, 100.0, 10.0]},
+            {"coos": ["bad", 500000.0]},
+            {"coos": [500000.0, 500000.0]},
+        ],
+    }
+    res = client.post("/transdatonline/cooOpService", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 4
+    assert data[0] == {"coos": [500000.0], "warning": "Wrong dimension"}
+    assert data[1] == {"coos": [500000.0, 500000.0, 100.0, 10.0], "warning": "Wrong dimension"}
+    assert data[2] == {"coos": [], "warning": "Invalid coordinate data"}
+    assert "warning" not in data[3]
+    assert len(data[3]["coos"]) == 2
+
+
+def test_legacy_empty_string_parameters_parity(client):
+    """Verifies empty string query/form parameters match Java getParameter() non-null semantics."""
+    # Empty coos= is present (non-null), so it returns HTTP 200 with 'Invalid coordinate data'
+    res_empty_coos = client.get("/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=")
+    assert res_empty_coos.status_code == 200
+    assert res_empty_coos.json() == {"coos": [], "warning": "Invalid coordinate data"}
+
+    # Empty cooOp= is present (non-null), so it returns HTTP 400 'There is no defined transformation with name '
+    res_empty_op = client.get("/transdatonline/cooOpService?cooOp=&coos=500000;500000")
+    assert res_empty_op.status_code == 400
+    assert "no defined transformation" in res_empty_op.json()["detail"].lower()
+
+    # Empty coosArray= in POST form returns HTTP 400 Malformed JSON, not Missing parameter
+    res_empty_arr = client.post(
+        "/transdatonline/cooOpService",
+        data={"cooOp": "Stereo70ToETRS89", "coosArray": ""},
+    )
+    assert res_empty_arr.status_code == 400
+    assert "malformed json" in res_empty_arr.json()["detail"].lower()

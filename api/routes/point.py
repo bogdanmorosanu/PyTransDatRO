@@ -1,12 +1,10 @@
 """Modern single point coordinate transformation endpoint."""
 
-import math
-
 from fastapi import APIRouter, Depends
 
-import pytransdatro.exceptions as exc
 from api.dependencies import get_client_source, get_trans_engine
-from api.schemas.point import AngleUnitEnum, OperationEnum, PointRequest, PointResponse
+from api.schemas.point import PointRequest, PointResponse
+from api.services.transformer import execute_point_transformation, format_modern_response
 from pytransdatro.trans_ro import TransRO
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
@@ -22,36 +20,7 @@ async def transform_point(
 
     Supports both radians (default geodetic standard) and decimal degrees.
     """
-    raw_coords = req.coos
-    dim = len(raw_coords)
-
-    try:
-        if req.op == OperationEnum.STEREO70_TO_ETRS89:
-            n, e = raw_coords[0], raw_coords[1]
-            z = raw_coords[2] if dim >= 3 else None
-            res = trans.st70_to_etrs89(n, e, z=z, source=source)
-
-            if req.unit == AngleUnitEnum.DEGREES:
-                lat_deg = math.degrees(res[0])
-                lon_deg = math.degrees(res[1])
-                out_coords = [lat_deg, lon_deg]
-                if dim >= 3:
-                    out_coords.append(res[2])
-                return PointResponse(coos=out_coords, warning=None)
-
-            return PointResponse(coos=list(res), warning=None)
-
-        elif req.op == OperationEnum.ETRS89_TO_STEREO70:
-            lat, lon = raw_coords[0], raw_coords[1]
-            if req.unit == AngleUnitEnum.DEGREES:
-                lat = math.radians(lat)
-                lon = math.radians(lon)
-
-            h = raw_coords[2] if dim >= 3 else None
-            res = trans.etrs89_to_st70(lat, lon, h=h, source=source)
-            return PointResponse(coos=list(res), warning=None)
-
-    except exc.OutOfGridErr:
-        return PointResponse(coos=raw_coords, warning="Out of grid")
-    except exc.NoDataGridErr:
-        return PointResponse(coos=raw_coords, warning="No data on grid")
+    out_coos, warn = execute_point_transformation(
+        trans, req.op.value, req.coos, unit=req.unit, source=source
+    )
+    return format_modern_response(out_coos, warn)

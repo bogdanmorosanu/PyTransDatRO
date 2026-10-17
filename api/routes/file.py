@@ -5,14 +5,14 @@ Supports up to 100,000 coordinates in CSV/TXT formats with robust Point ID and D
 import math
 from typing import AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 import pytransdatro.exceptions as exc
 import pytransdatro.utils as geoutils
 from api.config import Settings, get_settings
 from api.dependencies import get_client_source, get_trans_engine
-from api.schemas.point import AngleUnitEnum, OperationEnum
+from api.schemas.point import FileAngleUnitEnum, OperationEnum
 from pytransdatro.trans_ro import TransRO
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
@@ -23,6 +23,8 @@ DELIMITER_MAP = {
     "tab": "\t",
     "space": " ",
 }
+
+ALLOWED_DELIMITERS = {"auto", *DELIMITER_MAP.keys()}
 
 
 def _detect_delimiter(line: str) -> str:
@@ -35,58 +37,61 @@ def _detect_delimiter(line: str) -> str:
 
 def rad_to_dms_str(rad: float, precision: int = 5) -> str:
     """Format radians into DD°MM'SS.SSSSS" with no spaces."""
-    deg = math.degrees(rad)
-    sign = "-" if deg < 0 else ""
-    abs_deg = abs(deg)
-    d = int(abs_deg)
-    rem = (abs_deg - d) * 60.0
-    m = int(rem)
-    s = (rem - m) * 60.0
-    factor = 10**precision
-    s = round(s * factor) / factor
-    if s >= 60.0:
-        s = 0.0
-        m += 1
-        if m >= 60:
-            m = 0
-            d += 1
-    s_str = f"{s:0{precision + 3}.{precision}f}"
-    return f"{sign}{d:d}°{m:02d}'{s_str}\""
+    return geoutils.format_rad_to_dms(rad, precision=precision)
+
+
+def _strip_balanced_quotes(token: str) -> str:
+    """Strips outer CSV quotes only when symmetrically wrapped, preserving trailing DMS seconds (\")."""
+    t = token.strip()
+    if len(t) >= 2 and ((t[0] == '"' and t[-1] == '"') or (t[0] == "'" and t[-1] == "'")):
+        return t[1:-1].strip()
+    return t
 
 
 def _parse_coordinate_token(token: str, is_geo: bool, is_degrees: bool) -> float:
-    t = token.strip().strip('"').strip("'")
+    t = _strip_balanced_quotes(token)
     if is_geo:
         if any(c in t for c in "°'\"\ufffd") or len(t.split()) == 3:
             clean_t = t.replace("\ufffd", "°")
             return geoutils.sexa_dms_chars_to_rad(clean_t)
         val = float(t)
+        if not math.isfinite(val):
+            raise exc.InvalidCoordinateErr(f"Non-finite coordinate: {t}")
         return math.radians(val) if is_degrees else val
-    return float(t)
+    val = float(t)
+    if not math.isfinite(val):
+        raise exc.InvalidCoordinateErr(f"Non-finite coordinate: {t}")
+    return val
 
 
 def _transform_line(
     line: str,
     delim_char: str,
     op: OperationEnum,
-    unit: AngleUnitEnum,
+    unit: FileAngleUnitEnum,
     trans: TransRO,
     source: int = 1,
 ) -> str:
     # Split tokens
-    tokens = [t.strip() for t in (line.split() if delim_char == " " else line.split(delim_char))]
-    tokens = [t for t in tokens if t]
+    if delim_char == " ":
+        tokens = [t.strip() for t in line.split() if t.strip()]
+    else:
+        tokens = [t.strip() for t in line.split(delim_char)]
+        while tokens and tokens[-1] == "":
+            tokens.pop()
+        if any(t == "" for t in tokens):
+            return line + " # Invalid coordinate data\n"
 
-    if len(tokens) < 2:
+    if len(tokens) < 2 or len(tokens) > 4:
         return line + " # Wrong dimension\n"
 
     is_source_geo = op == OperationEnum.ETRS89_TO_STEREO70
-    is_degrees = unit == AngleUnitEnum.DEGREES
+    is_degrees = unit in (FileAngleUnitEnum.DEGREES, FileAngleUnitEnum.DMS)
 
     point_id: Optional[str] = None
     coord_tokens: List[str] = tokens
 
-    if len(tokens) >= 4:
+    if len(tokens) == 4:
         point_id = tokens[0]
         coord_tokens = tokens[1:4]
     elif len(tokens) == 3:
@@ -122,8 +127,12 @@ def _transform_line(
     try:
         c1 = _parse_coordinate_token(coord_tokens[0], is_source_geo, is_degrees)
         c2 = _parse_coordinate_token(coord_tokens[1], is_source_geo, is_degrees)
-        c3 = float(coord_tokens[2].strip("\"'")) if len(coord_tokens) >= 3 else None
-    except (ValueError, TypeError, IndexError):
+        c3: Optional[float] = None
+        if len(coord_tokens) == 3:
+            c3 = float(coord_tokens[2].strip("\"'"))
+            if not math.isfinite(c3):
+                raise exc.InvalidCoordinateErr("Non-finite elevation coordinate")
+    except (ValueError, TypeError, IndexError, exc.InvalidCoordinateErr):
         return line + " # Invalid coordinate data\n"
 
     dim = len(coord_tokens)
@@ -131,22 +140,22 @@ def _transform_line(
     try:
         if op == OperationEnum.STEREO70_TO_ETRS89:
             res = trans.st70_to_etrs89(c1, c2, z=c3, source=source)
-            if unit == AngleUnitEnum.DMS:
+            if unit == FileAngleUnitEnum.DMS:
                 lat_str = rad_to_dms_str(res[0])
                 lon_str = rad_to_dms_str(res[1])
                 out_coords = f"{lat_str}{delim_char}{lon_str}"
-            elif unit == AngleUnitEnum.DEGREES:
+            elif unit == FileAngleUnitEnum.DEGREES:
                 out_coords = f"{math.degrees(res[0]):.10f}{delim_char}{math.degrees(res[1]):.10f}"
             else:
                 out_coords = f"{res[0]:.16f}{delim_char}{res[1]:.16f}"
 
-            if dim >= 3:
+            if dim == 3:
                 out_coords += f"{delim_char}{res[2]:.4f}"
 
         else:
             res = trans.etrs89_to_st70(c1, c2, h=c3, source=source)
             out_coords = f"{res[0]:.4f}{delim_char}{res[1]:.4f}"
-            if dim >= 3:
+            if dim == 3:
                 out_coords += f"{delim_char}{res[2]:.4f}"
 
         if point_id is not None:
@@ -157,14 +166,19 @@ def _transform_line(
         return line + " # Out of grid\n"
     except exc.NoDataGridErr:
         return line + " # No data on grid\n"
+    except exc.WrongDimensionErr:
+        return line + " # Wrong dimension\n"
+    except exc.InvalidCoordinateErr:
+        return line + " # Invalid coordinate data\n"
 
 
 @router.post("/file")
 async def transform_file(
+    request: Request,
     file: UploadFile = File(..., description="CSV or TXT file containing coordinates"),
     op: OperationEnum = Form(..., description="Transformation direction"),
-    unit: AngleUnitEnum = Form(
-        default=AngleUnitEnum.RADIANS, description="Angular unit for ETRS89 coordinates"
+    unit: FileAngleUnitEnum = Form(
+        default=FileAngleUnitEnum.RADIANS, description="Angular unit for ETRS89 coordinates"
     ),
     delimiter: str = Form(
         default="auto", description="Delimiter: auto, comma, semicolon, tab, or space"
@@ -177,11 +191,33 @@ async def transform_file(
 
     Processes points with negligible memory overhead up to the configured limit.
     """
-    chosen_delim = DELIMITER_MAP.get(delimiter.lower())
+    delim_key = delimiter.strip().lower()
+    if delim_key not in ALLOWED_DELIMITERS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid delimiter '{delimiter}'. Allowed values: auto, comma, semicolon, tab, space.",
+        )
+
+    max_bytes = settings.max_file_upload_bytes
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File upload exceeds maximum allowed size of {max_bytes:,} bytes.",
+        )
+
+    if file.size is not None and file.size > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File upload exceeds maximum allowed size of {max_bytes:,} bytes.",
+        )
+
+    chosen_delim = DELIMITER_MAP.get(delim_key)
 
     async def line_generator() -> AsyncGenerator[bytes, None]:
         nonlocal chosen_delim
         row_count = 0
+        total_bytes_read = 0
         max_rows = settings.max_file_points
 
         # Read line by line from uploaded stream
@@ -190,6 +226,13 @@ async def transform_file(
             chunk = await file.read(64 * 1024)  # 64 KB chunks
             if not chunk:
                 break
+            total_bytes_read += len(chunk)
+            if total_bytes_read > max_bytes:
+                yield f"# Limit exceeded: maximum upload size of {max_bytes:,} bytes exceeded\n".encode(
+                    "utf-8"
+                )
+                return
+
             text = chunk.decode("utf-8", errors="replace")
             buffer += text
             lines = buffer.splitlines(keepends=True)
@@ -228,7 +271,13 @@ async def transform_file(
             if line.startswith("#"):
                 yield (line + "\n").encode("utf-8")
             else:
-                delim_char = chosen_delim or ","
+                if chosen_delim is None:
+                    chosen_delim = _detect_delimiter(line)
+                delim_char = chosen_delim if chosen_delim != " " else " "
+                row_count += 1
+                if row_count > max_rows:
+                    yield f"# Limit exceeded: maximum {max_rows:,} points allowed\n".encode("utf-8")
+                    return
                 out = _transform_line(line, delim_char, op, unit, trans, source=source)
                 yield out.encode("utf-8")
 

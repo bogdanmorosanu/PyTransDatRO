@@ -24,6 +24,9 @@ class OutOfGridErr(PyTransDatError):
         :param grid: Grid against which values (n, e) have been tested
         :type grid: Grid
         """
+        self.n: float = n
+        self.e: float = e
+        self.grid: Any = grid
         message = (
             f"({n}, {e}) location is out of the grid area defined by file {grid.source}. "
             f"Location must be inside the grid defined by "
@@ -31,6 +34,18 @@ class OutOfGridErr(PyTransDatError):
             f"Max N = {grid.n_max}, Max E  = {grid.e_max}."
         )
         super().__init__(message)
+
+
+class OutOfGrid2DErr(OutOfGridErr):
+    """Signifies that the input location is outside the 2D horizontal distortion grid."""
+
+    pass
+
+
+class OutOfGrid1DErr(OutOfGridErr):
+    """Signifies that the input location is outside the 1D vertical quasigeoid height grid."""
+
+    pass
 
 
 class NoDataGridErr(PyTransDatError):
@@ -48,6 +63,9 @@ class NoDataGridErr(PyTransDatError):
         :param grid: Grid against which values (n, e) have been tested
         :type grid: Grid
         """
+        self.n: float = n
+        self.e: float = e
+        self.grid: Any = grid
         message = (
             f"(The subgrid of size {grid.sg_size}x{grid.sg_size} nodes required "
             f"for the computation of interpolated value at {n}, {e} location "
@@ -83,5 +101,22 @@ class MissingGridError(FileNotFoundError, PyTransDatError):
 
 class AmbiguousGridError(ValueError, PyTransDatError):
     """Signifies that multiple grid files were found when exactly one was expected."""
+
+    pass
+
+
+class InvalidCoordinateErr(ValueError, PyTransDatError):
+    """Signifies that coordinate input data is non-numeric, non-finite (NaN/Inf),
+    or violates sexagesimal DMS bounds (minutes or seconds outside [0, 60)).
+    """
+
+    pass
+
+
+class WrongDimensionErr(ValueError, PyTransDatError):
+    """Signifies that the coordinate tuple or sequence dimension is invalid
+    (e.g., fewer than 2 or more than 3 coordinate components, empty sequences,
+    or mismatched sequence lengths).
+    """
 
     pass

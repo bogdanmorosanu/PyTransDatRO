@@ -382,3 +382,148 @@ def test_error_response_schema():
     assert err.code == "OUT_OF_BOUNDS"
     dumped = err.model_dump()
     assert dumped == {"detail": "Boundary error", "code": "OUT_OF_BOUNDS"}
+
+
+def test_modern_point_wrong_dimension_inline_warning(client):
+    """Verifies /api/v1/transform/point returns HTTP 200 with 'Wrong dimension' for 1D and 4D inputs."""
+    res_1d = client.post(
+        "/api/v1/transform/point",
+        json={"op": "Stereo70ToETRS89", "coos": [500000.0], "unit": "degrees"},
+    )
+    assert res_1d.status_code == 200
+    assert res_1d.json() == {"coos": [500000.0], "warning": "Wrong dimension"}
+
+    res_4d = client.post(
+        "/api/v1/transform/point",
+        json={
+            "op": "Stereo70ToETRS89",
+            "coos": [500000.0, 500000.0, 100.0, 200.0],
+            "unit": "degrees",
+        },
+    )
+    assert res_4d.status_code == 200
+    assert res_4d.json() == {
+        "coos": [500000.0, 500000.0, 100.0, 200.0],
+        "warning": "Wrong dimension",
+    }
+
+
+def test_modern_point_and_batch_reject_dms_unit(client):
+    """Verifies that unit='dms' is rejected with 422 on numeric /point and /batch endpoints."""
+    res_pt = client.post(
+        "/api/v1/transform/point",
+        json={"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0], "unit": "dms"},
+    )
+    assert res_pt.status_code == 422
+
+    res_batch = client.post(
+        "/api/v1/transform/batch",
+        json={"op": "Stereo70ToETRS89", "points": [[500000.0, 500000.0]], "unit": "dms"},
+    )
+    assert res_batch.status_code == 422
+
+
+def test_modern_batch_4d_wrong_dimension(client):
+    """Verifies /api/v1/transform/batch marks 4D coordinates with 'Wrong dimension' and echoes input."""
+    res = client.post(
+        "/api/v1/transform/batch",
+        json={
+            "op": "Stereo70ToETRS89",
+            "points": [[500000.0], [500000.0, 500000.0, 100.0, 999.0]],
+            "unit": "degrees",
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["results"][0] == {"coos": [500000.0], "warning": "Wrong dimension"}
+    assert data["results"][1] == {
+        "coos": [500000.0, 500000.0, 100.0, 999.0],
+        "warning": "Wrong dimension",
+    }
+
+
+def test_modern_file_delimiter_and_column_validation(client):
+    """Verifies /api/v1/transform/file rejects invalid delimiter with 422 and 5+ columns with '# Wrong dimension'."""
+    csv_content = (
+        "P1,500000.0,500000.0,100.0,extra_col\n"
+        "P2,45°65'00\"N,25°00'00\"E,100.0\n"
+        "P3,500000.0,500000.0,100.0\n"
+    )
+    # 1. Invalid delimiter -> 422
+    files_bad = {"file": ("test.csv", io.BytesIO(csv_content.encode("utf-8")), "text/csv")}
+    res_bad_delim = client.post(
+        "/api/v1/transform/file",
+        files=files_bad,
+        data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "pipe"},
+    )
+    assert res_bad_delim.status_code == 422
+
+    # 2. 5 columns -> # Wrong dimension
+    files_ok = {"file": ("test.csv", io.BytesIO(csv_content.encode("utf-8")), "text/csv")}
+    res_st70 = client.post(
+        "/api/v1/transform/file",
+        files=files_ok,
+        data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma"},
+    )
+    assert res_st70.status_code == 200
+    lines = res_st70.text.strip().splitlines()
+    assert lines[0].endswith("# Wrong dimension")
+    assert lines[1].endswith("# Invalid coordinate data")
+    assert lines[2].startswith("P3,45.999")
+
+    # 3. Invalid DMS minutes >= 60 in ETRS89ToStereo70 -> # Invalid coordinate data
+    dms_csv = "P1,45°65'00\"N,25°00'00\"E,100.0\n"
+    files_dms = {"file": ("dms.csv", io.BytesIO(dms_csv.encode("utf-8")), "text/csv")}
+    res_dms = client.post(
+        "/api/v1/transform/file",
+        files=files_dms,
+        data={"op": "ETRS89ToStereo70", "unit": "dms", "delimiter": "comma"},
+    )
+    assert res_dms.status_code == 200
+    assert res_dms.text.strip().endswith("# Invalid coordinate data")
+
+
+def test_modern_batch_per_point_isolation_option_b(client):
+    """Verifies /api/v1/transform/batch isolates null, non-numeric, wrong-dim, and out-of-grid points."""
+    res = client.post(
+        "/api/v1/transform/batch",
+        json={
+            "op": "Stereo70ToETRS89",
+            "points": [
+                [500000.0, 500000.0],
+                [500000.0, None],
+                ["bad", 500000.0],
+                [500000.0],
+                [5.0, 1.0],
+            ],
+            "unit": "degrees",
+        },
+    )
+    assert res.status_code == 200
+    results = res.json()["results"]
+    assert len(results) == 5
+    assert results[0]["warning"] is None and len(results[0]["coos"]) == 2
+    assert results[1] == {"coos": [], "warning": "Invalid coordinate data"}
+    assert results[2] == {"coos": [], "warning": "Invalid coordinate data"}
+    assert results[3] == {"coos": [500000.0], "warning": "Wrong dimension"}
+    assert results[4] == {"coos": [5.0, 1.0], "warning": "Out of grid"}
+
+
+def test_modern_file_unquoted_dms_and_empty_middle_column(client):
+    """Verifies unquoted DMS trailing quote preservation and empty middle column rejection."""
+    csv_content = (
+        'P1,46°00\'00",25°00\'00",100.0\n"P2","46°00\'00""","25°00\'00""","100.0"\nP3,46.0,,100.0\n'
+    )
+    files = {"file": ("dms_edge.csv", io.BytesIO(csv_content.encode("utf-8")), "text/csv")}
+    res = client.post(
+        "/api/v1/transform/file",
+        files=files,
+        data={"op": "ETRS89ToStereo70", "unit": "degrees", "delimiter": "comma"},
+    )
+    assert res.status_code == 200
+    lines = res.text.strip().splitlines()
+    assert len(lines) == 3
+    # P1 (unquoted DMS ending with ") must succeed and produce ~500031.2654, ~500120.2236
+    assert lines[0].startswith("P1,5000") and "# Invalid" not in lines[0]
+    # P3 (empty middle column) must be rejected as Invalid coordinate data, not collapsed to 2D
+    assert lines[2].endswith("# Invalid coordinate data")

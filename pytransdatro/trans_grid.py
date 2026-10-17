@@ -72,6 +72,8 @@ class Grid(abc.ABC):
         else:
             raise exceptions.OutOfRangeIndexGridErr(idx, self)
 
+    _out_of_grid_exc: type[exceptions.OutOfGridErr] = exceptions.OutOfGridErr
+
     def idx_at_coo(self, n: float, e: float) -> int:
         """Returns the linear index of the node that coincides with specified coordinates.
 
@@ -92,9 +94,9 @@ class Grid(abc.ABC):
             if c_idx.is_integer() and r_idx.is_integer():
                 return int(r_idx) * self.c_count + int(c_idx)
             else:
-                raise exceptions.OutOfGridErr(n, e, self)
+                raise self._out_of_grid_exc(n, e, self)
         else:
-            raise exceptions.OutOfGridErr(n, e, self)
+            raise self._out_of_grid_exc(n, e, self)
 
     @property
     @abc.abstractmethod
@@ -218,7 +220,7 @@ class Grid(abc.ABC):
             z_out: list[float] = []
             for n_val, e_val in zip(n, e):
                 if not self.covered_by_grid(n_val, e_val):
-                    raise exceptions.OutOfGridErr(n_val, e_val, self)
+                    raise self._out_of_grid_exc(n_val, e_val, self)
 
                 sg_idxs = self._sgrid_idxs(n_val, e_val)
                 sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
@@ -238,7 +240,7 @@ class Grid(abc.ABC):
             e_out: list[float] = []
             for n_val, e_val in zip(n, e):
                 if not self.covered_by_grid(n_val, e_val):
-                    raise exceptions.OutOfGridErr(n_val, e_val, self)
+                    raise self._out_of_grid_exc(n_val, e_val, self)
 
                 sg_idxs = self._sgrid_idxs(n_val, e_val)
                 sg_v_dict = self.get_vs_at_idxs_cached(sg_idxs)
@@ -412,6 +414,8 @@ class Grid(abc.ABC):
 class Grid1D(Grid):
     """1D Vertical quasi-geoid anomaly grid transformation engine."""
 
+    _out_of_grid_exc = exceptions.OutOfGrid1DErr
+
     def __init__(self, filename: Optional[str] = None) -> None:
         """Initializes 1D grid and binds transformation worker dynamically based on metadata.
 
@@ -481,13 +485,19 @@ class Grid1D(Grid):
         c_count = self.c_count
         r_count = self.r_count
         e_min = self.e_min
+        e_max = self.e_max
         n_min = self.n_min
+        n_max = self.n_max
         e_step = self.e_step
         n_step = self.n_step
+        no_data = self.no_data
         height_flat = self.reader.height_flat
 
         z_out: list[float] = []
         for n_val, e_val, z_val in zip(n, e, z):
+            if not (n_min <= n_val <= n_max and e_min <= e_val <= e_max):
+                raise self._out_of_grid_exc(n_val, e_val, self)
+
             c_idx = int(round((e_val - e_min) / e_step))
             r_idx = int(round((n_val - n_min) / n_step))
 
@@ -503,6 +513,9 @@ class Grid1D(Grid):
 
             idx = r_idx * c_count + c_idx
             corr = height_flat[idx]
+            if math.isnan(corr) or corr == no_data:
+                raise exceptions.NoDataGridErr(n_val, e_val, self)
+
             z_out.append(z_val + corr_sgn * corr)
         return (z_out,)
 
@@ -532,6 +545,8 @@ class Grid1D(Grid):
 
 class Grid2D(Grid):
     """2D Horizontal distortion grid transformation engine."""
+
+    _out_of_grid_exc = exceptions.OutOfGrid2DErr
 
     def __init__(self, filename: Optional[str] = None) -> None:
         """Initializes 2D grid and bounds.

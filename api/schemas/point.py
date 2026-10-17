@@ -14,6 +14,11 @@ class OperationEnum(str, Enum):
 class AngleUnitEnum(str, Enum):
     RADIANS = "radians"
     DEGREES = "degrees"
+
+
+class FileAngleUnitEnum(str, Enum):
+    RADIANS = "radians"
+    DEGREES = "degrees"
     DMS = "dms"
 
 
@@ -23,8 +28,6 @@ class PointRequest(BaseModel):
     )
     coos: List[float] = Field(
         ...,
-        min_length=2,
-        max_length=3,
         description="Coordinates: [Northing, Easting[, H]] for Stereo70 or [Latitude, Longitude[, h]] for ETRS89",
     )
     unit: AngleUnitEnum = Field(

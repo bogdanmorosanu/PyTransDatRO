@@ -86,7 +86,7 @@ Transforms a single 2D or 3D coordinate.
   ```
   - `op`: `"Stereo70ToETRS89"` or `"ETRS89ToStereo70"`.
   - `coos`: `[N, E[, H]]` in meters for Stereo70, or `[Lat, Lon[, h]]` for ETRS89.
-  - `unit`: `"radians"` (default) or `"degrees"`.
+  - `unit`: `"radians"` (default) or `"degrees"` (`AngleUnitEnum`).
 * **Response** (HTTP 200):
   ```json
   {
@@ -94,18 +94,15 @@ Transforms a single 2D or 3D coordinate.
     "warning": null
   }
   ```
-* **Out of Grid Response** (HTTP 200):
-  ```json
-  {
-    "coos": [5.0, 1.0, 1.0],
-    "warning": "Out of grid"
-  }
-  ```
+* **Domain Warning Responses** (HTTP 200 — coordinates echoed back):
+  - **Out of Grid**: `{"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"}`
+  - **No Data on Grid**: `{"coos": [549364.0, 147553.0], "warning": "No data on grid"}`
+  - **Wrong Dimension** ($< 2$ or $> 3$ values): `{"coos": [500000.0], "warning": "Wrong dimension"}`
 
 ---
 
 #### `POST /api/v1/transform/batch`
-Transforms an in-memory array of coordinates (up to 20,000 points) with per-point fault isolation.
+Transforms an in-memory array of coordinates (up to `settings.max_batch_points`, default 20,000 points) with full per-point fault isolation (Option B: `points: List[Any]`) via [`TransRO.transform_batch()`](../pytransdatro/trans_ro.py) and [`execute_batch_transformation()`](../api/services/transformer.py). Single-call telemetry aggregation ensures valid 2D and 3D points in a batch are recorded as one batch call rather than $N$ separate calls.
 
 * **Request Body** (`application/json`):
   ```json
@@ -113,7 +110,8 @@ Transforms an in-memory array of coordinates (up to 20,000 points) with per-poin
     "op": "Stereo70ToETRS89",
     "points": [
       [500000.0, 500000.0, 100.0],
-      [5.0, 1.0, 1.0]
+      [5.0, 1.0, 1.0],
+      [500000.0, null]
     ],
     "unit": "degrees"
   }
@@ -123,26 +121,29 @@ Transforms an in-memory array of coordinates (up to 20,000 points) with per-poin
   {
     "results": [
       {"coos": [45.9997186280, 24.9984476351, 139.6084403992], "warning": null},
-      {"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"}
+      {"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"},
+      {"coos": [], "warning": "Invalid coordinate data"}
     ],
-    "count": 2
+    "count": 3
   }
   ```
 
 ---
 
 #### `POST /api/v1/transform/file`
-Streams transformations of an uploaded `.csv` or `.txt` file (up to 100,000 coordinate rows) using chunked HTTP transfer encoding.
+Streams transformations of an uploaded `.csv` or `.txt` file (up to `settings.max_file_points`, default 100,000 coordinate rows) using chunked HTTP transfer encoding.
 
 * **Content-Type**: `multipart/form-data`
 * **Form Fields**:
-  - `file`: Uploaded file (max 20 MB).
+  - `file`: Uploaded file (max `settings.max_file_upload_bytes`, default 50 MB; returns HTTP `413 Payload Too Large` if exceeded).
   - `op`: `"Stereo70ToETRS89"` or `"ETRS89ToStereo70"`.
-  - `unit`: `"radians"` or `"degrees"` (default: `"radians"`).
-  - `delimiter`: `"auto"`, `"comma"`, `"semicolon"`, `"tab"`, `"space"` (default: `"auto"`).
+  - `unit`: `"radians"`, `"degrees"`, or `"dms"` (`FileAngleUnitEnum`, default: `"radians"`).
+  - `delimiter`: `"auto"`, `"comma"`, `"semicolon"`, `"tab"`, `"space"` (default: `"auto"`; returns HTTP `422` if unrecognized).
 * **Behavior**:
   - Automatically detects delimiter from first non-comment row when `auto` is set.
   - Strips empty lines and preserves `#` comment rows.
+  - Strictly enforces 2–3 coordinate columns (or 3–4 columns when prefixed by a Point ID); rows with $< 2$ or $> 4$ columns are emitted with ` # Wrong dimension` appended, and rows with empty intermediate coordinate columns (e.g. `P1,500000,,100`) are emitted with ` # Invalid coordinate data` appended.
+  - Strips balanced outer CSV quotes via `_strip_balanced_quotes()` while preserving trailing `"` arcsecond symbols on unquoted DMS coordinates, and validates DMS strings against strict sexagesimal bounds ($0 \le m < 60, 0 \le s < 60$, no conflicting signs/cardinals, no fractional degrees/minutes when sub-units exist) via `pytransdatro.utils.sexa_dms_chars_to_rad`.
   - Returns streaming file attachment (`transformed_coordinates.csv`).
   - Lines outside grid are emitted with ` # Out of grid` appended.
 
@@ -151,19 +152,20 @@ Streams transformations of an uploaded `.csv` or `.txt` file (up to 100,000 coor
 ### 3.2. Legacy Compatibility Endpoints
 
 #### `GET /transdatonline/cooOpService` (and `/cooOpService`)
-Maintains 100% backward compatibility with legacy scripts and QGIS plugins.
+Maintains 100% backward compatibility with legacy scripts and GIS plugins, including Java `HttpServletRequest.getParameter()` non-null empty string semantics (`?cooOp=Stereo70ToETRS89&coos=` returns HTTP `200 {"coos": [], "warning": "Invalid coordinate data"}`, whereas missing parameters return HTTP `400`).
 
 * **Query Parameters**:
   - `cooOp`: `"Stereo70ToETRS89"`, `"ETRS89ToStereo70"`, `"Stereo30ToETRS89"`, `"ETRS89ToStereo30"`.
-  - `coos`: Semicolon-delimited numbers in **radians/meters** (e.g. `500000;500000;100`).
+  - `coos`: Semicolon-delimited numbers in **radians/meters** (e.g. `500000;500000;100`). Replicates Java `String.split(";")` semantics (trailing semicolons allowed; leading or intermediate empty tokens rejected as `"Invalid coordinate data"`).
 * **Responses** (HTTP 200):
   - **Success**: `{"coos": [0.8028465450500997, 0.43630521911977527, 139.60844039916992]}` *(warning omitted)*.
   - **Out of Grid**: `{"coos": [5.0, 1.0, 1.0], "warning": "Out of grid"}` *(coordinates echoed)*.
-  - **Invalid Data**: `{"coos": [], "warning": "Invalid coordinate data"}`.
+  - **Wrong Dimension** ($< 2$ or $> 3$ coordinates): `{"coos": [500000.0], "warning": "Wrong dimension"}` *(coordinates echoed)*.
+  - **Invalid Data** (non-numeric, `NaN`, `Infinity`, or empty intermediate tokens): `{"coos": [], "warning": "Invalid coordinate data"}`.
   - **Stereo 30**: `{"coos": [...], "warning": "Stereo30 transformation is obsolete and unsupported"}`.
 
 #### `POST /transdatonline/cooOpService` (and `/cooOpService`)
-Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies:
+Accepts both form-encoded data (`cooOp`, `coosArray`) and direct JSON bodies, validating `cooOp` eagerly before iterating over `coosArray`, enforcing `settings.max_batch_points`, and delegating to `execute_batch_transformation()` for 4-stage fault-isolated batch execution:
 ```json
 {
   "cooOp": "ETRS89ToStereo70",

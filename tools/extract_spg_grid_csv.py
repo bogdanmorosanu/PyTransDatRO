@@ -305,6 +305,35 @@ def extract_spg_coordinates_csv(spg_path: Path, output_dir: Path, include_nodata
             f"   - Valid Active Nodes          : {valid_z_count:,} nodes (100% full coverage, 0 NaNs)\n"
         )
         f_sum.write("   - Output CSV File             : spg_grid_shifts_z.csv\n\n")
+        s_meta_maxe = float(s_meta.get("maxe", s_mine + (s_ncols - 1) * s_stepe))
+        s_meta_maxn = float(s_meta.get("maxn", s_minn + (s_nrows - 1) * s_stepn))
+        s_calc_maxe = s_mine + (s_grid.shape[2] - 1) * s_stepe
+        s_calc_maxn = s_minn + (s_grid.shape[1] - 1) * s_stepn
+        s_mismatch = (
+            s_nrows != s_grid.shape[1]
+            or s_ncols != s_grid.shape[2]
+            or abs(s_meta_maxe - s_calc_maxe) > 1e-4
+            or abs(s_meta_maxn - s_calc_maxn) > 1e-4
+        )
+
+        h_meta_maxla = float(h_meta.get("maxla", h_minla + (h_ncols - 1) * h_stepla))
+        h_meta_maxphi = float(h_meta.get("maxphi", h_minphi + (h_nrows - 1) * h_stepphi))
+        h_calc_maxla = h_minla + (h_grid.shape[2] - 1) * h_stepla
+        h_calc_maxphi = h_minphi + (h_grid.shape[1] - 1) * h_stepphi
+        h_mismatch = (
+            h_nrows != h_grid.shape[1]
+            or h_ncols != h_grid.shape[2]
+            or abs(h_meta_maxla - h_calc_maxla) > 1e-5
+            or abs(h_meta_maxphi - h_calc_maxphi) > 1e-5
+        )
+
+        f_sum.write("3. Metadata vs. Actual Grid Array Boundary Check:\n")
+        f_sum.write(
+            f"   - 2D Geodetic Shifts Audit    : {'MISMATCH DETECTED' if s_mismatch else 'PASS (100% Match)'}\n"
+        )
+        f_sum.write(
+            f"   - 1D Geoid Heights Audit      : {'MISMATCH DETECTED' if h_mismatch else 'PASS (100% Match)'}\n\n"
+        )
         f_sum.write("CONCLUSION:\n")
         f_sum.write(
             "Due to the structural disparity in CRS, grid resolution (11 km vs ~3 km), and spatial alignment,\n"
@@ -322,10 +351,16 @@ def extract_spg_coordinates_csv(spg_path: Path, output_dir: Path, include_nodata
 
     print(f"  -> Successfully generated summary report: {summary_path}")
 
+    from tools.extract_spg_metadata import extract_metadata
+
+    metadata_report_path = output_dir / "spg_grid_metadata.txt"
+    extract_metadata(spg_path, metadata_report_path)
+
     return {
         "csv_2d": csv_2d_path,
         "csv_z": csv_z_path,
         "summary": summary_path,
+        "metadata_report": metadata_report_path,
         "valid_2d": valid_2d_count,
         "valid_z": valid_z_count,
     }

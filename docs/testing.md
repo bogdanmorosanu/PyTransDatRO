@@ -88,8 +88,9 @@ The API layer is thoroughly tested using `pytest` and `starlette.testclient.Test
 
 | Module | Tests | Focus Areas |
 | :--- | :--- | :--- |
-| **`tests/test_api_modern.py`** | 22 | Point (`/api/v1/transform/point`), batch (`/transform/batch`), file streaming (`/transform/file`), grid metadata (`/grid/info`), health (`/health`), and structured validation errors (`ErrorResponse`). |
-| **`tests/test_api_legacy.py`** | 11 | Byte-for-byte backward compatible emulation of TransDatOnline Java servlet endpoints (`/transdatonline/cooOpService` and `/cooOpService`) for 2D, 3D, form-urlencoded, JSON, and out-of-grid warning contracts. |
+| **`tests/test_trans_ro.py`** | 54 | Core 2D/3D transformations, round-trip accuracy, 6-point extended dual-CRS bounding boxes, `OutOfGrid2DErr` vs `OutOfGrid1DErr`, pole singularity/periodic aliasing guards, 4-stage `transform_batch` fault isolation, sequence length/finite number validation (`InvalidCoordinateErr`, `WrongDimensionErr`), and strict DMS parsing. |
+| **`tests/test_api_modern.py`** | 28 | Point (`/api/v1/transform/point`), Option B fault-isolated batch (`/transform/batch`), file streaming (`/transform/file`), unquoted DMS & empty middle CSV column handling, delimiter/column validation, grid metadata (`/grid/info`), health (`/health`), and structured validation errors (`ErrorResponse`). |
+| **`tests/test_api_legacy.py`** | 17 | Byte-for-byte backward compatible emulation of TransDatOnline Java servlet endpoints (`/transdatonline/cooOpService` and `/cooOpService`) for 2D, 3D, 1D/4D dimension warnings, Java `split(";")` and `getParameter()` empty-string semantics, `NaN`/`Inf` rejection, eager `cooOp` validation, form-urlencoded, JSON, and out-of-grid warning contracts. |
 | **`tests/test_api_rate_limiter.py`** | 2 | Sliding-window in-memory rate limiting enforcement (60/min point, 10/min batch) and `Retry-After` headers. |
 | **`tests/test_config.py`** | 7 | Centralized `Settings` resolution, environment variable overrides (`.env`), CORS parsing, and `dictConfig` logging dictionary generation. |
 | **`tests/test_feedback.py`** | 4 | User feedback submission (`/api/v1/feedback`), file persistence (`feedback.jsonl`), and SMTP handler decoupling. |
@@ -99,7 +100,7 @@ The API layer is thoroughly tested using `pytest` and `starlette.testclient.Test
 ```powershell
 D:\anaconda3\envs\pytransdat\python.exe -m pytest -q
 ```
-*(Runs all 98 Python unit, integration, and contract tests).*
+*(Runs all 118 Python unit, integration, and contract tests).*
 
 ---
 

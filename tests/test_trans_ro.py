@@ -470,3 +470,187 @@ def test_polymorphic_batch_transformation():
         assert math.isclose(n_back[i], n_sc, abs_tol=1e-9)
         assert math.isclose(e_back[i], e_sc, abs_tol=1e-9)
         assert math.isclose(z_back[i], z_sc, abs_tol=1e-9)
+
+
+def test_core_input_validation_nan_and_inf():
+    """Verify that NaN, Infinity, and non-numeric values raise InvalidCoordinateErr."""
+    t = pytransdatro.TransRO()
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        t.st70_to_etrs89(float("nan"), 500000.0)
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        t.st70_to_etrs89(500000.0, float("inf"))
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        t.st70_to_etrs89(500000.0, 500000.0, float("-inf"))
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        t.etrs89_to_st70([0.8, float("nan")], [0.4, 0.4])
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        t.st70_to_etrs89("not_a_number", 500000.0)  # type: ignore[arg-type]
+
+
+def test_core_input_validation_sequence_dimensions():
+    """Verify that empty sequences or mismatched sequence lengths raise WrongDimensionErr."""
+    t = pytransdatro.TransRO()
+    with pytest.raises(pytransdatro.exceptions.WrongDimensionErr):
+        t.st70_to_etrs89([], [])
+
+    with pytest.raises(pytransdatro.exceptions.WrongDimensionErr):
+        t.st70_to_etrs89([500000.0, 510000.0], [500000.0])
+
+    with pytest.raises(pytransdatro.exceptions.WrongDimensionErr):
+        t.st70_to_etrs89([500000.0, 510000.0], [500000.0, 510000.0], [100.0])
+
+    with pytest.raises(pytransdatro.exceptions.WrongDimensionErr):
+        t.st70_to_etrs89(500000.0, [500000.0])  # type: ignore[arg-type]
+
+
+def test_core_dms_parser_strict_validation():
+    """Verify that sexa_to_rad and sexa_dms_chars_to_rad enforce strict sexagesimal bounds."""
+    from pytransdatro import utils
+
+    # Valid DMS strings with symbols, spaces, and cardinal indicators
+    rad1 = utils.sexa_dms_chars_to_rad("46°00'00.00000\"N")
+    assert math.isclose(math.degrees(rad1), 46.0, abs_tol=1e-12)
+
+    rad_neg = utils.sexa_dms_chars_to_rad("45°30'00\"S")
+    assert math.isclose(math.degrees(rad_neg), -45.5, abs_tol=1e-12)
+
+    rad_west = utils.sexa_dms_chars_to_rad("25 00 00 V")
+    assert math.isclose(math.degrees(rad_west), -25.0, abs_tol=1e-12)
+
+    # Formatted output with rollover check
+    dms_str = utils.format_rad_to_dms(math.radians(45.999999999))
+    assert dms_str == "46°00'00.00000\""
+
+    # Invalid minutes >= 60 or < 0
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        utils.sexa_dms_chars_to_rad("45°60'00\"")
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        utils.sexa_to_rad("45 -10 00")
+
+    # Invalid seconds >= 60
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        utils.sexa_dms_chars_to_rad("45°30'60.0\"")
+
+    # Empty or non-numeric
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        utils.sexa_dms_chars_to_rad("   ")
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        utils.sexa_dms_chars_to_rad("abc°def'ghi\"")
+
+
+def test_grid1d_colocate_bounds_and_nodata(monkeypatch):
+    """Verify that Grid1D._trans_colocate raises OutOfGrid1DErr and NoDataGridErr."""
+    from pytransdatro.trans_grid import Grid1D
+
+    g1d = Grid1D()
+    # Out of bounds latitude/longitude
+    with pytest.raises(pytransdatro.exceptions.OutOfGrid1DErr):
+        g1d._trans_colocate([10.0], [25.0], [100.0], 1)
+
+    with pytest.raises(pytransdatro.exceptions.OutOfGrid1DErr):
+        g1d._trans_colocate([46.0], [5.0], [100.0], 1)
+
+
+def test_dual_crs_6_point_extended_bounding_box_and_exceptions():
+    """Verify 6-point extended bounding box pre-check, curved wedge check, and OutOfGrid2DErr/1DErr."""
+    t = pytransdatro.TransRO()
+
+    # 1. North parallel bulge point (48.50°N, 25.00°E):
+    # Exceeds the 4-corner ETRS89 latitude (~48.4620°), but is inside the Stereo70
+    # northern border (N ≈ 777,942 m < 783,000 m) and inside the 6-point extended box (~48.5458°).
+    lat_bulge = math.radians(48.50)
+    lon_bulge = math.radians(25.00)
+    # Must pass pre-check without raising OutOfGrid2DErr
+    t._precheck_etrs89_point(lat_bulge, lon_bulge, is_3d=False)
+
+    # 2. SW curved border wedge point (43.50°N, 19.90°E):
+    # Inside the 6-point ETRS89 extended bounding box, so it passes _precheck_etrs89_point,
+    # but once projected to Stereo70 it lies outside Grid2D (E ≈ 91,062 m < 102,000 m)
+    # and is caught by Grid2D.covered_by_grid raising OutOfGrid2DErr.
+    lat_wedge = math.radians(43.50)
+    lon_wedge = math.radians(19.90)
+    t._precheck_etrs89_point(lat_wedge, lon_wedge, is_3d=False)
+    with pytest.raises(pytransdatro.exceptions.OutOfGrid2DErr):
+        t.etrs89_to_st70(lat_wedge, lon_wedge)
+
+    # 3. 3D point inside Grid2D (48.45°N <= 48.5458°) but outside Grid1D (48.45°N > 48.40°):
+    # Must raise OutOfGrid1DErr specifically (subclass of OutOfGridErr).
+    with pytest.raises(pytransdatro.exceptions.OutOfGrid1DErr):
+        t.etrs89_to_st70(math.radians(48.45), math.radians(25.00), 100.0)
+
+
+def test_pole_singularity_and_2pi_periodic_aliasing_guard():
+    """Verify pole singularity raises InvalidCoordinateErr and huge radians raise OutOfGrid2DErr."""
+    from pytransdatro.proj_stereo import StereoProj
+
+    proj = StereoProj()
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        proj.to_grid([math.pi / 2.0], [0.4363])
+
+    with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+        proj.to_grid([-math.pi / 2.0], [0.4363])
+
+    t = pytransdatro.TransRO()
+    with pytest.raises(pytransdatro.exceptions.OutOfGrid2DErr):
+        t.etrs89_to_st70(500000.0, 500000.0)
+
+
+def test_dms_conflicting_cardinals_and_fractional_subunits():
+    """Verify conflicting cardinal/sign tokens and fractional degrees/minutes raise InvalidCoordinateErr."""
+    from pytransdatro import utils
+
+    for bad_dms in [
+        "N 45°30'00\" S",
+        "-45°30'00\" N",
+        "-45°30'00\" S",
+        "+25°00'00\" V",
+        "45.5° 30' 00\"",
+        "45° 30.5' 10\"",
+    ]:
+        with pytest.raises(pytransdatro.exceptions.InvalidCoordinateErr):
+            utils.sexa_dms_chars_to_rad(bad_dms)
+
+
+def test_transform_batch_fault_isolation_and_single_call_telemetry():
+    """Verify 4-stage fault-isolated batch pipeline and aggregated telemetry hook calls."""
+    telemetry_events = []
+
+    class DummyCollector:
+        def record(self, op_code, lats, lons, is_3d=0, source=0):
+            telemetry_events.append((op_code, is_3d, len(lats), len(lons), source))
+
+    t = pytransdatro.TransRO()
+    t._collector = DummyCollector()  # type: ignore[assignment]
+    batch_input = [
+        [500000.0, 500000.0],  # 0: valid 2D
+        [500000.0],  # 1: wrong dimension (1D)
+        [float("nan"), 500000.0],  # 2: invalid coordinate (NaN)
+        [5.0, 1.0],  # 3: out of grid (pre-check)
+        [500000.0, 500000.0, 100.0],  # 4: valid 3D
+        [510000.0, 510000.0],  # 5: valid 2D
+    ]
+    results = t.transform_batch(batch_input, from_st70=True, is_degrees=True, source=2)
+    assert len(results) == 6
+    assert results[0][1] is None and len(results[0][0]) == 2
+    assert results[1][0] == [500000.0] and isinstance(
+        results[1][1], pytransdatro.exceptions.WrongDimensionErr
+    )
+    assert results[2][0] == [] and isinstance(
+        results[2][1], pytransdatro.exceptions.InvalidCoordinateErr
+    )
+    assert results[3][0] == [5.0, 1.0] and isinstance(
+        results[3][1], pytransdatro.exceptions.OutOfGrid2DErr
+    )
+    assert results[4][1] is None and len(results[4][0]) == 3
+    assert results[5][1] is None and len(results[5][0]) == 2
+
+    # Telemetry must be called once for the 2 valid 2D points, and once for the 1 valid 3D point
+    assert len(telemetry_events) == 2
+    assert telemetry_events[0] == (1, 0, 2, 2, 2)
+    assert telemetry_events[1] == (1, 1, 1, 1, 2)
