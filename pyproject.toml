@@ -28,6 +28,9 @@ dev = [
     "httpx>=0.27.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["pytransdatro*", "api*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
