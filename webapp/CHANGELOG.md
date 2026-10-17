@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Playwright End-to-End (E2E) Browser Test Suite (`webapp/e2e/`, `playwright.config.ts`)**:
+  - Added a comprehensive Chromium Playwright E2E suite covering single-point coordinate transformations, batch text parsing (1-to-1 blank/comment line preservation and `Point N` numbering), file streaming upload/download, map centering and zoom constraints, bi-directional i18n (`EN` / `RO`) persistence, and API error/rate-limit display.
+  - Implemented offline request stubbing in `e2e/fixtures.ts` for external map tiles and fonts.
+  - Added read-only `window.__e2e.mapView()` diagnostic snapshot in `MapView.ts` (active only in `VITE_E2E=true` builds).
+
+### Fixed
+- **Untransformable Point Handling for "No data on grid" Zones (`PointConverter.ts`, `BatchConverter.ts`, `exporters.ts`)**:
+  - Resolved an application bug where points falling inside the rectangular grid bounding box but in a no-data zone (`warning: "No data on grid"`) were mistakenly treated as valid transformations by only checking `warning === 'Out of grid'`.
+  - Updated `PointConverter.ts` to blank computed output fields (`—`), omit `quasigeoidZeta`, suppress plotting on the map, and display `⚠ No Grid Data` without the false green `✓ Valid coordinates` badge.
+  - Updated `BatchConverter.ts` to append `# No data on grid` (or `pointId, # No data on grid`) without echoing raw untransformed input numbers, and count it as outside grid rather than valid.
+  - Updated `exporters.ts` to preserve `# No data on grid` rows in exported CSVs.
+
+### Added
 - **GitHub Primer Neutral Dual-Theme Palette & Subtle Surface + Border (`#8`) Primary Button (`webapp/src/style/variables.css`)**:
   - Adopted the GitHub Primer neutral Dark (`#0d1117` app canvas, `#161b22` card surface, `#21262d` elevated controls) and Light (`#f6f8fa` app canvas, `#ffffff` card surface, `#f3f4f6` elevated controls) theme tokens, eliminating dark navy-blue backgrounds (`#090d16` / `#0f172a` / `#1e293b`).
   - Set Option `#8` (**Subtle Surface + Border**) as the permanent primary action button style (`--btn-primary-bg: #1f2630`, `--btn-primary-hover: #28313e`, `--btn-primary-text: #e6edf3`, `--btn-primary-border: #48586a` in Dark mode; `--btn-primary-bg: #eaeef2`, `--btn-primary-hover: #dde3ea`, `--btn-primary-text: #1f2328`, `--btn-primary-border: #8c959f` in Light mode).

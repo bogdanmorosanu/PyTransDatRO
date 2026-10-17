@@ -86,6 +86,18 @@ describe('exporters', () => {
       const csv = generateCSVContent(invalidItems);
       expect(csv).toBe('');
     });
+
+    it('preserves No data on grid warning lines with and without pointId', () => {
+      const noDataItems: ExportPointItem[] = [
+        { pointId: 'P_ND1', coords: [], warning: 'No data on grid', isGeo: true },
+        { pointId: null, coords: [], warning: 'No data on grid', isGeo: true },
+      ];
+      const csv = generateCSVContent(noDataItems, ',', 'NE');
+      expect(csv.split('\r\n')).toEqual([
+        'P_ND1, # No data on grid',
+        '# No data on grid',
+      ]);
+    });
   });
 
   describe('generateGeoJSONObject', () => {

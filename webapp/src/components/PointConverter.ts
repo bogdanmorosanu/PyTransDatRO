@@ -71,7 +71,7 @@ export class PointConverter {
     if (this.op === op) return;
     this.op = op;
 
-    const hasValidOutput = this.outputCoords !== null && this.outputWarning !== 'Out of grid';
+    const hasValidOutput = this.outputCoords !== null && !this.outputWarning;
 
     if (op === 'Stereo70ToETRS89') {
       if (hasValidOutput && this.outputCoords && this.outputCoords.length >= 2) {
@@ -427,11 +427,13 @@ export class PointConverter {
       this.outputCoords = res.coos;
       this.outputWarning = res.warning || null;
       const isOutOfGrid = res.warning === 'Out of grid';
+      const isNoData = res.warning === 'No data on grid';
+      const isUntransformable = isOutOfGrid || isNoData;
 
       // Quasigeoid height calculation in 3D:
       // When Stereo70 -> ETRS89: res.coos[2] is h, input is H => zeta = h - H
       // When ETRS89 -> Stereo70: res.coos[2] is H, input is h => zeta = h - H
-      if (!isOutOfGrid && is3D && this.outputCoords.length >= 3 && raw3 !== undefined) {
+      if (!isUntransformable && is3D && this.outputCoords.length >= 3 && raw3 !== undefined) {
         if (this.op === 'Stereo70ToETRS89') {
           this.quasigeoidZeta = this.outputCoords[2] - raw3;
         } else {
@@ -456,7 +458,7 @@ export class PointConverter {
         stereoN = this.order === 'EN' ? raw2 : raw1;
         stereoE = this.order === 'EN' ? raw1 : raw2;
         altitude = raw3;
-        if (!isOutOfGrid && this.outputCoords) {
+        if (!isUntransformable && this.outputCoords) {
           mapLat = this.outputCoords[0];
           mapLon = this.outputCoords[1];
           elev = this.outputCoords[2];
@@ -466,7 +468,7 @@ export class PointConverter {
         mapLat = raw1;
         mapLon = raw2;
         ellipsoidalHeight = raw3;
-        if (!isOutOfGrid && this.outputCoords) {
+        if (!isUntransformable && this.outputCoords) {
           stereoN = this.outputCoords[0];
           stereoE = this.outputCoords[1];
           elev = this.outputCoords[2];
@@ -477,7 +479,7 @@ export class PointConverter {
       this.callbacks.onPointTransformed({
         lat: mapLat,
         lon: mapLon,
-        outOfGrid: isOutOfGrid,
+        outOfGrid: isUntransformable,
         pointId: 'Single Point',
         stereoN,
         stereoE,
@@ -577,9 +579,11 @@ export class PointConverter {
     let raw3Str = '';
 
     const isOutOfGrid = this.outputWarning === 'Out of grid';
+    const isNoData = this.outputWarning === 'No data on grid';
+    const isUntransformable = isOutOfGrid || isNoData;
     const is3D = this.outputCoords !== null && this.outputCoords.length >= 3;
 
-    if (this.outputCoords && !isOutOfGrid) {
+    if (this.outputCoords && !isUntransformable) {
       if (isTargetGeo) {
         const lat = this.outputCoords[0];
         const lon = this.outputCoords[1];
@@ -632,7 +636,7 @@ export class PointConverter {
     let mapLon = NaN;
     if (this.outputCoords) {
       if (this.op === 'Stereo70ToETRS89') {
-        if (!isOutOfGrid) {
+        if (!isUntransformable) {
           mapLat = this.outputCoords[0];
           mapLon = this.outputCoords[1];
         }
@@ -662,13 +666,16 @@ export class PointConverter {
       }
     }
 
-    const canCenterOnMap = !isOutOfGrid && !isNaN(mapLat) && !isNaN(mapLon) && isInsideRomaniaGrid(mapLat, mapLon);
+    const canCenterOnMap = !isUntransformable && !isNaN(mapLat) && !isNaN(mapLon) && isInsideRomaniaGrid(mapLat, mapLon);
 
     let qualityBadges = '';
     if (this.outputCoords) {
-      const isNoData = this.outputWarning === 'No data on grid';
       qualityBadges = `
-        <span class="status-pill success">✓ ${t('quality.validCoords')}</span>
+        ${
+          !isUntransformable
+            ? `<span class="status-pill success">✓ ${t('quality.validCoords')}</span>`
+            : ''
+        }
         ${
           isOutOfGrid
             ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}</span>`

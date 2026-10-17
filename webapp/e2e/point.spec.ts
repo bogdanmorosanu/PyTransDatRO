@@ -182,9 +182,6 @@ test.describe('points without a transformation', () => {
     expect(after.zoom).toBe(before.zoom);
   });
 
-  // KNOWN APP BUG (expected to fail): PointConverter.ts only treats the warning 'Out of grid' as
-  // untransformable (e.g. line ~429 `isOutOfGrid`); for 'No data on grid' the API echoes the
-  // untransformed input, which is then displayed as if it were the transformed output.
   test('point in a no-data zone is flagged and the untransformed input is not shown as output', async ({
     page,
     request,

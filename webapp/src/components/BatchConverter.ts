@@ -201,15 +201,17 @@ export class BatchConverter {
         const pointLabel = row.pointId || `Point ${pointIndex}`;
         const apiRes = batchResults[validRowIndex++];
         const isGeoOutput = this.op === 'Stereo70ToETRS89';
-        const isOutOfGrid = apiRes.warning === 'Out of grid';
+        const isUntransformable =
+          apiRes.warning === 'Out of grid' || apiRes.warning === 'No data on grid';
 
-        if (isOutOfGrid) {
+        if (isUntransformable) {
           outOfGridCount++;
-          outputLines.push(row.pointId ? `${row.pointId}, # Out of grid` : '# Out of grid');
+          const warnComment = `# ${apiRes.warning}`;
+          outputLines.push(row.pointId ? `${row.pointId}, ${warnComment}` : warnComment);
           items.push({
             pointId: row.pointId || pointLabel,
             coords: [],
-            warning: 'Out of grid',
+            warning: apiRes.warning,
             isGeo: isGeoOutput,
           });
           continue;

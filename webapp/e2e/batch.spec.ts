@@ -70,10 +70,6 @@ test('batch keeps strict 1-to-1 lines and 1-based Point N labels around blank an
   });
 });
 
-// KNOWN APP BUG: BatchConverter.ts:204 only treats the warning 'Out of grid' as untransformable,
-// so the API warning 'No data on grid' (point inside the grid envelope but without grid data) is
-// counted as a successful transformation and the untransformed input is echoed as "output".
-// Written for the CORRECT behaviour; expected to FAIL until the bug is fixed.
 test('batch reports a no-data-zone point as untransformable and not as a success', async ({
   page,
   externalRequests,

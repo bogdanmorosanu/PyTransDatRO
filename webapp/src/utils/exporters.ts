@@ -32,8 +32,8 @@ export function generateCSVContent(
   const lines: string[] = [];
 
   for (const item of items) {
-    if (item.warning === 'Out of grid') {
-      lines.push(item.pointId ? `${item.pointId}${sep} # Out of grid` : '# Out of grid');
+    if (item.warning === 'Out of grid' || item.warning === 'No data on grid') {
+      lines.push(item.pointId ? `${item.pointId}${sep} # ${item.warning}` : `# ${item.warning}`);
       continue;
     }
 
