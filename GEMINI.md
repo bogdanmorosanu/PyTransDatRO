@@ -31,6 +31,7 @@
   - Web endpoints / serialization / validation $\to$ `api/` (FastAPI / Pydantic).
   - User interface / interactions $\to$ `webapp/` (TypeScript / Leaflet).
 - **Test Accompaniment**: Every new feature or bugfix must be accompanied by tests in `tests/` (`pytest`) and/or `webapp/src/` (`vitest`).
+- **E2E Accompaniment**: Any change to a covered UI flow (single-point transform, batch paste, file upload/download, map centering/no-auto-pan, language switch, API error display) or to a rule in `.agents/rules/webapp-design.md` must add or update a Playwright e2e test (`webapp/e2e/`); pure styling/copy changes are exempt; Vitest remains the default for parsers and `src/ui/` factories. Run with `npm --prefix webapp run test:e2e` (see `docs/testing.md`).
 - **Config & Constants**: Never hardcode operational parameters. Place invariants in `pytransdatro/constants.py` and deployment knobs in `.env` / `api/config.py` / `webapp/src/config.ts`.
 
 ### 3. Windows Sandbox & Test Execution Rules

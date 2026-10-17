@@ -8,6 +8,7 @@ import { t, onLanguageChange } from '../i18n';
 import { APP_CONFIG } from '../config';
 import { formatDegToDMS, degToRad } from '../utils/dmsParser';
 import type { AngularUnitType, PointTransformedEvent } from './PointConverter';
+import type { BoundsBox, MapViewSnapshot } from './mapViewSnapshot';
 
 export const ROMANIA_GRID_BOUNDS = {
   minLat: 43.5,
@@ -182,6 +183,32 @@ export class MapView {
 
   public getElement(): HTMLElement {
     return this.container;
+  }
+
+  /** Returns a plain-data snapshot of the map state (no live Leaflet objects). */
+  public getSnapshot(): MapViewSnapshot {
+    if (!this.map) {
+      throw new Error('MapView.getSnapshot() called before initMap()');
+    }
+    const toBox = (b: L.LatLngBounds): BoundsBox => ({
+      south: b.getSouth(),
+      west: b.getWest(),
+      north: b.getNorth(),
+      east: b.getEast(),
+    });
+    const center = this.map.getCenter();
+    const maxBounds = this.map.options.maxBounds;
+    const point = this.pointLayer ? this.pointLayer.getLayers().length : 0;
+    const text = this.textLayer ? this.textLayer.getLayers().length : 0;
+    const files = this.filesLayer ? this.filesLayer.getLayers().length : 0;
+    return {
+      center: { lat: center.lat, lng: center.lng },
+      zoom: this.map.getZoom(),
+      bounds: toBox(this.map.getBounds()),
+      maxBounds: maxBounds ? toBox(L.latLngBounds(maxBounds as L.LatLngBoundsLiteral)) : null,
+      markerCount: point + text + files,
+      markersByLayer: { point, text, files },
+    };
   }
 
   public invalidateSize(): void {

@@ -62,6 +62,14 @@ These standards govern code modifications across all layers of the PyTransDatRO 
   npm --prefix webapp run build
   ```
 
+### End-to-End UI Tests (Playwright)
+- Any change to a covered UI flow (single-point transform, batch paste, file upload/download, map centering/no-auto-pan, language switch, API error display) or to a rule in `.agents/rules/webapp-design.md` must add or update a Playwright e2e test (`webapp/e2e/`); pure styling/copy changes are exempt; Vitest remains the default for parsers and `src/ui/` factories.
+- Specs import `test`/`expect` from `webapp/e2e/fixtures.ts` (external hosts stubbed, language pinned to `en`).
+- Run before completing such tasks (see `docs/testing.md`):
+  ```powershell
+  npm --prefix webapp run test:e2e
+  ```
+
 ### Accessibility (a11y)
 - All custom toggles and buttons must support keyboard navigation (`Tab`, `Space`, `Enter`).
 - Custom toggles must include `role="switch"` or `role="button"` with `aria-checked` or `aria-label` attributes.

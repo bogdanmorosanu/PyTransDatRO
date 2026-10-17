@@ -24,6 +24,8 @@ The single most important invariant in this repo is **layer discipline**. Change
 - **Configuration hierarchy**: geodetic invariants → `pytransdatro/constants.py` (never in `.env`); grid params → `.spg` binary header (dynamic); server/throttling ops → `api/config.py` + `.env` (prefix `PYTRANSDAT_`); web client → `webapp/src/config.ts` (prefix `VITE_`). Never hardcode ports, caps, timeouts, or paths in business logic.
 - **No silent failures**: never `except:` or `except Exception: pass`. Catch specific exceptions and log via `logging.getLogger(__name__)` (not `print`).
 
+`GLOSSARY.md` at the repo root defines the project terminology.
+
 ## Common Commands
 
 ```bash
@@ -41,6 +43,7 @@ python -m ruff format --check pytransdatro api tests tools
 
 # Frontend (run from repo root with --prefix)
 npm --prefix webapp test            # Vitest unit tests
+npm --prefix webapp run test:e2e   # Playwright UI tests (needs PYTHON=<pytransdat python>; one-time: npx --prefix webapp playwright install chromium)
 npm --prefix webapp run build       # tsc typecheck + Vite production bundle (run before finishing any webapp task)
 npm --prefix webapp run dev         # Vite dev server (http://localhost:5173)
 
@@ -61,12 +64,13 @@ dev.ps1                             # Windows/PowerShell equivalent (hardcoded c
 ## Testing Conventions
 
 - Every feature or bugfix must ship with tests: `tests/*.py` (pytest) for core/API, and `webapp/src/**` (Vitest) for any change to `dmsParser.ts`, `pointParser.ts`, `gridBounds.ts`, `exporters.ts`, or `src/ui/` factories.
+- Any change to a covered UI flow (single-point transform, batch paste, file upload/download, map centering/no-auto-pan, language switch, API error display) or to a rule in `.agents/rules/webapp-design.md` must add or update a Playwright e2e test (`webapp/e2e/`); pure styling/copy changes are exempt; Vitest remains the default for parsers and `src/ui/` factories.
 - Parsers must tolerate empty lines, comments, and whitespace without throwing.
 - **Windows sandbox note**: Starlette's `TestClient` uses loopback sockets; under a restricted Windows sandbox, running full `pytest` or any `TestClient`-importing module (`tests/test_api_*.py`, `tests/test_telemetry.py`) can hang — run those unsandboxed. Core/config tests, Ruff, and Vitest run fine sandboxed. (Not relevant on macOS/Linux.)
 
 ## Webapp Design Rules (see `.agents/rules/webapp-design.md`)
 
-The web map has strict, opinionated UX invariants — read the rules file before UI work. Highlights: no decorative emojis in labels; no ad-hoc/inline styling (all styles derive from `variables.css` and modular stylesheets via `src/ui/` factories); 480px workbench panel width; coordinate transforms must **never** auto-pan/zoom the map; map navigation is bounded to Romania's envelope; quasigeoid height is a measurement and must never be colored as a status (green/yellow/red are reserved for health/warning/error); strict 1-to-1 line correspondence in batch/file processing with 1-based `Point N` indexing.
+The web map has strict, opinionated UX invariants — read the rules file before UI work. Highlights: no decorative emojis in labels; no ad-hoc/inline styling (all styles derive from `variables.css` and modular stylesheets via `src/ui/` factories); 480px workbench panel width; coordinate transforms must **never** auto-pan/zoom the map; the app's own centering/zoom actions are bounded to Romania's envelope and never pan outside it for out-of-grid points (free user navigation is unrestricted); quasigeoid height is a measurement and must never be colored as a status (green/yellow/red are reserved for health/warning/error); strict 1-to-1 line correspondence in batch/file processing with 1-based `Point N` indexing.
 
 ## Repo-Specific Agent Workflow
 

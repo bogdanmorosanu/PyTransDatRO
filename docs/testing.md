@@ -143,7 +143,60 @@ D:\anaconda3\envs\pytransdat\python.exe tools/generate_ancpi_comparison_reports.
 
 ---
 
-## 6. Code Hygiene & Static Analysis Audits
+## 6. End-to-end UI tests (Playwright)
+
+Browser-level flow tests live in `webapp/e2e/*.spec.ts` (Chromium only, no retries). Vitest remains
+the default for parsers and `src/ui/` factories.
+
+**One-time setup**:
+```bash
+npm --prefix webapp install
+npx --prefix webapp playwright install chromium
+```
+
+**Run**:
+```bash
+PYTHON=/path/to/conda/envs/pytransdat/bin/python npm --prefix webapp run test:e2e
+```
+```powershell
+$env:PYTHON = 'C:\path\to\conda\envs\pytransdat\python.exe'; npm --prefix webapp run test:e2e
+```
+`PYTHON` selects the interpreter (defaults to `python` on `PATH`). The script typechecks
+`webapp/e2e` (`tsc -p e2e`, separate from the app `tsconfig.json`) and then runs Playwright.
+
+**Server**: `playwright.config.ts` starts one process from the repo root: it builds the frontend
+with `VITE_E2E=true` into `webapp/dist-e2e/` (`npm run build:e2e`) and then serves web + API with
+`python -m uvicorn api.main:app` on `http://127.0.0.1:8100`. `reuseExistingServer` is false, so the
+normal dev server on :8000 is never touched.
+
+**Isolation** (env set by the config): `PYTRANSDAT_WEBAPP_DIST_DIR=webapp/dist-e2e`,
+`PYTRANSDAT_LOG_DIR` and `PYTRANSDAT_FEEDBACK_LOG_PATH` under `webapp/e2e/.tmp/` (git-ignored),
+`PYTRANSDAT_SMTP_HOST=""` (no mail), and rate limits raised to 100000.
+
+**Fixtures** (`webapp/e2e/fixtures.ts`; import `test`/`expect` from there, not from Playwright):
+- External hosts (map tiles, Google Fonts, ...) are intercepted and answered with a stub (1x1
+  transparent PNG / empty CSS) carrying an `x-e2e-stub` header; `externalRequests` lists them.
+- Language is pinned to `en` via `localStorage['pytransdat_lang']` (only if unset, so a test that
+  switches language keeps it across reloads).
+- `consoleErrors` collects console errors and uncaught page errors.
+- `mapView()` / `readMapView(page)` return `window.__e2e.mapView()`.
+
+**`window.__e2e`**: exposed only when the bundle is built with `VITE_E2E=true` (flag
+`E2E_ENABLED` in `webapp/src/config.ts`); absent from the normal production build. `mapView()`
+returns a plain snapshot: `center`, `zoom`, `bounds`, `maxBounds` (or `null`), `markerCount` and
+`markersByLayer`. Use it to assert that transforms never auto-pan or zoom the map.
+
+**Reference data**: `webapp/e2e/referencePoints.ts` holds ANCPI benchmark points (decimal degrees
+and metres) and `matchesAtDisplayPrecision()` for comparisons at UI precision (8 decimals degrees,
+3 decimals metres, +-1 in the last digit).
+
+**Failures**: traces (`retain-on-failure`) and screenshots (`only-on-failure`) are written to
+`webapp/test-results/`, the HTML report to `webapp/playwright-report/` (both git-ignored). Open a
+trace with `npx --prefix webapp playwright show-trace <trace.zip>`.
+
+---
+
+## 7. Code Hygiene & Static Analysis Audits
 
 Before committing or releasing changes, execute the static quality audit:
 

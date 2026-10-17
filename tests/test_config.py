@@ -119,3 +119,21 @@ def test_logging_configuration():
 
     # Should configure without errors
     configure_logging(settings)
+
+
+def test_webapp_dist_dir_default_and_override(monkeypatch, tmp_path):
+    """Verifies the static web assets directory defaults to webapp/dist and is overridable."""
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent
+    monkeypatch.delenv("PYTRANSDAT_WEBAPP_DIST_DIR", raising=False)
+    # _env_file=None: a developer's local .env must not leak into the default check.
+    assert Settings(_env_file=None).webapp_dist_dir == repo_root / "webapp" / "dist"
+
+    monkeypatch.setenv("PYTRANSDAT_WEBAPP_DIST_DIR", str(tmp_path))
+    assert Settings().webapp_dist_dir == tmp_path
+
+    # Relative overrides anchor to the repo root, independent of the working directory.
+    monkeypatch.setenv("PYTRANSDAT_WEBAPP_DIST_DIR", "webapp/dist-e2e")
+    monkeypatch.chdir(tmp_path)
+    assert Settings().webapp_dist_dir == repo_root / "webapp" / "dist-e2e"

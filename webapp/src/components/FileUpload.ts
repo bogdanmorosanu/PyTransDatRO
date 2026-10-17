@@ -370,7 +370,7 @@ export class FileUpload {
           <div style="color: var(--text-muted); font-size: 11.5px;">
             ${t('file.dropzoneHint')}
           </div>
-          <input type="file" id="file-input-hidden" multiple accept=".csv,.txt,.xyz" style="display: none;" />
+          <input type="file" id="file-input-hidden" aria-label="${t('file.dropzoneTitle')}" multiple accept=".csv,.txt,.xyz" style="display: none;" />
         </div>
 
         <!-- 2. Queued Files List with File Details and Per-File Quality Metrics -->
