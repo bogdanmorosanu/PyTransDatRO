@@ -1,0 +1,36 @@
+# ==============================================================================
+# Stage 1: Build Frontend Web Application (TypeScript + Vite)
+# ==============================================================================
+FROM node:20-alpine AS builder
+WORKDIR /build
+
+# Install dependencies with lockfile consistency
+COPY webapp/package.json webapp/package-lock.json ./
+RUN npm ci
+
+# Copy web application source and build production bundle
+COPY webapp/ ./
+RUN npm run build
+
+# ==============================================================================
+# Stage 2: Production Nginx Static Server & Reverse Proxy
+# ==============================================================================
+FROM nginx:alpine AS runtime
+
+# Remove default nginx static assets and configuration
+RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
+
+# Copy compiled frontend from Stage 1
+COPY --from=builder /build/dist /usr/share/nginx/html
+
+# Copy custom Nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Expose HTTP port
+EXPOSE 80
+
+# Basic healthcheck to verify Nginx is responding
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,18 +1,47 @@
+# ==============================================================================
+# PyTransDatRO - Production 2-Container Docker Compose Stack
+# ==============================================================================
 services:
-  pytransdat:
+  # ----------------------------------------------------------------------------
+  # Backend: FastAPI REST Service & Pure Python Geodetic Engine
+  # ----------------------------------------------------------------------------
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pytransdatro:dev
-    container_name: pytransdatro-app
-    ports:
-      - "8000:8000"
-    volumes:
-      # Named Docker volume ensures native Linux ext4 filesystem locks for SQLite
-      - pytransdat-logs:/app/logs
+    container_name: pytransdatro-backend
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTRANSDAT_LOG_DIR=/app/logs
+    volumes:
+      # Persistent host volume for SQLite usage telemetry & legacy statistics
+      - ./logs:/app/logs
+    expose:
+      - "8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-volumes:
-  pytransdat-logs:
+  # ----------------------------------------------------------------------------
+  # Web: Nginx Static Web Application & Reverse Proxy
+  # ----------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: pytransdatro-web
+    restart: unless-stopped
+    ports:
+      # Host port configurable via .env (e.g., 8000 for local testing, 80/custom on remote hosts)
+      - "${WEBAPP_PORT:-8000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Python Backend & Geodetic Core Quality Suite
+  # ----------------------------------------------------------------------------
+  python-ci:
+    name: Python Lint & Geodetic Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-api.txt -r requirements-dev.txt
+
+      - name: Code Quality & Linting (Ruff)
+        run: |
+          ruff check .
+          ruff format --check pytransdatro api tests tools
+
+      - name: Core Geodetic Parity Tests (ANCPI Benchmarks)
+        run: |
+          pytest tests/test_trans_ro.py tests/test_config.py
+
+      - name: Web API Integration & Telemetry Tests
+        run: |
+          pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_rate_limiter.py tests/test_telemetry.py tests/test_feedback.py
+
+  # ----------------------------------------------------------------------------
+  # Frontend TypeScript & Vitest Suite
+  # ----------------------------------------------------------------------------
+  frontend-ci:
+    name: Frontend Typecheck & Vitest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "webapp/package-lock.json"
+
+      - name: Install Frontend Dependencies
+        working-directory: webapp
+        run: npm ci
+
+      - name: TypeScript Compile & Production Bundle Build
+        working-directory: webapp
+        run: npm run build
+
+      - name: Run Vitest Unit Tests
+        working-directory: webapp
+        run: npm test

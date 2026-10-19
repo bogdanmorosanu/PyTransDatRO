@@ -54,8 +54,15 @@ A responsive Web GIS client interface built with Vite, TypeScript, Vanilla CSS, 
 - **Modular Stylesheet Architecture (`webapp/src/style/`)**: Pure CSS custom properties decoupled across `layout.css`, `forms.css`, `buttons.css`, `badges.css`, `menus.css`, `telemetry.css`, and `variables.css`.
 - **Reusable UI Factory Functions (`webapp/src/ui/`)**: Accessible component factories (`renderDropdownMenu`, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`) enforcing ARIA attributes and keyboard navigation.
 - **Client-Side Utilities**: DMS parsing, auto-delimited point parsing, Point ID preservation, and instant multi-format exports (CSV, GeoJSON, AutoCAD DXF).
-- **Production Serving**: Hosted directly from FastAPI root `/` via static file mounting (`webapp/dist/`).
+- **Production Serving**: Hosted via high-performance Nginx reverse proxy serving the Vite static bundle while proxying API endpoints to the backend container.
 - See [docs/web_app.md](web_app.md) for full architectural specifications and [webapp/README.md](../webapp/README.md) for frontend development commands.
+
+## Deployment & Container Architecture (`docs/deployment.md`)
+Production deployments follow an environment-agnostic 2-container topology orchestrated by Docker Compose:
+- **`web` (Nginx Alpine)**: Serves pre-compiled Vite static assets, enforces 50 MB file upload caps, and preserves client IP headers (`X-Forwarded-For`, `X-Real-IP`) for sliding-window rate limiting.
+- **`backend` (Python 3.11-slim)**: Runs FastAPI with embedded in-process `pytransdatro` geodetic math and persistent SQLite WAL volume mount (`./logs`).
+- **Universal Agnosticism**: Configuration is strictly decoupled using `.env.example` templates and host-local untracked `.env` files.
+- See [docs/deployment.md](deployment.md) for full container topology, reverse proxy rules, and operational runbooks.
 
 ## Quality Assurance & Testing Matrix
 The project enforces a cross-layer automated testing and verification strategy:

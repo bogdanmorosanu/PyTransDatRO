@@ -1,37 +1,47 @@
-# Task 27: Docker & GitHub Deployment Specification
+# Task 27: Docker & GitHub Deployment Specification and Implementation
 
 ## Objectives
 - [x] Design container architecture and deployment strategy for PyTransDatRO on community infrastructure.
 - [x] Establish open-source governance and multi-repository workflow between upstream (`bogdanmorosanu/PyTransDatRO`) and downstream (`geospatialorg/PyTransDatRO`).
 - [x] Conduct deep technical review of reverse-proxy routing, rate-limiting IP preservation, upload limits, environment configuration, SQLite WAL backup safety, and log rotation.
-- [x] Produce comprehensive specification document in `specs/deployment.md` ready for geospatial administrator review.
-- [x] Provide user with step-by-step guidance for SSH key generation and sharing with geospatial.org administrator.
+- [x] Produce comprehensive specification document in `specs/deployment.md`.
+- [x] Create living technical documentation in `docs/deployment.md` and link from `docs/architecture.md`.
+- [x] Implement Phase 1: 2-container Docker stack (`Dockerfile`, `Dockerfile.web`, `nginx.conf`, `docker-compose.yml`, `.env.example`).
+- [x] Implement Phase 2: GitHub Actions CI workflow (`.github/workflows/ci.yml`).
+- [x] Verify complete test suite locally (Ruff linting, 68 Vitest frontend tests, 62 Python core geodetic tests).
 
 ## Implementation Details
 
-1. **Deployment Architecture (`specs/deployment.md`)**:
-   - **2-Container Topology:**
-     - `web`: Multi-stage build running `nginx:alpine` serving Vite static assets and reverse-proxying `/api/*`, `/docs`, and `/openapi.json` to backend.
-     - `backend`: `python:3.11-slim` running FastAPI with embedded in-process `pytransdatro` geodetic calculation engine, mounting persistent SQLite volume.
-   - **Persistent Volume Mount:**
-     - Host directory `./logs` mounted to `/app/logs` inside backend container for `usage.db` (auto-created) and `legacy_stats.db` (seeded once via SCP).
-   - **Safety & Production Hardening:**
-     - Nginx client body limit: `client_max_body_size 50M;` matching `PYTRANSDAT_MAX_FILE_UPLOAD_BYTES`.
-     - Reverse-proxy IP headers: `X-Forwarded-For` and `X-Real-IP` forwarding to prevent FastAPI sliding-window rate limiter from clustering all requests under Nginx container IP.
-     - Container healthcheck synchronization: Nginx waits for backend healthcheck before serving traffic.
-     - Docker log rotation: `max-size: 10m`, `max-file: 3` to prevent host disk exhaustion.
-     - Non-blocking SQLite WAL live backup command documented.
+1. **Production Nginx Reverse Proxy (`nginx.conf`)**:
+   - Configured port 80 HTTP server with `gzip` compression for static web assets.
+   - Set `client_max_body_size 50M;` to match `PYTRANSDAT_MAX_FILE_UPLOAD_BYTES`.
+   - Reverse proxies `/api/*`, `/docs`, and `/openapi.json` to `http://backend:8000`.
+   - Injected client IP headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) ensuring FastAPI rate limiter distinguishes unique clients.
+   - Configured 300-second proxy timeout buffers for streaming file conversions.
 
-2. **Multi-Repository Governance & Fork Model**:
-   - Upstream: [`bogdanmorosanu/PyTransDatRO`](https://github.com/bogdanmorosanu/PyTransDatRO) under MIT license.
-   - Downstream: [`geospatialorg/PyTransDatRO`](https://github.com/geospatialorg/PyTransDatRO) as an official GitHub Fork.
-   - Workflow: Native 1-click Pull Requests from upstream to downstream. Upstream remains sovereign; geospatial maintains autonomy to merge or diverge.
-   - Controlled deployment: SSH on-server command `git pull && docker compose up -d --build` avoids storing sensitive server secrets in GitHub Actions.
+2. **Web Container Build (`Dockerfile.web`)**:
+   - Multi-stage build:
+     - Stage 1: `node:20-alpine` runs `npm ci` and `npm run build` targeting `webapp/`.
+     - Stage 2: `nginx:alpine` packages pre-compiled assets into `/usr/share/nginx/html` with `nginx.conf`.
+   - Includes container healthcheck using `wget`.
 
-3. **SSH Key Protocol**:
-   - Guided generation of modern `ed25519` key pair in Windows PowerShell.
-   - Verified only public key (`id_ed25519.pub`) is shared with geospatial administrator.
+3. **Backend Container Build (`Dockerfile`)**:
+   - Streamlined into a dedicated Python 3.11-slim backend runtime.
+   - Installs runtime dependencies, copies `pytransdatro/` (including binary grids) and `api/`.
+   - Includes healthcheck testing `/health` endpoint to verify geodetic grid pre-warming.
 
-## Verification
-- Comprehensive spec audit performed covering FastAPI settings prefix (`PYTRANSDAT_`), Nginx proxy directives, rate-limiter dispatch logic, and Docker Compose restart/health dependencies.
-- Confirmed zero modifications to core geodetic library or mathematical invariants.
+4. **Multi-Container Orchestration (`docker-compose.yml`)**:
+   - Defines `backend` and `web` services communicating over the internal Docker network.
+   - Maps host port `${WEBAPP_PORT:-8000}:80` (default 8000 locally, configurable to 8008 on geospatial server).
+   - Enforces healthcheck dependency (`web` waits for `backend` to report `service_healthy`).
+   - Configures persistent volume mount `./logs:/app/logs`.
+   - Implements Docker JSON log rotation (`max-size: 10m`, `max-file: 3`).
+
+5. **GitHub Actions CI Automation (`.github/workflows/ci.yml`)**:
+   - `python-ci` job: Runs Ruff linter, formatting checks, core ANCPI geodetic parity tests, and API integration tests on Python 3.11.
+   - `frontend-ci` job: Runs TypeScript compile, Vite production bundle build, and Vitest suite on Node.js 20.
+
+## Verification & Testing
+- **Linter & Formatting**: `ruff check .` passed with zero errors.
+- **Frontend Unit Tests**: `npm --prefix webapp test` -> 68/68 passed (5 test files).
+- **Core Geodetic Suite**: `pytest tests/test_trans_ro.py tests/test_config.py` -> 62/62 passed in 3.34s.
