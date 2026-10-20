@@ -27,20 +27,22 @@ Verifies:
 
 ---
 
-### Step 2: REST API Contract & Legacy Emulation Tests
-Run the API integration tests (or full suite).
+### Step 2: REST API Contract & Integration Tests
+Run the API integration and configuration tests (or full suite).
 
 > [!IMPORTANT]
 > **Windows Sandbox Notice**: Always execute Step 2 (and full `pytest`) with `BypassSandbox: true`. Starlette's `TestClient` uses `anyio` to bridge synchronous test calls to asynchronous FastAPI endpoints using background worker threads and local loopback sockets. Under standard Windows sandbox isolation, local loopback socket communication is blocked and the tests will hang indefinitely.
 
 ```powershell
-D:\anaconda3\envs\pytransdat\python.exe -m pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_rate_limiter.py tests/test_telemetry.py -q
+D:\anaconda3\envs\pytransdat\python.exe -m pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_rate_limiter.py tests/test_telemetry.py tests/test_feedback.py tests/test_config.py -q
 ```
 
 Verifies:
-- Modern JSON endpoints (`/api/v1/transform/*`).
+- Modern JSON endpoints (`/api/v1/transform/*`, `/api/v1/grid/*`).
 - 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service (`/transdatonline/cooOpService`).
 - Rate limiting and asynchronous SQLite telemetry recording.
+- Feedback submission endpoint, bot protection verification, and logging fallback (`tests/test_feedback.py`).
+- Centralized configuration hierarchy, environment variable parsing, and fallback overrides (`tests/test_config.py`).
 
 ---
 

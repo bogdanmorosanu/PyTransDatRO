@@ -41,6 +41,14 @@ Check for prohibited anti-patterns across the codebase:
    Get-ChildItem -Path api -Recurse -Filter "*.py" | Select-String -Pattern "localhost:8000|127.0.0.1:8000"
    ```
 
+4. **Hardcoded Machine-Specific Absolute Paths or File URIs**:
+   Ensure documentation, agent skills, tasks, and code contain zero machine-specific absolute file references (e.g. `file:///`, `D:\ProiecteRealizate`):
+   ```powershell
+   git grep --untracked -i -E "file:///[a-z]:|\]\([a-z]:|proiecterealizate"
+   # Or in PowerShell:
+   Get-ChildItem -Path docs, .agents, pytransdatro, api, webapp -Recurse -Force -Include "*.md","*.py","*.ts" | Where-Object { $_.FullName -notmatch "node_modules|\.git" } | Select-String -Pattern "file:///[A-Za-z]:|\]\([A-Za-z]:|ProiecteRealizate"
+   ```
+
 ### 3. Frontend TypeScript & Vitest Suite
 Verify that all client parsers, bounds checks, exporters, and UI helpers pass unit tests, and that the web application compiles cleanly without type errors:
 

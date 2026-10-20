@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This document provides a comparative architectural and functional bridge between the **Legacy 2012 GWT Web App** ([`transdatonline/`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline)) and the **Modern PyTransDatRO Web Application** specified in [`specs/web_app.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/specs/web_app.md) and powered by the REST API documented in [`docs/rest_api.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/rest_api.md).
+This document provides a comparative architectural and functional bridge between the **Legacy 2012 GWT Web App** ([`transdatonline/`](../../transdatonline)) and the **Modern PyTransDatRO Web Application** specified in [`specs/web_app.md`](../web_app.md) and powered by the REST API documented in [`docs/rest_api.md`](../rest_api.md).
 
 It identifies architectural gaps, highlights legacy strengths that must be preserved (e.g. DMS parsing, Romanian `NE` coordinate ordering, diagnostic reporting), rectifies legacy limitations, and provides concrete directives for implementing the modern frontend in `webapp/`.
 
@@ -31,7 +31,7 @@ It identifies architectural gaps, highlights legacy strengths that must be prese
 The legacy application got several key domain-specific ergonomics right. The modern web application must preserve and enhance these:
 
 ### 3.1. Degrees-Minutes-Seconds (DMS) Parsing
-* **Legacy Implementation**: [`Angle.valueOfDMS`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/shared/Angle.java#L29-L70) parsed arbitrary DMS strings such as `45°59'58.99"`, `45d 59m 58.99s`, and `45 59 58.99`.
+* **Legacy Implementation**: [`Angle.valueOfDMS`](../../transdatonline/shared/Angle.java#L29-L70) parsed arbitrary DMS strings such as `45°59'58.99"`, `45d 59m 58.99s`, and `45 59 58.99`.
 * **Porting Directive for `webapp/src/utils/dmsParser.ts`**:
   - Implement a TypeScript port of the regex `[°dms'"\s]+` tokenization.
   - Support cardinal hemisphere indicators (`N`, `S`, `E`, `W`).
@@ -46,7 +46,7 @@ The legacy application got several key domain-specific ergonomics right. The mod
   - When presenting results to the user, the client reformats the output according to the user's active choice.
 
 ### 3.3. Transformation Diagnostic Report Modal
-* **Legacy Implementation**: [`ReportPanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/ReportPanel.java) presented a structured health summary post-conversion.
+* **Legacy Implementation**: [`ReportPanel.java`](../../transdatonline/client/ui/ReportPanel.java) presented a structured health summary post-conversion.
 * **Porting Directive for `webapp/src/components/ReportModal.ts`**:
   - Retain the exact diagnostic categories:
     1. Total points submitted.
@@ -62,7 +62,7 @@ The legacy application got several key domain-specific ergonomics right. The mod
 
 ## 4. Rectification of Legacy Limitations & Quirks
 
-During the code audit of [`transdatonline/`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline), several limitations and bugs were identified that the modern web app resolves:
+During the code audit of [`transdatonline/`](../../transdatonline), several limitations and bugs were identified that the modern web app resolves:
 
 ```mermaid
 flowchart LR
@@ -90,7 +90,7 @@ flowchart LR
 ```
 
 ### Specific Bug Fixes:
-1. **Output Delimiter**: In [`DelimiterCheckBoxPanel.java:L42`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/DelimiterCheckBoxPanel.java#L42), `getDelimiter()` was hardcoded to return `;`. In the new web app, the output delimiter mirrors the detected input delimiter or the user's explicit preference.
+1. **Output Delimiter**: In [`DelimiterCheckBoxPanel.java:L42`](../../transdatonline/client/ui/DelimiterCheckBoxPanel.java#L42), `getDelimiter()` was hardcoded to return `;`. In the new web app, the output delimiter mirrors the detected input delimiter or the user's explicit preference.
 2. **Missing Point-by-Point URL Sharing**: The legacy app had no URL state. In the new app, `PointConverter.ts` synchronizes with URL query parameters (`?op=Stereo70ToETRS89&n=500000&e=500000`), allowing surveyors to share coordinate bookmarks directly.
 3. **Deprecated Datums**: Stereo 30 was based on an obsolete Krasovsky ellipsoid formulation without modern official support. The modern app defaults to Stereo 70 and informs users about Stereo 30 deprecation.
 
@@ -98,7 +98,7 @@ flowchart LR
 
 ## 5. API Mapping for Frontend Integration
 
-The modern web application interfaces with the endpoints documented in [`docs/rest_api.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/rest_api.md):
+The modern web application interfaces with the endpoints documented in [`docs/rest_api.md`](../rest_api.md):
 
 | Web App Feature / Module | Target API Endpoint | HTTP Method | Request / Response Schema |
 | :--- | :--- | :--- | :--- |
@@ -116,8 +116,8 @@ The modern web application interfaces with the endpoints documented in [`docs/re
 ## 6. Implementation Readiness Checklist
 
 With the legacy UI and client logic fully documented in:
-* [`04_legacy_web_ui_specification.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/transdatonline/04_legacy_web_ui_specification.md)
-* [`05_legacy_client_functionality_and_validation.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/transdatonline/05_legacy_client_functionality_and_validation.md)
-* [`06_modern_web_app_transition_analysis.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/transdatonline/06_modern_web_app_transition_analysis.md)
+* [`04_legacy_web_ui_specification.md`](04_legacy_web_ui_specification.md)
+* [`05_legacy_client_functionality_and_validation.md`](05_legacy_client_functionality_and_validation.md)
+* [`06_modern_web_app_transition_analysis.md`](06_modern_web_app_transition_analysis.md)
 
-The next step is frontend development inside `webapp/` using Vite + TypeScript + Leaflet following the roadmap established in [`specs/web_app.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/specs/web_app.md).
+The next step is frontend development inside `webapp/` using Vite + TypeScript + Leaflet following the roadmap established in [`specs/web_app.md`](../web_app.md).

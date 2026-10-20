@@ -56,8 +56,20 @@ webapp/
 ├── design_guide.md         # Single source of truth design system & styling manual
 ├── index.html              # HTML entrypoint with preloaded fonts and layout shells
 ├── package.json            # Node dependencies and build scripts
+├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build options and dev server API proxy
+├── e2e/                    # Playwright end-to-end browser test suite (19 tests)
+│   ├── fixtures.ts         # Offline tile & font stubs and page helpers
+│   ├── helpers/            # Shared locator and assertion helpers
+│   ├── smoke.spec.ts       # Critical DOM shell and initial layout smoke tests
+│   ├── point.spec.ts       # Single-point transformation, direction toggle, angle units, map popups
+│   ├── batch.spec.ts       # Batch text parsing, comments, out-of-grid suppression, 1-to-1 lines
+│   ├── file.spec.ts        # File drag-and-drop, queue, streaming progress, export download
+│   ├── map.spec.ts         # Map zoom constraints, layer toggling, centering vs fit-bounds
+│   ├── i18n.spec.ts        # Dynamic RO/EN language switching, UI translation reactivity
+│   ├── errors.spec.ts      # Syntax errors, out-of-grid badges, API rate limits
+│   └── referencePoints.ts  # Reference coordinate fixtures across Romania
 └── src/
     ├── main.ts             # Application orchestrator & component lifecycle manager
     ├── assets/             # Vector graphic assets and dual-theme brand icon
@@ -195,17 +207,38 @@ To verify code quality, test suite passes, and build integrity:
 # Run automated utility and UI unit tests (Vitest)
 npm test
 
-# Run tests in interactive watch mode during development
+# Run unit tests in interactive watch mode during development
 npm run test:watch
+
+# Run Playwright End-to-End (E2E) browser tests in headless mode
+npm run test:e2e
+# Alternatively from repo root via PowerShell runner:
+.\test-e2e.ps1
+
+# Run Playwright E2E tests in visual interactive UI runner
+npm run test:e2e:ui
+# Alternatively from repo root via PowerShell runner:
+.\test-e2e.ps1 -Ui
 
 # Type check TypeScript and verify production bundle compiles cleanly
 npm run build
 ```
 
-The automated test suite runs 67 tests in $< 350\text{ ms}$ covering:
+### Unit Tests (Vitest)
+The unit test suite executes 68 tests in $< 350\text{ ms}$ covering:
 - **`dmsParser.test.ts`**: Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), whitespace handling, degree symbol variations, sexagesimal conversion.
 - **`pointParser.test.ts`**: Delimiter detection (tabs, spaces, commas, semicolons), point IDs, coordinate ordering (`NE(H)` vs `EN(H)`).
 - **`gridBounds.test.ts`**: Romania envelope pre-flight bounding box validation.
 - **`exporters.test.ts`**: Pure client-side CSV, GeoJSON, and AutoCAD DXF R12 generator output fidelity.
 - **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu` with active checkmarks, `renderSegmentedControl`, etc.) and the dual-theme `Map Projection Graticule` brand logo (`getLogoInlineSvg`, `getLogoStandaloneSvg`).
+
+### End-to-End Browser Tests (Playwright)
+The Playwright suite executes 19 browser specs against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
+- **`smoke.spec.ts`**: DOM shell, layout containers, and initial component mounting.
+- **`point.spec.ts`**: Single-point coordinate conversions, direction toggling, angular units, copy buttons, and map pin popups.
+- **`batch.spec.ts`**: Delimiter detection, coordinate swapping, comment/blank line preservation, out-of-grid row suppression, and export triggers.
+- **`file.spec.ts`**: File dropzone, queue management, streaming transformation progress, and batch downloads.
+- **`map.spec.ts`**: Zoom constraints, Home button, layer visibility toggles, measurement ruler, and center vs fit-bounds actions.
+- **`i18n.spec.ts`**: Reactive Romanian (`RO`) / English (`EN`) dropdown switching, attribute updates, and localStorage persistence.
+- **`errors.spec.ts`**: Pre-flight validation, syntax errors, "No data on grid" badges, and rate-limit error displays.
 

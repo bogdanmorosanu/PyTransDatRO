@@ -33,9 +33,9 @@ For the full design system specification, see [webapp/design_guide.md](../../web
 ---
 
 ## 4. Buttons, Colors & Metric Isolation
-- **Primary CTA Anchor (`.btn-primary`)**: Must use high-contrast theme-native styling:
-  - Dark Mode: Off-white/porcelain surface (`#f8fafc`) with deep charcoal text (`#090d16`).
-  - Light Mode: Deep slate/black surface (`#0f172a`) with crisp white text (`#f8fafc`).
+- **Primary CTA Anchor (`.btn-primary`)**: Must use Option #8 (**Subtle Surface + Border**) theme-native styling:
+  - Dark Mode: Subtle charcoal surface (`--btn-primary-bg: #1f2630`, hover: `#28313e`) with medium slate border (`--btn-primary-border: #48586a`) and crisp light text (`--btn-primary-text: #e6edf3`).
+  - Light Mode: Subtle light grey surface (`--btn-primary-bg: #eaeef2`, hover: `#dde3ea`) with defined border (`--btn-primary-border: #8c959f`) and dark text (`--btn-primary-text: #1f2328`).
   - Label: Clean text `Transform` / `Transformă` (no emojis, no icons).
 - **Metric Color Isolation**:
   - Quasigeoid Height ($\zeta = h - H$) is a physical measurement, not a status. It must **never** be colored green, red, or yellow.

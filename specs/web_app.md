@@ -363,7 +363,7 @@ gantt
 ## 7. Entry Point Instructions for the Implementation Agent
 
 When starting a new session to build the web app:
-1. Review this document ([`specs/web_app.md`](specs/web_app.md)) alongside the REST API specification ([`docs/rest_api.md`](docs/rest_api.md)) and legacy client analysis ([`docs/transdatonline/05_legacy_client_functionality_and_validation.md`](docs/transdatonline/05_legacy_client_functionality_and_validation.md)).
+1. Review this document ([`specs/web_app.md`](web_app.md)) alongside the REST API specification ([`docs/rest_api.md`](../docs/rest_api.md)) and legacy client analysis ([`docs/transdatonline/05_legacy_client_functionality_and_validation.md`](../docs/transdatonline/05_legacy_client_functionality_and_validation.md)).
 2. Initialize the Vite TypeScript project inside `webapp/`:
    ```bash
    npm create vite@latest webapp -- --template vanilla-ts

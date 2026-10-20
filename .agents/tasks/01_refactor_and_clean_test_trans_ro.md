@@ -1,7 +1,7 @@
 # Task: Refactor and Clean test_trans_ro.py
 
 **Status**: Completed  
-**Target File**: [tests/test_trans_ro.py](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/tests/test_trans_ro.py)  
+**Target File**: [`tests/test_trans_ro.py`](../../tests/test_trans_ro.py)  
 **Created**: 2026-10-05  
 
 ---

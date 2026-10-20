@@ -97,24 +97,24 @@ flowchart TD
 
 ## 3. Detailed UI Component Breakdown
 
-### 3.1. Header & Title Bar ([`TitlePanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/TitlePanel.java))
+### 3.1. Header & Title Bar ([`TitlePanel.java`](../../transdatonline/client/ui/TitlePanel.java))
 * **Application Title**: A centered bold label reading `"TransLT Online Romania V1.0"`.
 * **Help Link**: An anchor element positioned on the far right (`DockPanel.EAST`):
   * Label: `"Ajutor"`
-  * Destination: Hyperlink to [`HelpTransdatOnline.html`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/HelpTransdatOnline.html)
+  * Destination: Hyperlink to `HelpTransdatOnline.html`
   * Styling: Subtle link color (`graytext`), hovering displays bold weight.
 * **Bar Styling**: Background gradient (`#ebebeb url(images/hborder.png) repeat-x`), bottom border `1px solid #bbbbbb`, margin bottom `10px`.
 
-### 3.2. Transformation Selector ([`TransformationsListBox.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/TransformationsListBox.java))
+### 3.2. Transformation Selector ([`TransformationsListBox.java`](../../transdatonline/client/ui/TransformationsListBox.java))
 * **Label**: `"Selectati transformarea: "` with bold styling (`OptionLabel`).
-* **Dropdown (`ListBox`)**: Single-selection dropdown list containing the 4 transformation pipelines defined in [`Transformations.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/shared/Transformations.java):
+* **Dropdown (`ListBox`)**: Single-selection dropdown list containing the 4 transformation pipelines defined in [`Transformations.java`](../../transdatonline/shared/Transformations.java):
   1. `Stereo70-->ETRS89` *(Default selection at index 0)*
   2. `Stereo30-->ETRS89`
   3. `ETRS89-->Stereo70`
   4. `ETRS89-->Stereo30`
 * **Layout**: Horizontal panel with centered vertical alignment.
 
-### 3.3. Dual Coordinate Workspaces ([`CRSPanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/CRSPanel.java))
+### 3.3. Dual Coordinate Workspaces ([`CRSPanel.java`](../../transdatonline/client/ui/CRSPanel.java))
 * **Source CRS Panel (`sourceCRS`)**:
   * Multiline text input (`TextArea`) where the user pastes or enters coordinates.
   * Dimensions: Fixed width `280px`, fixed height `448px`.
@@ -126,7 +126,7 @@ flowchart TD
   * Read/Write: Though meant for output, it remains an editable textarea allowing users to select and copy text.
 * **Arrangement**: Side-by-side inside a `HorizontalPanel` with margin spacing.
 
-### 3.4. Collapsible Options Section ([`OptionsPanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/OptionsPanel.java))
+### 3.4. Collapsible Options Section ([`OptionsPanel.java`](../../transdatonline/client/ui/OptionsPanel.java))
 Encapsulated inside a GWT `DisclosurePanel` labeled **"Optiuni"** with expand/collapse animations. Contains a 3-row, 2-column table grid (`Grid(3, 2)`):
 
 #### Row 0: Coordinate Order (`CoordinateOrderPanel`)
@@ -151,7 +151,7 @@ Encapsulated inside a GWT `DisclosurePanel` labeled **"Optiuni"** with expand/co
   * `[ ] Punct si virgula`: Delimited by semicolons (`;+`).
 * **Default State**: All checkboxes are unchecked upon initial load. When no checkboxes are selected, the app implicitly defaults to semicolon (`;+`) for input parsing and semicolon (`;`) for output formatting.
 
-### 3.5. Action Command Bar ([`CommandsPanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/CommandsPanel.java))
+### 3.5. Action Command Bar ([`CommandsPanel.java`](../../transdatonline/client/ui/CommandsPanel.java))
 * **Separation Line**: Top border `1px solid #CDCDCD`.
 * **Primary Action Button**:
   * Text: `"Aplica transformarea"` ("Apply transformation").
@@ -162,13 +162,13 @@ Encapsulated inside a GWT `DisclosurePanel` labeled **"Optiuni"** with expand/co
 
 ## 4. Modal Overlays & Interactive Dialogs
 
-### 4.1. Wait Progress Panel ([`WaitPanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/WaitPanel.java))
+### 4.1. Wait Progress Panel ([`WaitPanel.java`](../../transdatonline/client/ui/WaitPanel.java))
 * **Type**: `PopupPanel` with modal glass enabled (`setGlassEnabled(true)`), blocking all background user interactions during calculation.
 * **Position**: Dynamically centered over the main form:
   $$\text{left} = \text{MainForm.left} + \frac{\text{width}}{2} - 75\text{px}, \quad \text{top} = \text{MainForm.top} + \frac{\text{height}}{2} - 5\text{px}$$
 * **Content**: Single text label: `"Transformare coordonate..."` ("Transforming coordinates...").
 
-### 4.2. Transformation Summary Report Modal ([`ReportPanel.java`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/client/ui/ReportPanel.java))
+### 4.2. Transformation Summary Report Modal ([`ReportPanel.java`](../../transdatonline/client/ui/ReportPanel.java))
 * **Type**: `DialogBox` with glass overlay (`setGlassEnabled(true)`) and drop-in animation (`setAnimationEnabled(true)`).
 * **Title**: `"Raport transformare coordonate"` ("Coordinate Transformation Report").
 * **Position**: Centered over the application window.
@@ -206,7 +206,7 @@ The styling is defined in `css/TransDatOnline.css` combined with the GWT Chrome 
 
 ---
 
-## 6. Help File Structure ([`HelpTransdatOnline.html`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/HelpTransdatOnline.html))
+## 6. Help File Structure (`HelpTransdatOnline.html`)
 
 The application links to a static Romanian-language help page featuring:
 1. **General Description**: Defines supported transformations (ETRS89 $\leftrightarrow$ Stereo 70, ETRS89 $\leftrightarrow$ Stereo 30 with elevations in the Black Sea 1975 datum).

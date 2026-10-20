@@ -4,7 +4,7 @@
 
 `transdatonline` is the original web application and service implementation of TransDatRO, developed over 10 years ago using Java (Servlets, Apache Tomcat), Google Web Toolkit (GWT), and a MySQL backend. It powered coordinate transformations between Romania's national projected coordinate system (**Stereo 70** / **Stereo 30**) and the European Terrestrial Reference System 1989 (**ETRS89**).
 
-This document analyzes the legacy Java server codebase located in [`transdatonline/server/`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/transdatonline/server) to understand how the REST service, cartographic math, and data serialization operated.
+This document analyzes the legacy Java server codebase located in [`transdatonline/server/`](../../transdatonline/server) to understand how the REST service, cartographic math, and data serialization operated.
 
 ---
 

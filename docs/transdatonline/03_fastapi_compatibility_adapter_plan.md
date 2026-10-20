@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-Implement a drop-in compatibility router within the upcoming FastAPI application (`api/routes/legacy.py`) that strictly adheres to [`docs/transdatonline/02_legacy_service_api_specification.md`](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/transdatonline/02_legacy_service_api_specification.md).
+Implement a drop-in compatibility router within the upcoming FastAPI application (`api/routes/legacy.py`) that strictly adheres to [`02_legacy_service_api_specification.md`](02_legacy_service_api_specification.md).
 
 This guarantees that existing legacy consumers calling `https://www.geo-spatial.org/transdatonline/cooOpService` will experience zero regressions or breaking changes when routed to the new Python backend.
 

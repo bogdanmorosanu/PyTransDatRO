@@ -5,7 +5,7 @@
 > 
 > As of the 2025.09 release, **pyTransDatRO uses a single unified 3D SPG grid file (`rom_grid3d_25.09.spg`)**.
 > 
-> For active grid documentation, please refer to [grid.md](file:///d:/ProiecteRealizate/pyTransDatRO/repo/PyTransDatRO/docs/grid.md).
+> For active grid documentation, please refer to [grid.md](grid.md).
 
 ---
 
