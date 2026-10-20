@@ -170,3 +170,48 @@ class GridComparisonResponse(BaseModel):
     etrs89_to_st70: DirectionComparisonSummary
     st70_to_etrs89: DirectionComparisonSummary
     model_config = {"extra": "allow"}
+
+
+# Legacy TransdatOnline Statistics Schemas
+class LegacyStatsSummary(BaseModel):
+    total_points: int
+    app_st70: int
+    app_st30: int
+    service_st70: int
+    service_st30: int
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    recorded_days: int
+    model_config = {"extra": "allow"}
+
+
+class LegacyTimelineMetrics(BaseModel):
+    app_st70: int = 0
+    app_st30: int = 0
+    service_st70: int = 0
+    service_st30: int = 0
+    app_total: int = 0
+    service_total: int = 0
+    st70_total: int = 0
+    st30_total: int = 0
+    total: int = 0
+    model_config = {"extra": "allow"}
+
+
+class LegacyTimelineSeriesItem(BaseModel):
+    date: str
+    points: LegacyTimelineMetrics
+
+
+class LegacyTimelineSummary(BaseModel):
+    total_points: int
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    days_count: Optional[int] = None
+    period_count: Optional[int] = None
+
+
+class LegacyTimelineResponse(BaseModel):
+    summary: LegacyTimelineSummary
+    series: List[LegacyTimelineSeriesItem]
+    bounds: Dict[str, str] = Field(default_factory=dict)

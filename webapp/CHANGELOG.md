@@ -8,6 +8,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Legacy TransdatOnline Historical Statistics Subpage (TelemetryDashboard.ts, LegacyTimelineChart.ts)**:
+  - Added new "Legacy" subpage under the "Usage" page presenting 15 years of TransdatOnline historical transformation volumes (2011 to 2026).
+  - Built custom SVG LegacyTimelineChart supporting points-only visualization, smooth cubic bezier curve interpolation, gridlines, axis text, interactive crosshairs, and hover tooltips.
+  - Interactive legend swatches with color picker popovers allowing live customization of line colors, persisted in localStorage.
+  - Date presets (7d, 30d, ytd, 12m, ll) calculating dynamically relative to the archive boundary (2026-10-14).
+  - Independent faceted toggles for client channels (**Web App**, **REST API**) and operations (**Stereo 70 ↔ ETRS89**, **Stereo 30 ↔ ETRS89**), plus an additive Total curve.
+  - End-to-end Playwright browser test coverage in webapp/e2e/legacy.spec.ts.
+- **FastAPI Endpoints for Legacy Telemetry (pi/routes/info.py, pi/schemas/info.py)**:
+  - GET /api/v1/telemetry/legacy/stats: Overall summary of points transformed and timeline limits.
+  - GET /api/v1/telemetry/legacy/timeline: Time-series data supporting daily, weekly, and monthly bucket expressions with date bounds slicing and faceted filtering.
+- **Data Integrity & Deduplication Tooling (	ools/)**:
+  - 	ools/audit_legacy_stats_integrity.py: Audits timeline continuity across 5,758 calendar days and outputs structured reports into eports/legacy_stats_integrity_report.txt.
+  - 	ools/extract_legacy_stats.py: Resolves MySQL concurrency race conditions by aggregating records per calendar day and enforcing unique constraints in SQLite.
+
+### Changed
+- Refined archive timeline pill labels in English (Archive Earliest) and Romanian (Cea Mai Veche Dată) in webapp/src/i18n/.
+- Updated Header.ts to dispatch a global 	hemechange event for instant chart theme responsiveness.
+
 ---
 
 ## [1.1.0] - 2026-10-18

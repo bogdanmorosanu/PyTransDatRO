@@ -11,6 +11,7 @@ __all__ = [
     "Settings",
     "get_client_source",
     "get_db_path",
+    "get_legacy_db_path",
     "get_settings",
     "get_telemetry_logger",
     "get_trans_engine",
@@ -46,3 +47,8 @@ def get_client_source(request: Request) -> int:
 def get_db_path(settings: Settings = Depends(get_settings)) -> Path:
     """Resolves the SQLite telemetry database path from application settings."""
     return Path(settings.log_dir) / "usage.db"
+
+
+def get_legacy_db_path(settings: Settings = Depends(get_settings)) -> Path:
+    """Resolves the SQLite legacy TransdatOnline database path from application settings."""
+    return Path(settings.legacy_db_path)

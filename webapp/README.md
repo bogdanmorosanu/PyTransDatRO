@@ -69,6 +69,7 @@ webapp/
 │   ├── map.spec.ts         # Map zoom constraints, layer toggling, centering vs fit-bounds
 │   ├── i18n.spec.ts        # Dynamic RO/EN language switching, UI translation reactivity
 │   ├── errors.spec.ts      # Syntax errors, out-of-grid badges, API rate limits
+│   ├── legacy.spec.ts      # Legacy TransdatOnline historical telemetry subpage
 │   └── referencePoints.ts  # Reference coordinate fixtures across Romania
 └── src/
     ├── main.ts             # Application orchestrator & component lifecycle manager

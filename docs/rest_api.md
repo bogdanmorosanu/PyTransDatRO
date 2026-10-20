@@ -238,6 +238,38 @@ All REST API endpoints implement the uniform `ErrorResponse` model defined in `a
 - **Rate Limit Exceeded (HTTP 429)**: Returns rate limit notification with a `Retry-After: <seconds>` response header.
 - **Backward Compatibility Guarantee**: Legacy clients expecting string `detail` properties continue to function without modification.
 
+
+### 4.4 Legacy TransdatOnline Statistics Endpoints
+
+To visualize historical transformation volumes from the predecessor TransdatOnline service (spanning 2011 to 2026), the API exposes dedicated telemetry endpoints backed by logs/legacy_stats.db:
+
+#### GET /api/v1/telemetry/legacy/stats
+Returns total point counts, broken down by client channel (pp vs service) and geodetic operation (Stereo 70 vs Stereo 30), along with timeline boundaries.
+
+**Response**:
+`json
+{
+  "total_points": 27745527,
+  "app_st70": 21434208,
+  "app_st30": 561718,
+  "service_st70": 5311487,
+  "service_st30": 438114,
+  "from_date": "2011-01-09",
+  "to_date": "2026-10-14",
+  "recorded_days": 4977
+}
+`
+
+#### GET /api/v1/telemetry/legacy/timeline
+Returns aggregated time-series point volumes with customizable grouping and filtering.
+
+**Query Parameters**:
+- rom_date *(optional)*: Start date filter (YYYY-MM-DD).
+- 	o_date *(optional)*: End date filter (YYYY-MM-DD).
+- granularity *(optional)*: Time bucket grouping (daily [default], weekly, monthly).
+- source *(optional)*: Comma-separated channel filter (pp, service).
+- operation *(optional)*: Comma-separated operation filter (st70, st30).
+
 ---
 
 ## 5. Coordinate Conventions & Units

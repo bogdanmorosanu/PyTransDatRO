@@ -10,13 +10,18 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from api.dependencies import get_db_path, get_trans_engine
+from api.dependencies import get_db_path, get_legacy_db_path, get_trans_engine
 from api.schemas.info import (
     BoundingBox,
     DailyStatItem,
     GridComparisonResponse,
     GridInfoResponse,
     GridMetadataResponse,
+    LegacyStatsSummary,
+    LegacyTimelineMetrics,
+    LegacyTimelineResponse,
+    LegacyTimelineSeriesItem,
+    LegacyTimelineSummary,
     QuadrantItem,
     QuadrantSummary,
     SourceItem,
@@ -664,3 +669,239 @@ async def get_telemetry_spatial_matrix(
     except sqlite3.Error as e:
         logger.error("Database error querying spatial matrix: %s", e)
         return empty_response
+
+
+# ==============================================================================
+# Legacy TransdatOnline Statistics Endpoints
+# ==============================================================================
+@router.get("/telemetry/legacy/stats", response_model=LegacyStatsSummary)
+async def get_legacy_stats(
+    db_path: Path = Depends(get_legacy_db_path),
+) -> LegacyStatsSummary:
+    """Retrieve overall aggregate summary from legacy TransdatOnline statistics database."""
+    if not db_path.exists():
+        return LegacyStatsSummary(
+            total_points=0,
+            app_st70=0,
+            app_st30=0,
+            service_st70=0,
+            service_st30=0,
+            from_date=None,
+            to_date=None,
+            recorded_days=0,
+        )
+
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                COUNT(*),
+                MIN(day),
+                MAX(day),
+                COALESCE(SUM(cooOpAppSt70), 0),
+                COALESCE(SUM(cooOpAppSt30), 0),
+                COALESCE(SUM(cooOpServiceSt70), 0),
+                COALESCE(SUM(cooOpServiceSt30), 0)
+            FROM statistics
+        """)
+        row = cursor.fetchone()
+        conn.close()
+
+        count, min_day, max_day, app70, app30, srv70, srv30 = row
+        total = app70 + app30 + srv70 + srv30
+
+        return LegacyStatsSummary(
+            total_points=total,
+            app_st70=app70,
+            app_st30=app30,
+            service_st70=srv70,
+            service_st30=srv30,
+            from_date=min_day,
+            to_date=max_day,
+            recorded_days=count,
+        )
+    except sqlite3.Error as e:
+        logger.error("Error querying legacy stats database: %s", e)
+        return LegacyStatsSummary(
+            total_points=0,
+            app_st70=0,
+            app_st30=0,
+            service_st70=0,
+            service_st30=0,
+            from_date=None,
+            to_date=None,
+            recorded_days=0,
+        )
+
+
+@router.get("/telemetry/legacy/timeline", response_model=LegacyTimelineResponse)
+async def get_legacy_timeline(
+    from_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
+    to_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
+    granularity: str = Query(
+        "daily",
+        pattern="^(daily|weekly|monthly)$",
+        description="Temporal aggregation bucket: daily, weekly, or monthly",
+    ),
+    source: Optional[str] = Query(
+        None, description="Filter source: 'app', 'service', or comma-separated e.g. 'app,service'"
+    ),
+    operation: Optional[str] = Query(
+        None, description="Filter operation: 'st70', 'st30', or comma-separated e.g. 'st70,st30'"
+    ),
+    db_path: Path = Depends(get_legacy_db_path),
+) -> LegacyTimelineResponse:
+    """Retrieve time-series transformation volumes from legacy TransdatOnline database."""
+    if not db_path.exists():
+        return LegacyTimelineResponse(
+            summary=LegacyTimelineSummary(total_points=0, from_date=from_date, to_date=to_date),
+            series=[],
+            bounds={},
+        )
+
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        cursor = conn.cursor()
+
+        # Retrieve absolute database boundaries
+        cursor.execute("SELECT MIN(day), MAX(day) FROM statistics")
+        min_bound, max_bound = cursor.fetchone()
+        bounds_map = {"min_date": min_bound or "", "max_date": max_bound or ""}
+
+        filters = []
+        params = []
+
+        if from_date:
+            filters.append("day >= ?")
+            params.append(from_date)
+        if to_date:
+            filters.append("day <= ?")
+            params.append(to_date)
+
+        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+        if granularity == "monthly":
+            time_expr = "substr(day, 1, 7)"
+        elif granularity == "weekly":
+            time_expr = "date(day, 'weekday 0', '-6 days')"
+        else:
+            time_expr = "day"
+
+        sql = f"""
+            SELECT
+                {time_expr} AS time_bucket,
+                SUM(cooOpAppSt70) AS app_st70,
+                SUM(cooOpAppSt30) AS app_st30,
+                SUM(cooOpServiceSt70) AS srv_st70,
+                SUM(cooOpServiceSt30) AS srv_st30
+            FROM statistics
+            {where_clause}
+            GROUP BY time_bucket
+            ORDER BY time_bucket ASC
+        """
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        # Parse source and operation filters if provided
+        active_sources = set()
+        if source:
+            for s in source.split(","):
+                s_clean = s.strip().lower()
+                if s_clean in ("app", "web_app", "webapp"):
+                    active_sources.add("app")
+                elif s_clean in ("service", "rest_api", "api"):
+                    active_sources.add("service")
+        else:
+            active_sources = {"app", "service"}
+
+        active_ops = set()
+        if operation:
+            for o in operation.split(","):
+                o_clean = o.strip().lower()
+                if o_clean in ("st70", "stereo70"):
+                    active_ops.add("st70")
+                elif o_clean in ("st30", "stereo30"):
+                    active_ops.add("st30")
+        else:
+            active_ops = {"st70", "st30"}
+
+        series_items: List[LegacyTimelineSeriesItem] = []
+        overall_total_points = 0
+
+        for time_bucket, raw_app70, raw_app30, raw_srv70, raw_srv30 in rows:
+            v_app70 = int(raw_app70 or 0)
+            v_app30 = int(raw_app30 or 0)
+            v_srv70 = int(raw_srv70 or 0)
+            v_srv30 = int(raw_srv30 or 0)
+
+            app_tot = v_app70 + v_app30
+            srv_tot = v_srv70 + v_srv30
+            st70_tot = v_app70 + v_srv70
+            st30_tot = v_app30 + v_srv30
+
+            # Filtered total for this bucket based on active filters
+            bucket_total = 0
+            if "app" in active_sources:
+                if "st70" in active_ops:
+                    bucket_total += v_app70
+                if "st30" in active_ops:
+                    bucket_total += v_app30
+            if "service" in active_sources:
+                if "st70" in active_ops:
+                    bucket_total += v_srv70
+                if "st30" in active_ops:
+                    bucket_total += v_srv30
+
+            overall_total_points += bucket_total
+
+            series_items.append(
+                LegacyTimelineSeriesItem(
+                    date=time_bucket,
+                    points=LegacyTimelineMetrics(
+                        app_st70=v_app70,
+                        app_st30=v_app30,
+                        service_st70=v_srv70,
+                        service_st30=v_srv30,
+                        app_total=app_tot,
+                        service_total=srv_tot,
+                        st70_total=st70_tot,
+                        st30_total=st30_tot,
+                        total=bucket_total,
+                    ),
+                )
+            )
+
+        resolved_from = from_date or (series_items[0].date if series_items else None)
+        resolved_to = to_date or (series_items[-1].date if series_items else None)
+
+        days_count = None
+        period_count = len(series_items)
+        if resolved_from and resolved_to:
+            try:
+                d1 = datetime.date.fromisoformat(resolved_from)
+                d2 = datetime.date.fromisoformat(resolved_to)
+                days_count = max(0, (d2 - d1).days + 1)
+            except ValueError:
+                pass
+
+        return LegacyTimelineResponse(
+            summary=LegacyTimelineSummary(
+                total_points=overall_total_points,
+                from_date=resolved_from,
+                to_date=resolved_to,
+                days_count=days_count,
+                period_count=period_count,
+            ),
+            series=series_items,
+            bounds=bounds_map,
+        )
+
+    except sqlite3.Error as e:
+        logger.error("Database error querying legacy timeline: %s", e)
+        return LegacyTimelineResponse(
+            summary=LegacyTimelineSummary(total_points=0, from_date=from_date, to_date=to_date),
+            series=[],
+            bounds={},
+        )

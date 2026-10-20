@@ -356,6 +356,7 @@ export class Header {
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('pytransdat_theme', next);
       syncFaviconWithTheme(next);
+      window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
       this.render();
     });
 

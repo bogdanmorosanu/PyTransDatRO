@@ -183,6 +183,59 @@ export interface SpatialMatrixResponse {
   cells: SpatialCellItem[];
 }
 
+
+export interface LegacyStatsResponse {
+  total_points: number;
+  app_st70: number;
+  app_st30: number;
+  service_st70: number;
+  service_st30: number;
+  from_date: string | null;
+  to_date: string | null;
+  recorded_days: number;
+}
+
+export interface LegacyTimelineMetrics {
+  app_st70: number;
+  app_st30: number;
+  service_st70: number;
+  service_st30: number;
+  app_total: number;
+  service_total: number;
+  st70_total: number;
+  st30_total: number;
+  total: number;
+}
+
+export interface LegacyTimelineSeriesItem {
+  date: string;
+  points: LegacyTimelineMetrics;
+}
+
+export interface LegacyTimelineSummary {
+  total_points: number;
+  from_date: string | null;
+  to_date: string | null;
+  days_count: number | null;
+  period_count: number | null;
+}
+
+export interface LegacyTimelineResponse {
+  summary: LegacyTimelineSummary;
+  series: LegacyTimelineSeriesItem[];
+  bounds: {
+    min_date?: string;
+    max_date?: string;
+  };
+}
+
+export interface LegacyTimelineQueryParams {
+  from_date?: string;
+  to_date?: string;
+  granularity?: 'daily' | 'weekly' | 'monthly';
+  source?: string;
+  operation?: string;
+}
 export interface SpatialMatrixQueryParams {
   from_date?: string;
   to_date?: string;
@@ -331,6 +384,35 @@ export const apiClient = {
     return res.json();
   },
 
+
+  async getLegacyStats(): Promise<LegacyStatsResponse> {
+    const res = await fetch(apiUrl('/api/v1/telemetry/legacy/stats'), {
+      headers: { 'X-Client-Source': 'web_app' },
+    });
+    if (!res.ok) {
+      throw new Error(`Legacy Stats Error: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getLegacyTimeline(params?: LegacyTimelineQueryParams): Promise<LegacyTimelineResponse> {
+    const query = new URLSearchParams();
+    if (params?.from_date) query.set('from_date', params.from_date);
+    if (params?.to_date) query.set('to_date', params.to_date);
+    if (params?.granularity) query.set('granularity', params.granularity);
+    if (params?.source) query.set('source', params.source);
+    if (params?.operation) query.set('operation', params.operation);
+
+    const qs = query.toString();
+    const url = apiUrl(`/api/v1/telemetry/legacy/timeline${qs ? `?${qs}` : ''}`);
+    const res = await fetch(url, {
+      headers: { 'X-Client-Source': 'web_app' },
+    });
+    if (!res.ok) {
+      throw new Error(`Legacy Timeline Error: ${res.status}`);
+    }
+    return res.json();
+  },
   async checkHealth(): Promise<{ status: string; grid_loaded: boolean }> {
     const res = await fetch(apiUrl('/health'));
     return res.json();

@@ -72,6 +72,10 @@ class Settings(BaseSettings):
         default="./logs",
         description="Directory for SQLite WAL usage database and telemetry logs",
     )
+    legacy_db_path: str = Field(
+        default="./logs/legacy_stats.db",
+        description="Path to SQLite legacy TransdatOnline statistics database",
+    )
     feedback_log_path: str = Field(
         default="./logs/feedback.log",
         description="Path to user feedback submissions log file",

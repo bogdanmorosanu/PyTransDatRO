@@ -91,6 +91,10 @@ export class TimelineChart {
     this.container = document.createElement('div');
     this.container.className = 'timeline-chart-wrapper';
     this.loadCustomColors();
+
+    window.addEventListener('themechange', () => {
+      this.render();
+    });
   }
 
   private loadCustomColors(): void {

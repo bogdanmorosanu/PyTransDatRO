@@ -12,6 +12,8 @@ import {
   type TimelineMetricFilter,
 } from './TimelineChart';
 import { SpatialMatrixChart } from './SpatialMatrixChart';
+import { LegacyTimelineChart, LEGACY_SERIES_DEFS } from './LegacyTimelineChart';
+import type { LegacyTimelineResponse, LegacyStatsResponse } from '../utils/apiClient';
 
 export type TelemetryPreset = 'all' | '12m' | 'ytd' | '30d' | '7d';
 export type Granularity = 'daily' | 'weekly' | 'monthly';
@@ -36,7 +38,23 @@ export class TelemetryDashboard {
   private spatialData: SpatialMatrixResponse | null = null;
 
   // View state
-  private activeSubTab: 'timeline' | 'spatial' = 'timeline';
+  private activeSubTab: 'timeline' | 'spatial' | 'legacy' = 'timeline';
+
+  // Legacy view state
+  private legacyData: LegacyTimelineResponse | null = null;
+  private legacyStats: LegacyStatsResponse | null = null;
+  private legacyPreset: TelemetryPreset = 'all';
+  private legacyGranularity: Granularity = 'daily';
+  private legacyActiveSources: Set<string> = new Set(['app', 'service']);
+  private legacyActiveOps: Set<string> = new Set(['st70', 'st30']);
+  private legacyShowTotal: boolean = true;
+  private isLegacyLoading: boolean = false;
+  private legacyMinDate: string = '2011-01-09';
+  private legacyMaxDate: string = '2026-10-14';
+  private legacyCustomStartDate: string = '2011-01-09';
+  private legacyCustomEndDate: string = '2026-10-14';
+  private legacyHasCustomRange: boolean = false;
+  private legacyChart: LegacyTimelineChart;
   private activePreset: TelemetryPreset = 'all';
   private activeGranularity: Granularity = 'daily';
   private compShowPoints: boolean = true;
@@ -83,6 +101,7 @@ export class TelemetryDashboard {
     this.element.className = 'telemetry-page-view';
     this.chart = new TimelineChart();
     this.spatialChart = new SpatialMatrixChart();
+    this.legacyChart = new LegacyTimelineChart();
 
     this.render();
 
@@ -90,6 +109,14 @@ export class TelemetryDashboard {
       this.render();
       if (this.activeSubTab === 'timeline') this.mountChart();
       if (this.activeSubTab === 'spatial') this.mountSpatialChart();
+      if (this.activeSubTab === 'legacy') this.mountLegacyChart();
+    });
+
+    window.addEventListener('themechange', () => {
+      this.render();
+      if (this.activeSubTab === 'timeline') this.mountChart();
+      if (this.activeSubTab === 'spatial') this.mountSpatialChart();
+      if (this.activeSubTab === 'legacy') this.mountLegacyChart();
     });
 
     this.initData();
@@ -287,13 +314,23 @@ export class TelemetryDashboard {
                 <span>${t('stats.tabSpatial')}</span>
                 <span class="telemetry-tab-indicator"></span>
               </button>
+              <button 
+                type="button" 
+                class="telemetry-nav-tab-btn ${this.activeSubTab === 'legacy' ? 'active' : ''}" 
+                id="tab-legacy-btn"
+                role="tab"
+                aria-selected="${this.activeSubTab === 'legacy'}"
+              >
+                <span>${t('stats.tabLegacy')}</span>
+                <span class="telemetry-tab-indicator"></span>
+              </button>
             </nav>
           </div>
         </div>
 
         <!-- Main Body -->
         <div class="telemetry-page-content">
-          ${this.activeSubTab === 'timeline' ? this.renderTimelineHtml() : this.renderSpatialHtml()}
+          ${this.activeSubTab === 'timeline' ? this.renderTimelineHtml() : (this.activeSubTab === 'spatial' ? this.renderSpatialHtml() : this.renderLegacyHtml())}
         </div>
       </div>
     `;
@@ -313,10 +350,21 @@ export class TelemetryDashboard {
       }
     });
 
+    this.element.querySelector('#tab-legacy-btn')?.addEventListener('click', () => {
+      this.activeSubTab = 'legacy';
+      this.render();
+      this.mountLegacyChart();
+      if (!this.legacyData) {
+        this.fetchLegacyData();
+      }
+    });
+
     if (this.activeSubTab === 'timeline') {
       this.attachTimelineEventListeners();
-    } else {
+    } else if (this.activeSubTab === 'spatial') {
       this.attachSpatialEventListeners();
+    } else {
+      this.attachLegacyEventListeners();
     }
   }
 
@@ -1078,5 +1126,432 @@ export class TelemetryDashboard {
         scaleMode: this.spatialScaleMode,
       });
     }
+  }
+
+  // ==========================================================================
+  // Legacy Subpage Methods
+  // ==========================================================================
+  private async fetchLegacyData(): Promise<void> {
+    this.isLegacyLoading = true;
+    this.render();
+    try {
+      const [statsRes, timelineRes] = await Promise.all([
+        this.legacyStats ? Promise.resolve(this.legacyStats) : apiClient.getLegacyStats(),
+        apiClient.getLegacyTimeline({
+          granularity: this.legacyGranularity,
+          from_date: (this.legacyPreset !== 'all' || this.legacyHasCustomRange) ? this.legacyCustomStartDate : undefined,
+          to_date: (this.legacyPreset !== 'all' || this.legacyHasCustomRange) ? this.legacyCustomEndDate : undefined,
+          source: Array.from(this.legacyActiveSources).join(','),
+          operation: Array.from(this.legacyActiveOps).join(','),
+        }),
+      ]);
+
+      this.legacyStats = statsRes;
+      this.legacyData = timelineRes;
+
+      if (timelineRes.bounds.min_date) {
+        this.legacyMinDate = timelineRes.bounds.min_date;
+      }
+      if (timelineRes.bounds.max_date) {
+        this.legacyMaxDate = timelineRes.bounds.max_date;
+        if (!this.legacyHasCustomRange && this.legacyPreset === 'all') {
+          this.legacyCustomStartDate = this.legacyMinDate;
+          this.legacyCustomEndDate = this.legacyMaxDate;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch legacy timeline data:', err);
+    } finally {
+      this.isLegacyLoading = false;
+      this.render();
+      this.mountLegacyChart();
+    }
+  }
+
+  private applyLegacyPreset(preset: TelemetryPreset): void {
+    this.legacyPreset = preset;
+    this.legacyHasCustomRange = false;
+
+    // Use maxHistoryDate from DB (2026-10-14), not the live browser clock!
+    const baseDate = new Date(this.legacyMaxDate);
+    this.legacyCustomEndDate = this.legacyMaxDate;
+
+    if (preset === '7d') {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() - 7);
+      this.legacyCustomStartDate = d.toISOString().slice(0, 10);
+    } else if (preset === '30d') {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() - 30);
+      this.legacyCustomStartDate = d.toISOString().slice(0, 10);
+    } else if (preset === 'ytd') {
+      this.legacyCustomStartDate = `${baseDate.getFullYear()}-01-01`;
+    } else if (preset === '12m') {
+      const d = new Date(baseDate);
+      d.setFullYear(d.getFullYear() - 1);
+      this.legacyCustomStartDate = d.toISOString().slice(0, 10);
+    } else if (preset === 'all') {
+      this.legacyCustomStartDate = this.legacyMinDate;
+    }
+
+    this.fetchLegacyData();
+  }
+
+  private toggleLegacySource(sourceKey: string): void {
+    if (this.legacyActiveSources.has(sourceKey)) {
+      if (this.legacyActiveSources.size > 1) {
+        this.legacyActiveSources.delete(sourceKey);
+      }
+    } else {
+      this.legacyActiveSources.add(sourceKey);
+    }
+    this.fetchLegacyData();
+  }
+
+  private toggleLegacyOp(opKey: string): void {
+    if (this.legacyActiveOps.has(opKey)) {
+      if (this.legacyActiveOps.size > 1) {
+        this.legacyActiveOps.delete(opKey);
+      }
+    } else {
+      this.legacyActiveOps.add(opKey);
+    }
+    this.fetchLegacyData();
+  }
+
+  private mountLegacyChart(): void {
+    const slot = this.element.querySelector('#legacy-chart-slot');
+    if (!slot) return;
+    slot.innerHTML = '';
+    slot.appendChild(this.legacyChart.getElement());
+
+    // Build active keys based on selected sources and ops
+    const activeKeys = new Set<string>();
+    for (const src of this.legacyActiveSources) {
+      for (const op of this.legacyActiveOps) {
+        activeKeys.add(`${src}_${op}`);
+      }
+    }
+
+    this.legacyChart.update(this.legacyData?.series || [], {
+      activeKeys,
+      showTotal: this.legacyShowTotal,
+    });
+  }
+
+  private renderLegacyHtml(): string {
+    let totalPoints = 0;
+    let appPoints = 0;
+    let servicePoints = 0;
+    let st70Points = 0;
+    let st30Points = 0;
+
+    if (this.legacyData?.series) {
+      for (const item of this.legacyData.series) {
+        totalPoints += item.points.total;
+        if (this.legacyActiveSources.has('app')) {
+          if (this.legacyActiveOps.has('st70')) appPoints += item.points.app_st70;
+          if (this.legacyActiveOps.has('st30')) appPoints += item.points.app_st30;
+        }
+        if (this.legacyActiveSources.has('service')) {
+          if (this.legacyActiveOps.has('st70')) servicePoints += item.points.service_st70;
+          if (this.legacyActiveOps.has('st30')) servicePoints += item.points.service_st30;
+        }
+        if (this.legacyActiveOps.has('st70')) {
+          if (this.legacyActiveSources.has('app')) st70Points += item.points.app_st70;
+          if (this.legacyActiveSources.has('service')) st70Points += item.points.service_st70;
+        }
+        if (this.legacyActiveOps.has('st30')) {
+          if (this.legacyActiveSources.has('app')) st30Points += item.points.app_st30;
+          if (this.legacyActiveSources.has('service')) st30Points += item.points.service_st30;
+        }
+      }
+    } else if (this.legacyStats) {
+      totalPoints = this.legacyStats.total_points;
+      appPoints = this.legacyStats.app_st70 + this.legacyStats.app_st30;
+      servicePoints = this.legacyStats.service_st70 + this.legacyStats.service_st30;
+      st70Points = this.legacyStats.app_st70 + this.legacyStats.service_st70;
+      st30Points = this.legacyStats.app_st30 + this.legacyStats.service_st30;
+    }
+
+    const hasApp = this.legacyActiveSources.has('app');
+    const hasService = this.legacyActiveSources.has('service');
+    const hasSt70 = this.legacyActiveOps.has('st70');
+    const hasSt30 = this.legacyActiveOps.has('st30');
+
+    return `
+      <!-- KPI Banner: Points Only -->
+      <div class="telemetry-kpi-banner">
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${totalPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-label">${t('stats.legacyTotalPoints')}</div>
+        </div>
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${appPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-label">${t('stats.legacyAppPoints')}</div>
+        </div>
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${servicePoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-label">${t('stats.legacyServicePoints')}</div>
+        </div>
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${st70Points.toLocaleString()}</div>
+          <div class="telemetry-kpi-label">${t('stats.legacyStereo70Points')}</div>
+        </div>
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${st30Points.toLocaleString()}</div>
+          <div class="telemetry-kpi-label">${t('stats.legacyStereo30Points')}</div>
+        </div>
+      </div>
+
+      <!-- Controls Deck -->
+      <div class="telemetry-deck">
+        <!-- Row 1: Unified Presets & Granularity -->
+        <div class="telemetry-deck-row unified-controls-row" style="justify-content: space-between;">
+          <div class="telemetry-facet-group">
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.legacyPreset === 'all' && !this.legacyHasCustomRange ? 'active' : ''}" data-legacy-preset="all">${t('stats.presetAll')}</button>
+              <button class="telemetry-toggle-btn ${this.legacyPreset === '12m' && !this.legacyHasCustomRange ? 'active' : ''}" data-legacy-preset="12m">${t('stats.preset12M')}</button>
+              <button class="telemetry-toggle-btn ${this.legacyPreset === 'ytd' && !this.legacyHasCustomRange ? 'active' : ''}" data-legacy-preset="ytd">${t('stats.presetYTD')}</button>
+              <button class="telemetry-toggle-btn ${this.legacyPreset === '30d' && !this.legacyHasCustomRange ? 'active' : ''}" data-legacy-preset="30d">${t('stats.preset30D')}</button>
+              <button class="telemetry-toggle-btn ${this.legacyPreset === '7d' && !this.legacyHasCustomRange ? 'active' : ''}" data-legacy-preset="7d">${t('stats.preset7D')}</button>
+            </div>
+          </div>
+
+          <div class="telemetry-facet-group">
+            <div class="telemetry-btn-toggle-group">
+              <button class="telemetry-toggle-btn ${this.legacyGranularity === 'daily' ? 'active' : ''}" data-legacy-granularity="daily">${t('stats.granularityDaily')}</button>
+              <button class="telemetry-toggle-btn ${this.legacyGranularity === 'weekly' ? 'active' : ''}" data-legacy-granularity="weekly">${t('stats.granularityWeekly')}</button>
+              <button class="telemetry-toggle-btn ${this.legacyGranularity === 'monthly' ? 'active' : ''}" data-legacy-granularity="monthly">${t('stats.granularityMonthly')}</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Fixed Archive Calendar Range Controls & Range Limits Info -->
+        <div class="telemetry-deck-row telemetry-date-controls-row">
+          <div class="telemetry-date-inputs-cluster">
+            <div class="date-input-group">
+              <input 
+                type="date" 
+                class="telemetry-date-input" 
+                id="legacy-date-start"
+                min="${this.legacyMinDate}" 
+                max="${this.legacyMaxDate}" 
+                value="${this.legacyCustomStartDate}" 
+              />
+            </div>
+            <span class="range-arrow">→</span>
+            <div class="date-input-group">
+              <input 
+                type="date" 
+                class="telemetry-date-input" 
+                id="legacy-date-end"
+                min="${this.legacyMinDate}" 
+                max="${this.legacyMaxDate}" 
+                value="${this.legacyCustomEndDate}" 
+              />
+            </div>
+          </div>
+
+          <div class="telemetry-range-limits-pill">
+            <span class="limit-subtle">${t('stats.legacyArchiveSpan', { date: this.legacyMinDate })}</span>
+            <span class="limit-divider">•</span>
+            <span class="limit-subtle">${t('stats.legacyArchiveEnd', { date: this.legacyMaxDate })}</span>
+          </div>
+        </div>
+
+        <!-- Row 3: Faceted Filters: Source (Left) & Operation (Right) -->
+        <div class="telemetry-deck-row merged-filters-row">
+          <div class="filters-left-group">
+            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
+            <div class="sources-toggle-list">
+              <button type="button" class="telemetry-toggle-btn individual ${hasApp ? 'active' : ''}" data-legacy-source="app">
+                ${t('stats.legacySourceApp')}
+              </button>
+              <button type="button" class="telemetry-toggle-btn individual ${hasService ? 'active' : ''}" data-legacy-source="service">
+                ${t('stats.legacySourceService')}
+              </button>
+            </div>
+          </div>
+
+          <div class="filters-right-group">
+            <span class="facet-label">${t('stats.legacyOpLabel')}</span>
+            <div class="telemetry-individual-toggle-group">
+              <button type="button" class="telemetry-toggle-btn individual ${hasSt70 ? 'active' : ''}" data-legacy-op="st70">
+                ${t('stats.legacyOpStereo70')}
+              </button>
+              <button type="button" class="telemetry-toggle-btn individual ${hasSt30 ? 'active' : ''}" data-legacy-op="st30">
+                ${t('stats.legacyOpStereo30')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart Viewport -->
+      <div class="telemetry-chart-viewport full-page">
+        ${this.isLegacyLoading ? `<div class="timeline-loading-overlay">${t('stats.loadingLegacyTimeline')}</div>` : ''}
+        ${this.renderLegacyLegendHtml()}
+        <div id="legacy-chart-slot"></div>
+      </div>
+    `;
+  }
+
+  private renderLegacyLegendHtml(): string {
+    const renderSwatchPopover = (seriesKey: string, currentColor: string): string => {
+      const swatches = TIMELINE_COLOR_PRESETS.map((hex) => {
+        const isActive = currentColor.toLowerCase() === hex.toLowerCase();
+        return `<button type="button" class="legend-swatch-option ${isActive ? 'active' : ''}" data-series-key="${seriesKey}" data-swatch-color="${hex}" style="background-color: ${hex};" title="${hex}"></button>`;
+      }).join('');
+      return `
+        <div class="legend-color-popover" role="menu">
+          ${swatches}
+        </div>
+      `;
+    };
+
+    const sourceGroups: string[] = [];
+
+    for (const src of this.legacyActiveSources) {
+      const srcName = src === 'app' ? t('stats.legacySourceApp') : t('stats.legacySourceService');
+      const opItems: string[] = [];
+
+      for (const op of this.legacyActiveOps) {
+        const seriesKey = `${src}_${op}`;
+        const def = LEGACY_SERIES_DEFS[seriesKey];
+        if (!def) continue;
+        const color = this.legacyChart.getLineColor(seriesKey, def.defaultColor);
+        const opLabel = op === 'st70' ? t('stats.legacyOpStereo70') : t('stats.legacyOpStereo30');
+
+        opItems.push(`
+          <span class="legend-sub-item interactive-legend-item" data-legend-series="${seriesKey}" title="Click to change line color">
+            <span class="legend-line-sample" style="background-color: ${color};"></span>
+            <span>${opLabel}</span>
+            ${renderSwatchPopover(seriesKey, color)}
+          </span>
+        `);
+      }
+
+      sourceGroups.push(`
+        <div class="legend-source-group">
+          <span class="legend-group-title">${srcName}:</span>
+          <div class="legend-group-items">
+            ${opItems.join('')}
+          </div>
+        </div>
+      `);
+    }
+
+    let totalHtml = '';
+    if (this.legacyActiveSources.size > 0 && this.legacyActiveOps.size > 0) {
+      const totalColor = this.legacyChart.getTotalColor();
+      totalHtml = `
+        <div class="legend-total-row">
+          <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
+          <div class="legend-group-items">
+            <span class="legend-sub-item interactive-legend-item" data-legend-series="total" title="Click to change line color">
+              <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColor} 0, ${totalColor} 7px, transparent 7px, transparent 12px);"></span>
+              <span>${t('stats.legacyTotalPoints')}</span>
+              ${renderSwatchPopover('total', totalColor)}
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="chart-legend-container">
+        <div class="legend-sources-row">
+          ${sourceGroups.join('')}
+        </div>
+        ${totalHtml}
+      </div>
+    `;
+  }
+
+  private attachLegacyEventListeners(): void {
+    // Preset buttons
+    this.element.querySelectorAll('[data-legacy-preset]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const preset = (e.currentTarget as HTMLElement).getAttribute('data-legacy-preset') as TelemetryPreset;
+        if (preset) this.applyLegacyPreset(preset);
+      });
+    });
+
+    // Granularity buttons
+    this.element.querySelectorAll('[data-legacy-granularity]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const gran = (e.currentTarget as HTMLElement).getAttribute('data-legacy-granularity') as Granularity;
+        if (gran) {
+          this.legacyGranularity = gran;
+          this.fetchLegacyData();
+        }
+      });
+    });
+
+    // Source buttons
+    this.element.querySelectorAll('[data-legacy-source]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const src = (e.currentTarget as HTMLElement).getAttribute('data-legacy-source');
+        if (src) this.toggleLegacySource(src);
+      });
+    });
+
+    // Op buttons
+    this.element.querySelectorAll('[data-legacy-op]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const op = (e.currentTarget as HTMLElement).getAttribute('data-legacy-op');
+        if (op) this.toggleLegacyOp(op);
+      });
+    });
+
+    // Date range inputs
+    const startInput = this.element.querySelector('#legacy-date-start') as HTMLInputElement;
+    const endInput = this.element.querySelector('#legacy-date-end') as HTMLInputElement;
+
+    const onDateChange = () => {
+      if (startInput && endInput && startInput.value && endInput.value) {
+        if (startInput.value <= endInput.value) {
+          this.legacyCustomStartDate = startInput.value;
+          this.legacyCustomEndDate = endInput.value;
+          this.legacyHasCustomRange = true;
+          this.fetchLegacyData();
+        }
+      }
+    };
+
+    startInput?.addEventListener('change', onDateChange);
+    endInput?.addEventListener('change', onDateChange);
+
+    // Interactive Legend Color Popover Toggles & Swatch Selection for Legacy
+    this.element.querySelectorAll<HTMLElement>('.interactive-legend-item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const popover = item.querySelector('.legend-color-popover');
+        if (!popover) return;
+        const wasOpen = popover.classList.contains('open');
+        this.element.querySelectorAll('.legend-color-popover.open').forEach((p) => p.classList.remove('open'));
+        if (!wasOpen) {
+          popover.classList.add('open');
+        }
+      });
+    });
+
+    this.element.querySelectorAll<HTMLButtonElement>('.legend-swatch-option').forEach((swatch) => {
+      swatch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const seriesKey = swatch.getAttribute('data-series-key');
+        const color = swatch.getAttribute('data-swatch-color');
+        if (seriesKey && color) {
+          this.legacyChart.setLineColor(seriesKey, color);
+          this.render();
+          this.mountLegacyChart();
+        }
+      });
+    });
+
+    this.element.addEventListener('click', () => {
+      this.element.querySelectorAll('.legend-color-popover.open').forEach((p) => p.classList.remove('open'));
+    });
   }
 }
