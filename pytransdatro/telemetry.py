@@ -1,11 +1,16 @@
 import atexit
 import calendar
 import datetime
+import logging
 import math
 import queue
 import sqlite3
 import threading
+import time
 from pathlib import Path
+from typing import Any, Optional
+
+logger = logging.getLogger("pytransdatro.telemetry")
 
 
 class SqliteUsageLogger:
@@ -14,6 +19,13 @@ class SqliteUsageLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._queue = queue.Queue(maxsize=max_queue_size)
 
+        self._lock = threading.Lock()
+        self._dropped_events_count = 0
+        self._total_recorded_points = 0
+        self._last_error: Optional[str] = None
+        self._last_error_time: Optional[float] = None
+        self._closed = False
+
         self._stop_event = threading.Event()
         self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker_thread.start()
@@ -21,18 +33,58 @@ class SqliteUsageLogger:
         atexit.register(self.close)
 
     def record(self, operation, lats, lons, is_3d, source=0):
+        if self._closed or self._stop_event.is_set():
+            return
+
+        is_scalar = not isinstance(lats, (list, tuple))
+        n_pts = 1 if is_scalar else len(lats)
+
         try:
             self._queue.put_nowait((operation, lats, lons, is_3d, source))
         except queue.Full:
-            pass
+            with self._lock:
+                self._dropped_events_count += 1
+            logger.warning(
+                "Telemetry queue saturated (size=%d/%d). Dropped %d points for operation %s (source=%s).",
+                self._queue.qsize(),
+                self._queue.maxsize,
+                n_pts,
+                operation,
+                source,
+            )
+
+    def get_diagnostics(self) -> dict:
+        """Returns runtime diagnostic metrics of the telemetry collector."""
+        with self._lock:
+            last_err = self._last_error
+            last_err_time = self._last_error_time
+            dropped = self._dropped_events_count
+            total_points = self._total_recorded_points
+
+        return {
+            "is_alive": self._worker_thread.is_alive(),
+            "queue_size": self._queue.qsize(),
+            "max_queue_size": self._queue.maxsize,
+            "dropped_events_count": dropped,
+            "total_recorded_points": total_points,
+            "last_error": last_err,
+            "last_error_time": last_err_time,
+        }
 
     def _worker_loop(self):
-        conn = self._get_db_connection()
+        conn = None
+        try:
+            conn = self._get_db_connection()
+        except Exception as exc:
+            with self._lock:
+                self._last_error = str(exc)
+                self._last_error_time = time.time()
+            logger.error("Failed to initialize SQLite telemetry database: %s", exc)
 
         while not self._stop_event.is_set() or not self._queue.empty():
             try:
                 # Wait for items, timeout allows checking the stop event
-                item = self._queue.get(timeout=0.5)
+                item = self._queue.get(timeout=0.2)
             except queue.Empty:
                 continue
 
@@ -44,15 +96,48 @@ class SqliteUsageLogger:
                 except queue.Empty:
                     break
 
+            if conn is None:
+                try:
+                    conn = self._get_db_connection()
+                except Exception as exc:
+                    with self._lock:
+                        self._last_error = str(exc)
+                        self._last_error_time = time.time()
+                        self._dropped_events_count += len(batch)
+                    logger.error(
+                        "SQLite connection unavailable: %s. Logging unwritten batch payload (%d items) to application log.",
+                        exc,
+                        len(batch),
+                    )
+                    logger.error("Unwritten telemetry batch payload: %s", batch)
+                    continue
+
             now = datetime.datetime.now()
             today_date = now.date()
 
-            self._process_batch(conn, batch, today_date)
+            try:
+                self._process_batch(conn, batch, today_date)
+            except Exception as exc:
+                with self._lock:
+                    self._last_error = str(exc)
+                    self._last_error_time = time.time()
+                    self._dropped_events_count += len(batch)
+                logger.error(
+                    "Unexpected error in telemetry worker loop: %s. Logging unwritten batch payload (%d items) to application log.",
+                    exc,
+                    len(batch),
+                    exc_info=True,
+                )
+                logger.error("Unwritten telemetry batch payload: %s", batch)
 
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _get_db_connection(self):
+        self.log_dir.mkdir(parents=True, exist_ok=True)
         db_path = self.log_dir / "usage.db"
         conn = sqlite3.connect(str(db_path), timeout=5.0)
         try:
@@ -343,24 +428,24 @@ class SqliteUsageLogger:
             is_3d_int = 1 if is_3d in (1, True) else 0
 
             is_scalar = not isinstance(lats, (list, tuple))
-            n_pts = 1 if is_scalar else len(lats)
             lat_iter = lats if not is_scalar else (lats,)
             lon_iter = lons if not is_scalar else (lons,)
 
-            # Accumulate computation usage metrics
-            comp_key = (comp_start, comp_end, op_int, is_3d_int, source_int)
-            if comp_key not in computation_stats:
-                computation_stats[comp_key] = [0, 0]
-            computation_stats[comp_key][0] += 1
-            computation_stats[comp_key][1] += n_pts
-
-            # Accumulate spatial ~1km cells
+            valid_spatial_cells = []
             for lat, lon in zip(lat_iter, lon_iter):
-                total_lat = int(round(math.degrees(lat) * 100))
+                try:
+                    lat_f = float(lat)
+                    lon_f = float(lon)
+                    if not (math.isfinite(lat_f) and math.isfinite(lon_f)):
+                        continue
+                except (ValueError, TypeError):
+                    continue
+
+                total_lat = int(round(math.degrees(lat_f) * 100))
                 lat_deg = total_lat // 100
                 lat_grad = total_lat % 100
 
-                total_lon = int(round(math.degrees(lon) * 100))
+                total_lon = int(round(math.degrees(lon_f) * 100))
                 lon_deg = total_lon // 100
                 lon_grad = total_lon % 100
 
@@ -375,7 +460,20 @@ class SqliteUsageLogger:
                     is_3d_int,
                     source_int,
                 )
-                spatial_counts[spatial_key] = spatial_counts.get(spatial_key, 0) + 1
+                valid_spatial_cells.append(spatial_key)
+
+            if not valid_spatial_cells:
+                continue
+
+            # Accumulate computation usage metrics
+            comp_key = (comp_start, comp_end, op_int, is_3d_int, source_int)
+            if comp_key not in computation_stats:
+                computation_stats[comp_key] = [0, 0]
+            computation_stats[comp_key][0] += 1
+            computation_stats[comp_key][1] += len(valid_spatial_cells)
+
+            for sk in valid_spatial_cells:
+                spatial_counts[sk] = spatial_counts.get(sk, 0) + 1
 
         comp_params = [
             (k[0], k[1], k[2], k[3], k[4], v[0], v[1]) for k, v in computation_stats.items()
@@ -402,14 +500,127 @@ class SqliteUsageLogger:
         DO UPDATE SET count = count + excluded.count;
         """
 
-        try:
-            with conn:
-                conn.executemany(comp_query, comp_params)
-                conn.executemany(spatial_query, spatial_params)
-        except Exception:
-            pass  # Failsafe against write errors
+        batch_total_points = sum(v[1] for v in computation_stats.values())
+        if not comp_params and not spatial_params:
+            return
 
-    def close(self):
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            try:
+                with conn:
+                    conn.executemany(comp_query, comp_params)
+                    conn.executemany(spatial_query, spatial_params)
+                with self._lock:
+                    self._last_error = None
+                    self._total_recorded_points += batch_total_points
+                return
+            except sqlite3.OperationalError as exc:
+                if attempt < max_retries:
+                    time.sleep(0.05 * attempt)
+                else:
+                    with self._lock:
+                        self._last_error = str(exc)
+                        self._last_error_time = time.time()
+                    logger.error(
+                        "SQLite write failed after %d attempts: %s. Logging unwritten batch payload (%d comp, %d spatial items) to application log.",
+                        max_retries,
+                        exc,
+                        len(comp_params),
+                        len(spatial_params),
+                    )
+                    logger.error("Unwritten telemetry computation payload: %s", comp_params)
+                    logger.error("Unwritten telemetry spatial payload: %s", spatial_params)
+            except Exception as exc:
+                with self._lock:
+                    self._last_error = str(exc)
+                    self._last_error_time = time.time()
+                logger.error(
+                    "Unexpected error during telemetry batch write: %s. Logging unwritten batch payload (%d comp, %d spatial items) to application log.",
+                    exc,
+                    len(comp_params),
+                    len(spatial_params),
+                )
+                logger.error("Unwritten telemetry computation payload: %s", comp_params)
+                logger.error("Unwritten telemetry spatial payload: %s", spatial_params)
+                return
+
+    def close(self, timeout: float = 10.0):
+        self._closed = True
         self._stop_event.set()
         if self._worker_thread.is_alive():
-            self._worker_thread.join(timeout=2.0)
+            self._worker_thread.join(timeout=timeout)
+
+
+class BufferedTelemetryCollector:
+    """Buffers individual coordinate points and flushes them to the underlying
+
+    telemetry logger in chunks (default 500 points) to prevent queue saturation.
+    """
+
+    def __init__(self, target_collector: Any, chunk_size: int = 500) -> None:
+        self.target = target_collector
+        self.chunk_size = chunk_size
+        self._buffers: dict[tuple[int, int, int], tuple[list[float], list[float]]] = {}
+        self._lock = threading.Lock()
+
+    def record(self, operation: Any, lats: Any, lons: Any, is_3d: Any = 0, source: int = 0) -> None:
+        if self.target is None:
+            return
+
+        op_int = 1 if operation in (1, True, "st70_to_etrs89") else 2
+        is_3d_int = 1 if is_3d in (1, True) else 0
+        try:
+            source_int = int(source)
+        except (ValueError, TypeError):
+            source_int = 0
+
+        key = (op_int, is_3d_int, source_int)
+
+        with self._lock:
+            if key not in self._buffers:
+                self._buffers[key] = ([], [])
+            buf_lats, buf_lons = self._buffers[key]
+
+            if isinstance(lats, (list, tuple)):
+                buf_lats.extend(lats)
+                buf_lons.extend(lons)
+            else:
+                buf_lats.append(lats)
+                buf_lons.append(lons)
+
+            while len(buf_lats) >= self.chunk_size:
+                chunk_lats = buf_lats[: self.chunk_size]
+                chunk_lons = buf_lons[: self.chunk_size]
+                del buf_lats[: self.chunk_size]
+                del buf_lons[: self.chunk_size]
+                if self.target is not None:
+                    self.target.record(key[0], chunk_lats, chunk_lons, is_3d=key[1], source=key[2])
+
+    def _flush_key_locked(self, key: tuple[int, int, int]) -> None:
+        if self.target is None:
+            self._buffers.pop(key, None)
+            return
+
+        if key in self._buffers:
+            buf_lats, buf_lons = self._buffers[key]
+            while buf_lats:
+                chunk_lats = buf_lats[: self.chunk_size]
+                chunk_lons = buf_lons[: self.chunk_size]
+                del buf_lats[: self.chunk_size]
+                del buf_lons[: self.chunk_size]
+                self.target.record(key[0], chunk_lats, chunk_lons, is_3d=key[1], source=key[2])
+            del self._buffers[key]
+
+    def flush_all(self) -> None:
+        """Flushes all buffered points to the target collector."""
+        with self._lock:
+            if self.target is None:
+                self._buffers.clear()
+                return
+            for key in list(self._buffers.keys()):
+                self._flush_key_locked(key)
+
+    def get_diagnostics(self) -> dict:
+        if hasattr(self.target, "get_diagnostics"):
+            return self.target.get_diagnostics()
+        return {}

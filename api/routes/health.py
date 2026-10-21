@@ -9,15 +9,35 @@ router = APIRouter(tags=["Health & Monitoring"])
 
 @router.get("/health")
 async def health_check(request: Request) -> Dict[str, Any]:
-    """Returns application health and grid status."""
+    """Returns application health, grid status, and telemetry diagnostics."""
     has_trans = hasattr(request.app.state, "trans") and request.app.state.trans is not None
-    has_telemetry = (
-        hasattr(request.app.state, "telemetry") and request.app.state.telemetry is not None
-    )
+    telemetry = getattr(request.app.state, "telemetry", None)
 
-    return {
+    response: Dict[str, Any] = {
         "status": "healthy" if has_trans else "degraded",
         "grid_loaded": has_trans,
         "engine_version": "1.0.0",
-        "telemetry_active": has_telemetry,
+        "telemetry_active": False,
+        "telemetry_status": "disabled",
     }
+
+    if telemetry is not None:
+        try:
+            diag = telemetry.get_diagnostics()
+            is_alive = diag.get("is_alive", False)
+            last_err = diag.get("last_error")
+
+            if not is_alive or last_err is not None:
+                response["status"] = "degraded"
+                response["telemetry_status"] = "degraded"
+                response["telemetry_active"] = is_alive
+                response["telemetry_error"] = last_err or "Worker thread is not running"
+            else:
+                response["telemetry_status"] = "healthy"
+                response["telemetry_active"] = True
+        except Exception as exc:
+            response["status"] = "degraded"
+            response["telemetry_status"] = "degraded"
+            response["telemetry_error"] = str(exc)
+
+    return response

@@ -76,5 +76,5 @@ The web map has strict, opinionated UX invariants — read the rules file before
 
 - `.agents/rules/` holds the authoritative coding standards (code-quality, configuration, python-style, webapp-design) — consult them for any nontrivial change.
 - `.agents/skills/` and `.agents/tasks/` are a pre-existing (Gemini-oriented) workflow: skills describe audit/verify/doc/commit routines, and each completed chat session is recorded as a numbered task file in `.agents/tasks/`. `GEMINI.md` is the counterpart to this file for that agent.
-- `docs/` contains living architecture docs (`architecture.md`, `pytransdatro_algorithm.md`, `rest_api.md`, `grid.md`, `testing.md`, `logging.md`, `web_app.md`) — keep them in sync when architectural contracts change.
+- `docs/` contains living architecture docs (`architecture.md`, `pytransdatro_algorithm.md`, `rest_api.md`, `grid.md`, `testing.md`, `telemetry.md`, `log.md`, `web_app.md`) — keep them in sync when architectural contracts change.
 - The multi-phase refactor in `refactor_roadmap.md` is **100% complete** and is the immutable baseline; it does not constrain new feature work but its patterns must be upheld.

@@ -18,6 +18,7 @@ Transformation Pipelines:
         4. Optional 1D geoid height correction: :math:`H = h - N` (:class:`~pytransdatro.trans_grid.Grid1D`)
 """
 
+import copy
 import logging
 import math
 from typing import Any, Optional, Sequence, Tuple, Union, overload
@@ -137,6 +138,15 @@ class TransRO:
         self.grid1d_bounds_etrs89: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
         self.grid1d_bounds_st70: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
         self._init_dual_crs_extents()
+
+    def with_collector(self, telemetry_logger: Optional[Any]) -> "TransRO":
+        """Returns a shallow clone of TransRO with an alternative telemetry collector.
+
+        Shares the pre-loaded 2D and 1D binary grids without memory duplication.
+        """
+        cloned = copy.copy(self)
+        cloned._collector = telemetry_logger
+        return cloned
 
     def _init_dual_crs_extents(self) -> None:
         """Computes and caches dual-CRS 6-point extended bounding boxes for Grid2D and Grid1D.

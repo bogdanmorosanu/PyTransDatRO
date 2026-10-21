@@ -124,6 +124,7 @@ def test_health_check(client):
     assert data["status"] == "healthy"
     assert data["grid_loaded"] is True
     assert data["telemetry_active"] is True
+    assert data["telemetry_status"] == "healthy"
 
 
 def test_grid_info(client):
@@ -852,10 +853,13 @@ def test_modern_file_upload_size_and_row_limits(client):
 
 
 def test_health_check_degraded_and_telemetry_flags(client):
-    """Verifies /health reports degraded when trans is None and reflects telemetry_active."""
+    """Verifies /health reports degraded when trans is None, and tracks telemetry health."""
+    from unittest.mock import MagicMock
+
     orig_trans = app.state.trans
     orig_telemetry = getattr(app.state, "telemetry", None)
     try:
+        # 1. Telemetry disabled
         app.state.trans = None
         app.state.telemetry = None
         res = client.get("/health")
@@ -864,6 +868,35 @@ def test_health_check_degraded_and_telemetry_flags(client):
         assert data["status"] == "degraded"
         assert data["grid_loaded"] is False
         assert data["telemetry_active"] is False
+        assert data["telemetry_status"] == "disabled"
+
+        # 2. Worker thread dead
+        app.state.trans = orig_trans
+        mock_dead = MagicMock()
+        mock_dead.get_diagnostics.return_value = {"is_alive": False, "last_error": None}
+        app.state.telemetry = mock_dead
+        res_dead = client.get("/health")
+        assert res_dead.status_code == 200
+        d_dead = res_dead.json()
+        assert d_dead["status"] == "degraded"
+        assert d_dead["telemetry_status"] == "degraded"
+        assert d_dead["telemetry_active"] is False
+        assert "Worker thread is not running" in d_dead["telemetry_error"]
+
+        # 3. Telemetry error state
+        mock_err = MagicMock()
+        mock_err.get_diagnostics.return_value = {
+            "is_alive": True,
+            "last_error": "database disk image is malformed",
+        }
+        app.state.telemetry = mock_err
+        res_err = client.get("/health")
+        assert res_err.status_code == 200
+        d_err = res_err.json()
+        assert d_err["status"] == "degraded"
+        assert d_err["telemetry_status"] == "degraded"
+        assert d_err["telemetry_active"] is True
+        assert d_err["telemetry_error"] == "database disk image is malformed"
     finally:
         app.state.trans = orig_trans
         app.state.telemetry = orig_telemetry
@@ -871,14 +904,78 @@ def test_health_check_degraded_and_telemetry_flags(client):
 
 def test_client_source_resolution_all_origins(client):
     """Verifies X-Client-Source maps to 1 (rest_api), 2 (web_map), and 3 (desktop_cli)."""
-    for header_val in ["", "rest_api", "web_map", "web_app", "desktop_cli", "cli"]:
-        headers = {"X-Client-Source": header_val} if header_val else {}
+    from unittest.mock import MagicMock
+
+    orig_collector = app.state.trans._collector
+    mock_collector = MagicMock()
+    app.state.trans._collector = mock_collector
+
+    try:
+        source_expectations = [
+            ("", 1),
+            ("rest_api", 1),
+            ("web_map", 2),
+            ("web_app", 2),
+            ("desktop_cli", 3),
+            ("cli", 3),
+        ]
+        for header_val, expected_src in source_expectations:
+            mock_collector.reset_mock()
+            headers = {"X-Client-Source": header_val} if header_val else {}
+            res = client.post(
+                "/api/v1/transform/point",
+                json={"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0], "unit": "degrees"},
+                headers=headers,
+            )
+            assert res.status_code == 200
+            assert mock_collector.record.called
+            call_kwargs = mock_collector.record.call_args[1]
+            assert call_kwargs.get("source") == expected_src
+    finally:
+        app.state.trans._collector = orig_collector
+
+
+def test_streaming_file_upload_telemetry_chunking(client):
+    """Verifies streaming file upload chunks telemetry points into batches of 500 lines without saturation."""
+    from unittest.mock import MagicMock
+
+    orig_collector = app.state.trans._collector
+    mock_collector = MagicMock()
+    app.state.trans._collector = mock_collector
+
+    try:
+        # Create a 1,200 line CSV of valid Stereo 70 coordinates
+        lines = ["#ID,N,E"]
+        for i in range(1200):
+            lines.append(f"P{i:04d},500000.0,300000.0")
+        csv_data = "\n".join(lines).encode("utf-8")
+
         res = client.post(
-            "/api/v1/transform/point",
-            json={"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0], "unit": "degrees"},
-            headers=headers,
+            "/api/v1/transform/file",
+            data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma"},
+            files={"file": ("coords.csv", io.BytesIO(csv_data), "text/csv")},
+            headers={"X-Client-Source": "desktop_cli"},
         )
         assert res.status_code == 200
+        output_lines = [ln for ln in res.text.splitlines() if ln.strip() and not ln.startswith("#")]
+        assert len(output_lines) == 1200
+
+        # Telemetry should be chunked: 1200 points in chunks of 500 -> 3 calls (500, 500, 200)
+        assert mock_collector.record.call_count == 3
+        c1 = mock_collector.record.call_args_list[0]
+        c2 = mock_collector.record.call_args_list[1]
+        c3 = mock_collector.record.call_args_list[2]
+
+        assert len(c1[0][1]) == 500
+        assert len(c2[0][1]) == 500
+        assert len(c3[0][1]) == 200
+
+        # Verify source routing preserved on chunked calls
+        assert c1[1].get("source") == 3
+        assert c2[1].get("source") == 3
+        assert c3[1].get("source") == 3
+    finally:
+        app.state.trans._collector = orig_collector
 
 
 def test_telemetry_endpoints_with_seeded_sqlite_db(client, tmp_path):

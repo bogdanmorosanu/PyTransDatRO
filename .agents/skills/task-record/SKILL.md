@@ -38,7 +38,8 @@ When inspecting modified files in Step 1, identify which authoritative documents
 | **Grid Management** (`pytransdatro/grids/`, `grids/`) | [`docs/grid.md`](../../../docs/grid.md) | `.spg` binary format specification, header offsets, planar shift subgrids. |
 | **REST API Layer** (`api/`) | [`docs/rest_api.md`](../../../docs/rest_api.md) | Modern endpoints (`/api/v1/*`), Pydantic models, query parameters, error schemas, legacy `/transdatonline` emulation. |
 | **Web Application & UI** (`webapp/src/`, `webapp/`) | [`docs/web_app.md`](../../../docs/web_app.md)<br>[`webapp/design_guide.md`](../../../webapp/design_guide.md) | Web GIS Leaflet architecture, workbench tabs, UI factory helpers, modular CSS tokens, i18n support. |
-| **Telemetry & Logging** (`pytransdatro/telemetry/`, `api/services/`) | [`docs/logging.md`](../../../docs/logging.md) | SQLite asynchronous WAL logger schema, retention policies, Python `logging` dictConfig setup. |
+| **Usage Telemetry** (`pytransdatro/telemetry/`, `api/routes/`) | [`docs/telemetry.md`](../../../docs/telemetry.md) | SQLite asynchronous WAL usage logger schema, dynamic window aggregation, coordinate binning. |
+| **Application Logging** (`api/config.py`, `logs/app.log`) | [`docs/log.md`](../../../docs/log.md) | Python `logging` dictConfig setup, rotating file handler, failure fallback dumps. |
 | **Testing & Quality** (`tests/`, `tools/`, `webapp/e2e/`) | [`docs/testing.md`](../../../docs/testing.md) | Test matrix, numerical precision benchmarks, Vitest unit tests, Playwright E2E browser suite. |
 | **Deployment & Ops** (`Dockerfile`, `docker-compose.yml`, `.github/`) | [`docs/deployment.md`](../../../docs/deployment.md) | Docker containerization, Uvicorn settings, reverse proxying, environment configurations. |
 

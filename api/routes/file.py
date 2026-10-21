@@ -13,6 +13,7 @@ import pytransdatro.utils as geoutils
 from api.config import Settings, get_settings
 from api.dependencies import get_client_source, get_trans_engine
 from api.schemas.point import FileAngleUnitEnum, OperationEnum
+from pytransdatro.telemetry import BufferedTelemetryCollector
 from pytransdatro.trans_ro import TransRO
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
@@ -217,6 +218,8 @@ async def transform_file(
         )
 
     chosen_delim = DELIMITER_MAP.get(delim_key)
+    buffered_collector = BufferedTelemetryCollector(trans._collector, chunk_size=500)
+    file_trans = trans.with_collector(buffered_collector)
 
     async def line_generator() -> AsyncGenerator[bytes, None]:
         nonlocal chosen_delim
@@ -226,38 +229,58 @@ async def transform_file(
 
         # Read line by line from uploaded stream
         buffer = ""
-        while True:
-            chunk = await file.read(64 * 1024)  # 64 KB chunks
-            if not chunk:
-                break
-            total_bytes_read += len(chunk)
-            if total_bytes_read > max_bytes:
-                yield f"# Limit exceeded: maximum upload size of {max_bytes:,} bytes exceeded\n".encode(
-                    "utf-8"
-                )
-                return
+        try:
+            while True:
+                chunk = await file.read(64 * 1024)  # 64 KB chunks
+                if not chunk:
+                    break
+                total_bytes_read += len(chunk)
+                if total_bytes_read > max_bytes:
+                    yield f"# Limit exceeded: maximum upload size of {max_bytes:,} bytes exceeded\n".encode(
+                        "utf-8"
+                    )
+                    return
 
-            text = chunk.decode("utf-8", errors="replace")
-            buffer += text
-            lines = buffer.splitlines(keepends=True)
-            if lines:
-                buffer = ""
-                # If last line doesn't end with a newline, buffer it
-                if not lines[-1].endswith(("\n", "\r")):
-                    buffer = lines.pop()
+                text = chunk.decode("utf-8", errors="replace")
+                buffer += text
+                lines = buffer.splitlines(keepends=True)
+                if lines:
+                    buffer = ""
+                    # If last line doesn't end with a newline, buffer it
+                    if not lines[-1].endswith(("\n", "\r")):
+                        buffer = lines.pop()
 
-                for raw_line in lines:
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    if line.startswith("#"):
-                        yield (line + "\n").encode("utf-8")
-                        continue
+                    for raw_line in lines:
+                        line = raw_line.strip()
+                        if not line:
+                            continue
+                        if line.startswith("#"):
+                            yield (line + "\n").encode("utf-8")
+                            continue
 
-                    # Auto-detect delimiter on first valid data line if needed
+                        # Auto-detect delimiter on first valid data line if needed
+                        if chosen_delim is None:
+                            chosen_delim = _detect_delimiter(line)
+
+                        delim_char = chosen_delim if chosen_delim != " " else " "
+                        row_count += 1
+                        if row_count > max_rows:
+                            yield f"# Limit exceeded: maximum {max_rows:,} points allowed\n".encode(
+                                "utf-8"
+                            )
+                            return
+
+                        out = _transform_line(line, delim_char, op, unit, file_trans, source=source)
+                        yield out.encode("utf-8")
+
+            # Process any remaining line in buffer
+            if buffer.strip():
+                line = buffer.strip()
+                if line.startswith("#"):
+                    yield (line + "\n").encode("utf-8")
+                else:
                     if chosen_delim is None:
                         chosen_delim = _detect_delimiter(line)
-
                     delim_char = chosen_delim if chosen_delim != " " else " "
                     row_count += 1
                     if row_count > max_rows:
@@ -265,25 +288,10 @@ async def transform_file(
                             "utf-8"
                         )
                         return
-
-                    out = _transform_line(line, delim_char, op, unit, trans, source=source)
+                    out = _transform_line(line, delim_char, op, unit, file_trans, source=source)
                     yield out.encode("utf-8")
-
-        # Process any remaining line in buffer
-        if buffer.strip():
-            line = buffer.strip()
-            if line.startswith("#"):
-                yield (line + "\n").encode("utf-8")
-            else:
-                if chosen_delim is None:
-                    chosen_delim = _detect_delimiter(line)
-                delim_char = chosen_delim if chosen_delim != " " else " "
-                row_count += 1
-                if row_count > max_rows:
-                    yield f"# Limit exceeded: maximum {max_rows:,} points allowed\n".encode("utf-8")
-                    return
-                out = _transform_line(line, delim_char, op, unit, trans, source=source)
-                yield out.encode("utf-8")
+        finally:
+            buffered_collector.flush_all()
 
     return StreamingResponse(
         line_generator(),

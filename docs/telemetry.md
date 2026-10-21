@@ -1,10 +1,13 @@
-# PyTransDatRO: Usage Telemetry & Logging
+# PyTransDatRO: Usage Telemetry
 
 ## 1. Overview & Objectives
-`PyTransDatRO` includes an optional, high-performance telemetry and logging system designed to track coordinate transformation activity over time (e.g. operational usage trends and spatial density heatmaps).
+`PyTransDatRO` includes an optional, high-performance telemetry system designed to track coordinate transformation activity over time (e.g. operational usage trends and spatial density heatmaps).
+
+> [!NOTE]
+> This document specifically describes the **usage metrics & spatial density telemetry** persisted in SQLite (`logs/usage.db`). For the general **application rotating file logging** (`logs/app.log`, diagnostic logs, write failure fallbacks, logging configuration), refer to [`docs/log.md`](log.md).
 
 ### Key Architectural Principles
-- **Disabled by Default (Zero Overhead)**: When used as an embedded desktop library or in local scripts, logging is completely inactive by default and produces zero disk I/O and zero latency overhead.
+- **Disabled by Default (Zero Overhead)**: When used as an embedded desktop library or in local scripts, telemetry is completely inactive by default and produces zero disk I/O and zero latency overhead.
 - **Asynchronous & Non-Blocking**: Coordinate calculation threads push pointer references to an in-memory queue (`< 0.001 ms`). All disk I/O, binning, and database writes occur in an independent background daemon thread.
 - **Failure Isolation (Non-Fatal)**: Coordinate mathematics will **never** fail or raise exceptions due to telemetry errors (e.g. disk full, permission denied, database locks).
 - **Privacy & Anonymization**: Exact cadastral coordinates are never stored on disk; they are binned into ~1 km geographic cells.
@@ -196,3 +199,18 @@ LEFT JOIN operations o ON u.operation = o.id
 ORDER BY count DESC
 LIMIT 10;
 ```
+
+---
+
+## 6. Telemetry Health, Retries & Fallback Payloads
+
+### 6.1 Telemetry Write Retries & Fallback Payloads
+- **Transient Error Retry**: In `SqliteUsageLogger._process_batch()`, transient SQLite errors (`sqlite3.OperationalError` such as database locks) are automatically retried up to 3 times with exponential backoff (50 ms, 100 ms, 150 ms).
+- **Fallback Logging to `app.log`**: If all retries fail, an `ERROR` is emitted to the application log (`logs/app.log`, see [`docs/log.md`](log.md)), and the unwritten computation and spatial payloads are dumped to the log file to prevent unrecoverable data loss.
+- **Queue Saturation Monitoring**: When the in-memory queue reaches capacity, dropped items increment an atomic counter and trigger a structured `WARNING` log entry detailing the operation and source.
+
+### 6.2 Streaming Telemetry Chunking (`BufferedTelemetryCollector`)
+When streaming large file uploads (up to 100,000 points), individual line-by-line enqueueing is avoided using `BufferedTelemetryCollector`. Points are buffered in-memory into 500-point chunks before submission to `SqliteUsageLogger`, eliminating queue saturation risk.
+
+### 6.3 Health Probe Observability
+The `/health` endpoint directly monitors `SqliteUsageLogger.get_diagnostics()`. If worker thread termination or database write errors are detected, the API transitions to `degraded` and exposes diagnostic error messages for container orchestrators.

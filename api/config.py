@@ -80,6 +80,22 @@ class Settings(BaseSettings):
         default="./logs/feedback.log",
         description="Path to user feedback submissions log file",
     )
+    app_log_enabled: bool = Field(
+        default=True,
+        description="Enable rotating file logging for application logs",
+    )
+    app_log_path: str = Field(
+        default="./logs/app.log",
+        description="File path for rotating application log file",
+    )
+    app_log_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        description="Maximum size in bytes before rotating application log file (default 10 MB)",
+    )
+    app_log_backup_count: int = Field(
+        default=5,
+        description="Number of rotated backup log files to retain",
+    )
 
     # Static web application assets
     webapp_dist_dir: Path = Field(
@@ -129,7 +145,37 @@ class Settings(BaseSettings):
 
 def get_logging_config(settings: Settings | None = None) -> dict:
     """Generates standard dictConfig dictionary driven by application settings."""
-    level = (settings.log_level if settings else "INFO").upper()
+    if settings is None:
+        settings = get_settings()
+    level = settings.log_level.upper()
+    app_log_enabled = settings.app_log_enabled
+    app_log_path = settings.app_log_path
+    max_bytes = settings.app_log_max_bytes
+    backup_count = settings.app_log_backup_count
+
+    handlers_dict: dict = {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "stream": "ext://sys.stdout",
+        },
+    }
+
+    active_handlers = ["console"]
+
+    if app_log_enabled:
+        log_file = Path(app_log_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        handlers_dict["file"] = {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "standard",
+            "filename": str(log_file),
+            "maxBytes": max_bytes,
+            "backupCount": backup_count,
+            "encoding": "utf-8",
+        }
+        active_handlers.append("file")
+
     return {
         "version": 1,
         "disable_existing_loggers": False,
@@ -139,27 +185,21 @@ def get_logging_config(settings: Settings | None = None) -> dict:
                 "datefmt": "%Y-%m-%d %H:%M:%S",
             },
         },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "standard",
-                "stream": "ext://sys.stdout",
-            },
-        },
+        "handlers": handlers_dict,
         "loggers": {
             "api": {
-                "handlers": ["console"],
+                "handlers": list(active_handlers),
                 "level": level,
                 "propagate": False,
             },
             "pytransdatro": {
-                "handlers": ["console"],
+                "handlers": list(active_handlers),
                 "level": level,
                 "propagate": False,
             },
         },
         "root": {
-            "handlers": ["console"],
+            "handlers": list(active_handlers),
             "level": level,
         },
     }

@@ -1,13 +1,18 @@
 import calendar
 import datetime
+import logging
 import math
 import sqlite3
+import threading
+import time
+from unittest.mock import MagicMock
 
 import pytest
 
+import pytransdatro.exceptions as exceptions
 from pytransdatro import TransRO
 from pytransdatro.exceptions import OutOfGridErr
-from pytransdatro.telemetry import SqliteUsageLogger
+from pytransdatro.telemetry import BufferedTelemetryCollector, SqliteUsageLogger
 
 
 def test_telemetry_batching_and_binning(tmp_path):
@@ -327,3 +332,515 @@ def test_telemetry_legacy_schema_migration(tmp_path):
     assert spat_row == ("2025-05-01", "2025-05-31", 45, 50, 25, 30, 2, 1, 2, 15)
 
     conn.close()
+
+
+def test_telemetry_batch_survivor_persistence(tmp_path):
+    """Category A: Mixed batch persists valid survivors to SQLite with correct counts."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    valid_points = [
+        [500000.0, 300000.0],
+        [500100.0, 300100.0],
+        [500200.0, 300200.0],
+        [500300.0, 300300.0],
+        [500400.0, 300400.0],
+        [500500.0, 300500.0],
+    ]
+    invalid_points = [
+        [5.0, 1.0],  # Out of grid
+        [float("nan"), 300000.0],  # NaN
+        [500000.0],  # Wrong dimension (<2)
+        ["invalid", "coord"],  # Non-numeric
+    ]
+    mixed = valid_points[:3] + invalid_points[:2] + valid_points[3:] + invalid_points[2:]
+
+    results = tr.transform_batch(mixed, from_st70=True, source=1)
+    assert len(results) == 10
+
+    logger.close()
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+
+    cur.execute("SELECT count_calls, count_points FROM computation_usage")
+    comp = cur.fetchone()
+    assert comp == (1, 6)
+
+    cur.execute("SELECT SUM(count) FROM spatial_usage")
+    assert cur.fetchone()[0] == 6
+    conn.close()
+
+
+def test_telemetry_invalid_data_rejection_no_db_writes(tmp_path):
+    """Category A: NaN, Infinity, strings, and bad dimension raise errors and write 0 rows."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    for bad_val in (float("nan"), float("inf"), -float("inf"), "bad_coord"):
+        with pytest.raises(exceptions.InvalidCoordinateErr):
+            tr.st70_to_etrs89(bad_val, 300000.0, source=1)
+
+    with pytest.raises(exceptions.WrongDimensionErr):
+        tr.st70_to_etrs89([500000.0], [300000.0, 300100.0], source=1)
+
+    logger.close()
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM computation_usage")
+    assert cur.fetchone()[0] == 0
+    cur.execute("SELECT count(*) FROM spatial_usage")
+    assert cur.fetchone()[0] == 0
+    conn.close()
+
+
+def test_telemetry_nodata_grid_holes_not_recorded(tmp_path, monkeypatch):
+    """Category A: Points hitting SPG nodata cells raise NoDataGridErr and write 0 rows."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    def mock_trans_nodata(*args, **kwargs):
+        raise exceptions.NoDataGridErr(500000.0, 300000.0, tr._t_gr2d)
+
+    monkeypatch.setattr(tr._t_gr2d, "trans", mock_trans_nodata)
+
+    with pytest.raises(exceptions.NoDataGridErr):
+        tr.st70_to_etrs89(500000.0, 300000.0, source=1)
+
+    logger.close()
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM computation_usage")
+    assert cur.fetchone()[0] == 0
+    cur.execute("SELECT count(*) FROM spatial_usage")
+    assert cur.fetchone()[0] == 0
+    conn.close()
+
+
+def test_telemetry_st70_to_etrs89_output_radians_logged(tmp_path):
+    """Category B: Stereo 70 to ETRS89 logs output coordinates in radians."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    n, e = 500000.0, 300000.0
+    lat_rad, lon_rad = tr.st70_to_etrs89(n, e, source=1)
+
+    logger.close()
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT lat_deg, lat_grad, lon_deg, lon_grad FROM spatial_usage")
+    row = cur.fetchone()
+
+    total_lat = int(round(math.degrees(lat_rad) * 100))
+    total_lon = int(round(math.degrees(lon_rad) * 100))
+    assert row == (total_lat // 100, total_lat % 100, total_lon // 100, total_lon % 100)
+    conn.close()
+
+
+def test_telemetry_etrs89_to_st70_deferred_logging(tmp_path, monkeypatch):
+    """Category B: ETRS89 to Stereo 70 defers logging until after successful calculation."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    lat, lon = math.radians(45.0), math.radians(25.0)
+
+    def mock_trans_err(*args, **kwargs):
+        raise exceptions.NoDataGridErr(45.0, 25.0, tr._t_gr2d)
+
+    monkeypatch.setattr(tr._t_gr2d, "trans", mock_trans_err)
+
+    with pytest.raises(exceptions.NoDataGridErr):
+        tr.etrs89_to_st70(lat, lon, source=1)
+
+    logger.close()
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM spatial_usage")
+    assert cur.fetchone()[0] == 0
+    conn.close()
+
+
+def test_telemetry_spatial_cell_bidirectional_symmetry(tmp_path):
+    """Category B: Forward and inverse transformations bin to the exact same 1km cell."""
+    log_dir_fwd = tmp_path / "logs_fwd"
+    logger_fwd = SqliteUsageLogger(log_dir=str(log_dir_fwd))
+    tr_fwd = TransRO(telemetry_logger=logger_fwd)
+
+    n, e = 500000.0, 300000.0
+    lat_rad, lon_rad = tr_fwd.st70_to_etrs89(n, e, source=1)
+    logger_fwd.close()
+
+    log_dir_inv = tmp_path / "logs_inv"
+    logger_inv = SqliteUsageLogger(log_dir=str(log_dir_inv))
+    tr_inv = TransRO(telemetry_logger=logger_inv)
+    tr_inv.etrs89_to_st70(lat_rad, lon_rad, source=1)
+    logger_inv.close()
+
+    conn_fwd = sqlite3.connect(str(log_dir_fwd / "usage.db"))
+    cell_fwd = conn_fwd.execute(
+        "SELECT lat_deg, lat_grad, lon_deg, lon_grad FROM spatial_usage"
+    ).fetchone()
+    conn_fwd.close()
+
+    conn_inv = sqlite3.connect(str(log_dir_inv / "usage.db"))
+    cell_inv = conn_inv.execute(
+        "SELECT lat_deg, lat_grad, lon_deg, lon_grad FROM spatial_usage"
+    ).fetchone()
+    conn_inv.close()
+
+    assert cell_fwd is not None
+    assert cell_inv is not None
+    assert cell_fwd == cell_inv
+
+
+def test_telemetry_angle_units_invariance(tmp_path):
+    """Category B: Degrees and radians inputs normalize to the exact same spatial cell."""
+    from api.schemas.point import AngleUnitEnum
+    from api.services.transformer import execute_point_transformation
+
+    lat_deg, lon_deg = 45.9997186, 24.9984476
+    lat_rad, lon_rad = math.radians(lat_deg), math.radians(lon_deg)
+
+    # 1. Via degrees
+    log_dir_deg = tmp_path / "logs_deg"
+    logger_deg = SqliteUsageLogger(log_dir=str(log_dir_deg))
+    tr_deg = TransRO(telemetry_logger=logger_deg)
+    execute_point_transformation(
+        tr_deg, "ETRS89ToStereo70", [lat_deg, lon_deg], unit=AngleUnitEnum.DEGREES, source=1
+    )
+    logger_deg.close()
+
+    # 2. Via radians directly
+    log_dir_rad = tmp_path / "logs_rad"
+    logger_rad = SqliteUsageLogger(log_dir=str(log_dir_rad))
+    tr_rad = TransRO(telemetry_logger=logger_rad)
+    tr_rad.etrs89_to_st70(lat_rad, lon_rad, source=1)
+    logger_rad.close()
+
+    conn_deg = sqlite3.connect(str(log_dir_deg / "usage.db"))
+    cell_deg = conn_deg.execute(
+        "SELECT lat_deg, lat_grad, lon_deg, lon_grad FROM spatial_usage"
+    ).fetchone()
+    conn_deg.close()
+
+    conn_rad = sqlite3.connect(str(log_dir_rad / "usage.db"))
+    cell_rad = conn_rad.execute(
+        "SELECT lat_deg, lat_grad, lon_deg, lon_grad FROM spatial_usage"
+    ).fetchone()
+    conn_rad.close()
+
+    assert cell_deg is not None
+    assert cell_rad is not None
+    assert cell_deg == cell_rad
+
+
+def test_telemetry_non_blocking_latency_benchmark(tmp_path):
+    """Category C: Telemetry record() is non-blocking with sub-0.05ms average latency."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+
+    lat, lon = [math.radians(45.0)], [math.radians(25.0)]
+    # Warm-up
+    logger.record(1, lat, lon, is_3d=0)
+
+    # 200 calls benchmark
+    n_iterations = 200
+    t0 = time.perf_counter()
+    for _ in range(n_iterations):
+        logger.record(1, lat, lon, is_3d=0)
+    elapsed = time.perf_counter() - t0
+
+    avg_ms = (elapsed / n_iterations) * 1000.0
+    logger.close()
+    assert avg_ms < 0.05
+
+
+def test_telemetry_caller_isolation_during_stalled_disk_io(tmp_path, monkeypatch):
+    """Category C: Worker disk I/O stalls do not block coordinate transformation callers."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    original_process = logger._process_batch
+
+    def slow_process(*args, **kwargs):
+        time.sleep(0.5)
+        return original_process(*args, **kwargs)
+
+    monkeypatch.setattr(logger, "_process_batch", slow_process)
+
+    t0 = time.perf_counter()
+    tr.st70_to_etrs89(500000.0, 300000.0, source=1)
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+
+    logger.close()
+    assert elapsed_ms < 20.0
+
+
+def test_telemetry_queue_saturation_and_dropped_events(tmp_path):
+    """Category C: Queue overflow logs warning, increments dropped counter, never raises."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir), max_queue_size=5)
+
+    for _ in range(50):
+        logger.record(1, [math.radians(45.0)], [math.radians(25.0)], is_3d=0, source=1)
+
+    diag = logger.get_diagnostics()
+    assert diag["dropped_events_count"] > 0
+    logger.close()
+
+
+def test_telemetry_concurrent_multi_threaded_ingestion(tmp_path):
+    """Category C: 10 threads concurrently recording transformations are thread-safe."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    def worker():
+        for _ in range(50):
+            tr.st70_to_etrs89(500000.0, 300000.0, source=2)
+
+    threads = [threading.Thread(target=worker) for _ in range(10)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    logger.close()
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT count_calls, count_points FROM computation_usage")
+    row = cur.fetchone()
+    assert row == (500, 500)
+    conn.close()
+
+
+def test_telemetry_batch_and_file_logger_failure_isolation():
+    """Category D: Exploding logger during transform_batch does not fail transformations."""
+
+    class ExplodingLogger:
+        def record(self, *args, **kwargs):
+            raise RuntimeError("Telemetry collector crashed!")
+
+    tr = TransRO(telemetry_logger=ExplodingLogger())
+    results = tr.transform_batch([[500000.0, 300000.0], [500100.0, 300100.0]], from_st70=True)
+    assert len(results) == 2
+    assert results[0][1] is None
+    assert results[1][1] is None
+
+
+def test_telemetry_sqlite_lock_contention_and_retry(tmp_path):
+    """Category D: SQLite busy contention retries and succeeds once unlocked."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    db_path = log_dir / "usage.db"
+
+    time.sleep(0.1)
+
+    ext_conn = sqlite3.connect(str(db_path), timeout=0.1)
+    ext_conn.execute("BEGIN EXCLUSIVE")
+
+    logger.record(1, [math.radians(45.0)], [math.radians(25.0)], is_3d=0, source=1)
+    time.sleep(0.15)
+
+    ext_conn.rollback()
+    ext_conn.close()
+
+    logger.close()
+    conn = sqlite3.connect(str(db_path))
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM computation_usage")
+    assert cur.fetchone()[0] == 1
+    conn.close()
+
+
+def test_telemetry_disk_write_failure_fallback_logging(tmp_path, caplog):
+    """Category D: Terminal write failure logs error and fallback payload."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+
+    mock_conn = MagicMock()
+    mock_conn.executemany.side_effect = sqlite3.OperationalError("disk I/O error")
+
+    with caplog.at_level(logging.ERROR):
+        logger._process_batch(mock_conn, [(1, [0.785], [0.436], 0, 1)], datetime.date.today())
+
+    assert "SQLite write failed after 3 attempts" in caplog.text
+    assert "Logging unwritten batch payload" in caplog.text
+    logger.close()
+
+
+def test_telemetry_directory_and_database_recreation(tmp_path):
+    """Category E: Deleting usage.db before startup recreates schema cleanly."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    logger.close()
+
+    db_path = log_dir / "usage.db"
+    assert db_path.exists()
+    db_path.unlink()
+    assert not db_path.exists()
+
+    logger2 = SqliteUsageLogger(log_dir=str(log_dir))
+    logger2.record(1, [math.radians(45.0)], [math.radians(25.0)], is_3d=0, source=1)
+    logger2.close()
+
+    assert db_path.exists()
+    conn = sqlite3.connect(str(db_path))
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = {r[0] for r in cur.fetchall()}
+    assert "computation_usage" in tables
+    assert "spatial_usage" in tables
+    conn.close()
+
+
+def test_telemetry_graceful_shutdown_queue_draining(tmp_path):
+    """Category G: close() drains queued items completely before exiting worker thread."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir), max_queue_size=2000)
+
+    lat, lon = [math.radians(45.0)], [math.radians(25.0)]
+    for _ in range(1000):
+        logger.record(1, lat, lon, is_3d=0, source=1)
+
+    logger.close(timeout=10.0)
+
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT count_points FROM computation_usage")
+    row = cur.fetchone()
+    assert row is not None
+    assert row[0] == 1000
+    conn.close()
+
+
+def test_telemetry_post_close_reentrancy(tmp_path):
+    """Category G: Calling record() after close() is a safe no-op."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    logger.close()
+
+    logger.record(1, [math.radians(45.0)], [math.radians(25.0)], is_3d=0, source=1)
+    assert logger._queue.empty()
+
+
+def test_buffered_telemetry_collector_chunking():
+    """Category C: BufferedTelemetryCollector chunks records and flushes remaining points."""
+    mock_target = MagicMock()
+    mock_target.get_diagnostics.return_value = {"is_alive": True}
+
+    buf = BufferedTelemetryCollector(mock_target, chunk_size=5)
+
+    # Record 4 points -> not yet flushed
+    for i in range(4):
+        buf.record(1, 0.785 + i * 0.001, 0.436 + i * 0.001, is_3d=0, source=1)
+
+    assert mock_target.record.call_count == 0
+
+    # Record 5th point -> flushes first chunk of 5 points
+    buf.record(1, 0.789, 0.440, is_3d=0, source=1)
+    assert mock_target.record.call_count == 1
+    call_args = mock_target.record.call_args[0]
+    assert call_args[0] == 1  # op
+    assert len(call_args[1]) == 5  # lats
+    assert len(call_args[2]) == 5  # lons
+
+    # Record 2 more points and flush_all()
+    buf.record(1, 0.790, 0.441, is_3d=0, source=1)
+    buf.record(1, 0.791, 0.442, is_3d=0, source=1)
+    buf.flush_all()
+
+    assert mock_target.record.call_count == 2
+    second_call = mock_target.record.call_args[0]
+    assert len(second_call[1]) == 2
+
+    assert buf.get_diagnostics() == {"is_alive": True}
+
+
+def test_telemetry_nan_inf_direct_record_safe_isolation(tmp_path):
+    """Category A/C: Direct record() calls with NaN/Inf do not crash worker thread and write 0 rows."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+
+    # Directly feed NaN and Inf coordinates to record
+    logger.record(1, float("nan"), float("nan"), is_3d=0, source=1)
+    logger.record(1, [float("inf"), float("-inf")], [0.43, 0.44], is_3d=0, source=1)
+    time.sleep(0.3)
+
+    # Worker thread must still be alive!
+    diag = logger.get_diagnostics()
+    assert diag["is_alive"] is True
+
+    # Now record a valid coordinate to prove the collector is fully functional
+    lat_val, lon_val = math.radians(45.0), math.radians(25.0)
+    logger.record(1, [lat_val], [lon_val], is_3d=0, source=1)
+    logger.close()
+
+    conn = sqlite3.connect(str(log_dir / "usage.db"))
+    cur = conn.cursor()
+    cur.execute("SELECT count_calls, count_points FROM computation_usage")
+    rows = cur.fetchall()
+    # Exactly 1 valid record was written, NaN/Inf calls were safely discarded without crashing
+    assert rows == [(1, 1)]
+    conn.close()
+
+
+def test_buffered_telemetry_collector_none_target_safe():
+    """Category C: BufferedTelemetryCollector with None target handles record and flush_all safely."""
+    buf = BufferedTelemetryCollector(None, chunk_size=5)
+    # Should not raise any exception
+    buf.record(1, 0.785, 0.436, is_3d=0, source=1)
+    buf.record(1, [0.786, 0.787], [0.437, 0.438], is_3d=0, source=1)
+    buf.flush_all()
+    assert buf.get_diagnostics() == {}
+
+
+def test_buffered_telemetry_collector_batch_oversized_chunking():
+    """Category C: Batches exceeding chunk_size are properly sliced into discrete chunks."""
+    mock_target = MagicMock()
+    buf = BufferedTelemetryCollector(mock_target, chunk_size=5)
+
+    # Supply 12 points in a single record call
+    lats = [0.785 + i * 0.001 for i in range(12)]
+    lons = [0.436 + i * 0.001 for i in range(12)]
+    buf.record(1, lats, lons, is_3d=0, source=2)
+
+    # Should have emitted 2 chunks of 5 points immediately
+    assert mock_target.record.call_count == 2
+    c1 = mock_target.record.call_args_list[0][0]
+    c2 = mock_target.record.call_args_list[1][0]
+    assert len(c1[1]) == 5
+    assert len(c2[1]) == 5
+
+    # flush_all emits remaining 2 points
+    buf.flush_all()
+    assert mock_target.record.call_count == 3
+    c3 = mock_target.record.call_args_list[2][0]
+    assert len(c3[1]) == 2
+
+
+def test_telemetry_worker_reconnection_failure_fallback_logged(tmp_path, caplog, monkeypatch):
+    """Category D: Failed database reconnection logs error, dropped count, and unwritten payload."""
+    log_dir = tmp_path / "logs"
+
+    def failing_connect(self):
+        raise sqlite3.OperationalError("Disk unmounted")
+
+    monkeypatch.setattr(SqliteUsageLogger, "_get_db_connection", failing_connect)
+
+    with caplog.at_level(logging.ERROR):
+        logger = SqliteUsageLogger(log_dir=str(log_dir))
+        time.sleep(0.1)
+        logger.record(1, [math.radians(45.0)], [math.radians(25.0)], is_3d=0, source=1)
+        time.sleep(0.5)
+
+        diag = logger.get_diagnostics()
+        assert diag["dropped_events_count"] >= 1
+        assert "SQLite connection unavailable" in caplog.text
+        assert "Unwritten telemetry batch payload" in caplog.text
+        logger.close()

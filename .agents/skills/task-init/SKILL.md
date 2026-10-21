@@ -44,7 +44,8 @@ This skill serves as the **universal entrypoint** for all development, refactori
      - **REST Endpoints & Schemas**: [`docs/rest_api.md`](../../../docs/rest_api.md)
      - **Web Application Architecture**: [`docs/web_app.md`](../../../docs/web_app.md)
      - **UI Design System & Tokens**: [`webapp/design_guide.md`](../../../webapp/design_guide.md)
-     - **Telemetry & Logging Pipeline**: [`docs/logging.md`](../../../docs/logging.md)
+     - **Usage Telemetry Subsystem**: [`docs/telemetry.md`](../../../docs/telemetry.md)
+     - **Application Logging Infrastructure**: [`docs/log.md`](../../../docs/log.md)
      - **Testing Strategy & Benchmarks**: [`docs/testing.md`](../../../docs/testing.md)
      - **Deployment & Production Runtime**: [`docs/deployment.md`](../../../docs/deployment.md)
 
