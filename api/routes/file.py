@@ -2,6 +2,7 @@
 Supports up to 100,000 coordinates in CSV/TXT formats with robust Point ID and DMS handling.
 """
 
+import logging
 import math
 from typing import AsyncGenerator, List, Optional
 
@@ -15,6 +16,8 @@ from api.dependencies import get_client_source, get_trans_engine
 from api.schemas.point import FileAngleUnitEnum, OperationEnum
 from pytransdatro.telemetry import BufferedTelemetryCollector
 from pytransdatro.trans_ro import TransRO
+
+logger = logging.getLogger("api.routes.file")
 
 router = APIRouter(prefix="/api/v1/transform", tags=["Coordinate Transformation"])
 
@@ -196,8 +199,14 @@ async def transform_file(
 
     Processes points with negligible memory overhead up to the configured limit.
     """
+    upload_name = file.filename or "unknown"
     delim_key = delimiter.strip().lower()
     if delim_key not in ALLOWED_DELIMITERS:
+        logger.warning(
+            "File upload '%s' rejected: invalid delimiter '%s'",
+            upload_name,
+            delimiter,
+        )
         raise HTTPException(
             status_code=422,
             detail=f"Invalid delimiter '{delimiter}'. Allowed values: auto, comma, semicolon, tab, space.",
@@ -206,12 +215,24 @@ async def transform_file(
     max_bytes = settings.max_file_upload_bytes
     content_length = request.headers.get("content-length")
     if content_length and content_length.isdigit() and int(content_length) > max_bytes:
+        logger.warning(
+            "File upload '%s' rejected: content length %s exceeds max %d bytes",
+            upload_name,
+            content_length,
+            max_bytes,
+        )
         raise HTTPException(
             status_code=413,
             detail=f"File upload exceeds maximum allowed size of {max_bytes:,} bytes.",
         )
 
     if file.size is not None and file.size > max_bytes:
+        logger.warning(
+            "File upload '%s' rejected: file size %s exceeds max %d bytes",
+            upload_name,
+            file.size,
+            max_bytes,
+        )
         raise HTTPException(
             status_code=413,
             detail=f"File upload exceeds maximum allowed size of {max_bytes:,} bytes.",
@@ -226,6 +247,8 @@ async def transform_file(
         row_count = 0
         total_bytes_read = 0
         max_rows = settings.max_file_points
+        logged_errors = 0
+        max_logged_errors = 5
 
         # Read line by line from uploaded stream
         buffer = ""
@@ -271,6 +294,22 @@ async def transform_file(
                             return
 
                         out = _transform_line(line, delim_char, op, unit, file_trans, source=source)
+                        if " #" in out:
+                            logged_errors += 1
+                            if logged_errors <= max_logged_errors:
+                                reason = out.split(" #")[-1].strip()
+                                logger.warning(
+                                    "File upload '%s' issue at line %d: %s",
+                                    upload_name,
+                                    row_count,
+                                    reason,
+                                )
+                            elif logged_errors == max_logged_errors + 1:
+                                logger.warning(
+                                    "File upload '%s': additional line error warnings suppressed (exceeded %d errors).",
+                                    upload_name,
+                                    max_logged_errors,
+                                )
                         yield out.encode("utf-8")
 
             # Process any remaining line in buffer

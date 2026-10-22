@@ -2,6 +2,7 @@
 Zero external dependencies, standard library only.
 """
 
+import logging
 import time
 from collections import defaultdict, deque
 from typing import Deque, Dict
@@ -9,6 +10,8 @@ from typing import Deque, Dict
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+
+logger = logging.getLogger("api.middleware.rate_limit")
 
 
 class SlidingWindowRateLimiter(BaseHTTPMiddleware):
@@ -83,6 +86,15 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
         if is_batch_route:
             retry_after = self._check_rate_limit(self._batch_hits, client_ip, self.batch_limit)
             if retry_after > 0:
+                logger.warning(
+                    "Rate limit exceeded for client %s on %s %s (limit: %d req/%ds, retry_after: %ds)",
+                    client_ip,
+                    method,
+                    request.url.path,
+                    self.batch_limit,
+                    int(self.window_seconds),
+                    retry_after,
+                )
                 return JSONResponse(
                     status_code=429,
                     content={
@@ -94,6 +106,15 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
         elif is_point_route:
             retry_after = self._check_rate_limit(self._point_hits, client_ip, self.point_limit)
             if retry_after > 0:
+                logger.warning(
+                    "Rate limit exceeded for client %s on %s %s (limit: %d req/%ds, retry_after: %ds)",
+                    client_ip,
+                    method,
+                    request.url.path,
+                    self.point_limit,
+                    int(self.window_seconds),
+                    retry_after,
+                )
                 return JSONResponse(
                     status_code=429,
                     content={

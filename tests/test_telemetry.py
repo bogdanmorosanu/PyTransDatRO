@@ -670,7 +670,15 @@ def test_telemetry_disk_write_failure_fallback_logging(tmp_path, caplog):
         logger._process_batch(mock_conn, [(1, [0.785], [0.436], 0, 1)], datetime.date.today())
 
     assert "SQLite write failed after 3 attempts" in caplog.text
-    assert "Logging unwritten batch payload" in caplog.text
+    assert "Saved unwritten batch" in caplog.text
+    assert logger.fallback_path.exists()
+    import json
+
+    lines = logger.fallback_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert "disk I/O error" in record["reason"]
+    assert len(record["comp_params"]) >= 1
     logger.close()
 
 
@@ -842,5 +850,13 @@ def test_telemetry_worker_reconnection_failure_fallback_logged(tmp_path, caplog,
         diag = logger.get_diagnostics()
         assert diag["dropped_events_count"] >= 1
         assert "SQLite connection unavailable" in caplog.text
-        assert "Unwritten telemetry batch payload" in caplog.text
+        assert "Saved unwritten queue batch" in caplog.text
+        assert logger.fallback_path.exists()
+        import json
+
+        lines = logger.fallback_path.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) >= 1
+        record = json.loads(lines[0])
+        assert "Disk unmounted" in record["reason"]
+        assert len(record["raw_batch"]) >= 1
         logger.close()

@@ -77,8 +77,12 @@ class Settings(BaseSettings):
         description="Path to SQLite legacy TransdatOnline statistics database",
     )
     feedback_log_path: str = Field(
-        default="./logs/feedback.log",
+        default="./logs/feedback.jsonl",
         description="Path to user feedback submissions log file",
+    )
+    telemetry_fallback_path: str = Field(
+        default="./logs/telemetry_fallback.jsonl",
+        description="Path to telemetry JSONL emergency fallback spillover file",
     )
     app_log_enabled: bool = Field(
         default=True,

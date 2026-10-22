@@ -28,12 +28,14 @@ def _get_smtp_config(settings: Optional[Settings] = None) -> Dict[str, Any]:
 
 def _log_feedback_locally(
     payload: Dict[str, Any], client_ip: str, settings: Optional[Settings] = None
-) -> None:
+) -> Path:
     """Appends feedback entry to a local JSONL log file under logs/feedback.jsonl."""
     cfg = settings or get_settings()
-    log_dir = Path(cfg.log_dir)
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "feedback.jsonl"
+    if cfg.feedback_log_path and cfg.feedback_log_path != "./logs/feedback.jsonl":
+        log_file = Path(cfg.feedback_log_path)
+    else:
+        log_file = Path(cfg.log_dir) / "feedback.jsonl"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
 
     record = {
         "received_at": datetime.now(timezone.utc).isoformat(),
@@ -43,6 +45,7 @@ def _log_feedback_locally(
 
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    return log_file
 
 
 def dispatch_feedback(
@@ -59,11 +62,17 @@ def dispatch_feedback(
     cfg = settings or get_settings()
 
     # 1. Always record in local log file for auditing / backup
+    saved_log_path = str(
+        Path(cfg.feedback_log_path)
+        if cfg.feedback_log_path != "./logs/feedback.jsonl"
+        else Path(cfg.log_dir) / "feedback.jsonl"
+    )
     try:
-        _log_feedback_locally(payload, client_ip, settings=cfg)
+        log_file = _log_feedback_locally(payload, client_ip, settings=cfg)
+        saved_log_path = str(log_file)
     except (OSError, TypeError, ValueError) as e:
         # Don't let disk logging error halt overall pipeline
-        logger.warning("Failed to write to local feedback log: %s", e)
+        logger.error("Failed to write to local feedback log (%s): %s", saved_log_path, e)
 
     smtp_cfg = _get_smtp_config(cfg)
 
@@ -114,5 +123,10 @@ def dispatch_feedback(
         return (True, "Feedback delivered successfully via email.")
 
     except (smtplib.SMTPException, OSError, TimeoutError) as e:
-        logger.warning("SMTP delivery failed (%s); recorded in local log.", e)
+        logger.warning(
+            "SMTP feedback delivery failed (%s: %s). Feedback safely preserved in %s.",
+            type(e).__name__,
+            e,
+            saved_log_path,
+        )
         return (False, f"Feedback saved to server log. (SMTP notification failed: {e})")

@@ -142,11 +142,281 @@ def test_telemetry_db_write_failure_fallback_logging(tmp_path):
         assert log_file.exists()
         content = log_file.read_text(encoding="utf-8")
         assert "SQLite write failed after 3 attempts" in content
-        assert "Logging unwritten batch payload" in content
-        assert "Unwritten telemetry computation payload" in content
-        assert "Unwritten telemetry spatial payload" in content
+        assert "Saved unwritten batch" in content
+        assert "Unwritten telemetry computation payload" not in content
+        assert "Unwritten telemetry spatial payload" not in content
+
+        assert telem.fallback_path.exists()
+        fallback_lines = telem.fallback_path.read_text(encoding="utf-8").strip().splitlines()
+        assert len(fallback_lines) == 1
+        import json
+
+        record = json.loads(fallback_lines[0])
+        assert "database disk image is malformed" in record["reason"]
+        assert len(record["comp_params"]) == 1
 
         diag = telem.get_diagnostics()
         assert "database disk image is malformed" in diag["last_error"]
     finally:
         telem.close()
+
+
+def test_feedback_smtp_failure_logging_and_jsonl_persistence(tmp_path, monkeypatch):
+    """Verifies SMTP failures log a warning to app.log while preserving payload in feedback.jsonl."""
+    import json
+    import smtplib
+
+    from api.services.mailer import dispatch_feedback
+
+    log_file = tmp_path / "app_feedback.log"
+    feedback_file = tmp_path / "feedback.jsonl"
+    settings = Settings(
+        app_log_enabled=True,
+        app_log_path=str(log_file),
+        feedback_log_path=str(feedback_file),
+        log_level="INFO",
+        smtp_host="smtp.example.com",
+        smtp_port=587,
+        smtp_user="user@example.com",
+        smtp_password="SuperSecretPassword123!",
+        feedback_recipient_email="admin@example.com",
+    )
+    configure_logging(settings)
+
+    def failing_smtp(*args, **kwargs):
+        raise smtplib.SMTPConnectError(421, b"Service not available, closing transmission channel")
+
+    monkeypatch.setattr(smtplib, "SMTP", failing_smtp)
+
+    payload = {
+        "report_type": "discrepancy",
+        "description": "Coordinate mismatch observed in Constanta county.",
+        "client_timestamp": "2026-10-22T21:00:00Z",
+        "app_version": "1.0.0",
+        "active_grid": "SPG",
+    }
+
+    delivered, msg = dispatch_feedback(payload, "192.168.1.100", settings=settings)
+    assert delivered is False
+    assert "SMTP notification failed" in msg
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+
+    # 1. Assert log file exists and warning is recorded without leaking password
+    assert log_file.exists()
+    log_content = log_file.read_text(encoding="utf-8")
+    assert "SMTP feedback delivery failed (SMTPConnectError" in log_content
+    assert "Feedback safely preserved in" in log_content
+    assert "SuperSecretPassword123!" not in log_content
+
+    # 2. Assert feedback.jsonl exists and contains the user submission
+    assert feedback_file.exists()
+    feedback_lines = feedback_file.read_text(encoding="utf-8").strip().splitlines()
+    assert len(feedback_lines) == 1
+    feedback_data = json.loads(feedback_lines[0])
+    assert feedback_data["report_type"] == "discrepancy"
+    assert "Coordinate mismatch" in feedback_data["description"]
+    assert feedback_data["client_ip"] == "192.168.1.100"
+
+
+def test_unhandled_500_exception_logged_with_traceback(tmp_path, monkeypatch):
+    """Verifies unhandled 500 exceptions in API routes log complete tracebacks to app.log."""
+    from fastapi.testclient import TestClient
+
+    from api.main import create_app
+    from pytransdatro.trans_ro import TransRO
+
+    log_file = tmp_path / "app_500.log"
+    settings = Settings(
+        app_log_enabled=True,
+        app_log_path=str(log_file),
+        log_level="INFO",
+    )
+    configure_logging(settings)
+
+    def crashing_transform(*args, **kwargs):
+        raise RuntimeError("Simulated unexpected database or server crash")
+
+    monkeypatch.setattr(TransRO, "st70_to_etrs89", crashing_transform)
+
+    app = create_app(settings=settings)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        resp = client.post(
+            "/api/v1/transform/point",
+            json={"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0]},
+        )
+        assert resp.status_code == 500
+        data = resp.json()
+        assert data["code"] == "INTERNAL_SERVER_ERROR"
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    for handler in logging.getLogger("api.main").handlers:
+        handler.flush()
+
+    assert log_file.exists()
+    content = log_file.read_text(encoding="utf-8")
+    assert "Unhandled server exception on POST /api/v1/transform/point" in content
+    assert "RuntimeError: Simulated unexpected database or server crash" in content
+    assert "Traceback (most recent call last):" in content
+
+
+def test_rate_limit_warning_logged_to_app_log(tmp_path):
+    """Verifies that 429 rate limit triggers emit a structured WARNING to app.log."""
+    from fastapi.testclient import TestClient
+
+    from api.main import create_app
+
+    log_file = tmp_path / "app_ratelimit.log"
+    settings = Settings(
+        app_log_enabled=True,
+        app_log_path=str(log_file),
+        log_level="INFO",
+        rate_limit_point=2,  # Low limit for fast testing
+        rate_limit_window_seconds=60,
+    )
+    configure_logging(settings)
+
+    app = create_app(settings=settings)
+
+    with TestClient(app) as client:
+        payload = {"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0]}
+        # Request 1 & 2: allowed
+        r1 = client.post("/api/v1/transform/point", json=payload)
+        assert r1.status_code == 200
+        r2 = client.post("/api/v1/transform/point", json=payload)
+        assert r2.status_code == 200
+
+        # Request 3: throttled (429)
+        r3 = client.post("/api/v1/transform/point", json=payload)
+        assert r3.status_code == 429
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    for handler in logging.getLogger("api.middleware.rate_limit").handlers:
+        handler.flush()
+
+    assert log_file.exists()
+    content = log_file.read_text(encoding="utf-8")
+    assert "[WARNING] api.middleware.rate_limit:" in content
+    assert "Rate limit exceeded for client" in content
+    assert "/api/v1/transform/point" in content
+
+
+def test_normal_200_ok_request_does_not_log_to_app_log(tmp_path):
+    """Verifies that normal 200 OK requests stay completely silent in app.log."""
+    from fastapi.testclient import TestClient
+
+    from api.main import create_app
+
+    log_file = tmp_path / "app_silent.log"
+    settings = Settings(
+        app_log_enabled=True,
+        app_log_path=str(log_file),
+        log_level="INFO",
+    )
+    configure_logging(settings)
+
+    app = create_app(settings=settings)
+
+    # Empty log file before request
+    if log_file.exists():
+        log_file.write_text("", encoding="utf-8")
+
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/v1/transform/point",
+            json={"op": "Stereo70ToETRS89", "coos": [500000.0, 500000.0]},
+        )
+        assert resp.status_code == 200
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    for handler in logging.getLogger("api.main").handlers:
+        handler.flush()
+
+    assert log_file.exists()
+    content = log_file.read_text(encoding="utf-8").strip()
+    # Content must only contain startup / shutdown or be empty, never per-request access lines
+    assert "POST /api/v1/transform/point" not in content
+
+
+def test_file_upload_invalid_delimiter_logged_to_app_log(tmp_path):
+    """Verifies rejected file uploads due to invalid delimiter log a WARNING to app.log."""
+    import io
+
+    from fastapi.testclient import TestClient
+
+    from api.main import create_app
+
+    log_file = tmp_path / "app_file_delim.log"
+    settings = Settings(
+        app_log_enabled=True,
+        app_log_path=str(log_file),
+        log_level="INFO",
+    )
+    configure_logging(settings)
+
+    app = create_app(settings=settings)
+
+    with TestClient(app) as client:
+        file_content = b"500000.0,300000.0\n"
+        resp = client.post(
+            "/api/v1/transform/file",
+            files={"file": ("points.csv", io.BytesIO(file_content), "text/csv")},
+            data={"op": "Stereo70ToETRS89", "delimiter": "pipe"},
+        )
+        assert resp.status_code == 422
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    for handler in logging.getLogger("api.routes.file").handlers:
+        handler.flush()
+
+    assert log_file.exists()
+    content = log_file.read_text(encoding="utf-8")
+    assert "[WARNING] api.routes.file:" in content
+    assert "File upload 'points.csv' rejected: invalid delimiter 'pipe'" in content
+
+
+def test_file_upload_corrupt_line_warning_logged_to_app_log(tmp_path):
+    """Verifies that invalid coordinate lines in uploaded files log a WARNING with line number."""
+    import io
+
+    from fastapi.testclient import TestClient
+
+    from api.main import create_app
+
+    log_file = tmp_path / "app_file_corrupt.log"
+    settings = Settings(
+        app_log_enabled=True,
+        app_log_path=str(log_file),
+        log_level="INFO",
+    )
+    configure_logging(settings)
+
+    app = create_app(settings=settings)
+
+    with TestClient(app) as client:
+        file_content = b"P1,NOT_A_NUMBER,BAD_DATA\n500000.0,300000.0\n"
+        resp = client.post(
+            "/api/v1/transform/file",
+            files={"file": ("corrupt_survey.csv", io.BytesIO(file_content), "text/csv")},
+            data={"op": "Stereo70ToETRS89", "delimiter": "comma"},
+        )
+        assert resp.status_code == 200
+        # Consume streaming body to trigger generator
+        body = resp.content.decode("utf-8")
+        assert "Invalid coordinate data" in body
+
+    for handler in logging.getLogger().handlers:
+        handler.flush()
+    for handler in logging.getLogger("api.routes.file").handlers:
+        handler.flush()
+
+    assert log_file.exists()
+    content = log_file.read_text(encoding="utf-8")
+    assert "[WARNING] api.routes.file:" in content
+    assert "File upload 'corrupt_survey.csv' issue at line 1: Invalid coordinate data" in content

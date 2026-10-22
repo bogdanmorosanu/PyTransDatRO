@@ -22,7 +22,8 @@ def test_default_settings():
     assert settings.max_file_points == 100000
     assert settings.max_file_upload_bytes == 50 * 1024 * 1024
     assert settings.log_dir == "./logs"
-    assert settings.feedback_log_path == "./logs/feedback.log"
+    assert settings.feedback_log_path == "./logs/feedback.jsonl"
+    assert settings.telemetry_fallback_path == "./logs/telemetry_fallback.jsonl"
 
 
 def test_settings_cors_parsing():

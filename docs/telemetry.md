@@ -206,7 +206,7 @@ LIMIT 10;
 
 ### 6.1 Telemetry Write Retries & Fallback Payloads
 - **Transient Error Retry**: In `SqliteUsageLogger._process_batch()`, transient SQLite errors (`sqlite3.OperationalError` such as database locks) are automatically retried up to 3 times with exponential backoff (50 ms, 100 ms, 150 ms).
-- **Fallback Logging to `app.log`**: If all retries fail, an `ERROR` is emitted to the application log (`logs/app.log`, see [`docs/log.md`](log.md)), and the unwritten computation and spatial payloads are dumped to the log file to prevent unrecoverable data loss.
+- **Dedicated Emergency Spillover (`logs/telemetry_fallback.jsonl`)**: If all retries fail (or on unexpected write errors), a concise 1-line `ERROR` is emitted to `logs/app.log` (see [`docs/log.md`](log.md)), and the unwritten aggregated computation and spatial batch payloads are saved as structured JSON lines to `logs/telemetry_fallback.jsonl` (configurable via `PYTRANSDAT_TELEMETRY_FALLBACK_PATH`). This ensures zero data loss while preventing raw coordinate data arrays from cluttering the operational application log.
 - **Queue Saturation Monitoring**: When the in-memory queue reaches capacity, dropped items increment an atomic counter and trigger a structured `WARNING` log entry detailing the operation and source.
 
 ### 6.2 Streaming Telemetry Chunking (`BufferedTelemetryCollector`)

@@ -14,9 +14,17 @@ logger = logging.getLogger("pytransdatro.telemetry")
 
 
 class SqliteUsageLogger:
-    def __init__(self, log_dir="./logs", max_queue_size=10000):
+    def __init__(
+        self,
+        log_dir: str = "./logs",
+        max_queue_size: int = 10000,
+        fallback_path: Optional[str] = None,
+    ):
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.fallback_path = (
+            Path(fallback_path) if fallback_path else self.log_dir / "telemetry_fallback.jsonl"
+        )
         self._queue = queue.Queue(maxsize=max_queue_size)
 
         self._lock = threading.Lock()
@@ -69,7 +77,41 @@ class SqliteUsageLogger:
             "total_recorded_points": total_points,
             "last_error": last_err,
             "last_error_time": last_err_time,
+            "fallback_path": str(self.fallback_path),
         }
+
+    def _save_fallback_payload(
+        self,
+        *,
+        reason: str,
+        comp_params: Optional[list] = None,
+        spatial_params: Optional[list] = None,
+        raw_batch: Optional[list] = None,
+    ) -> None:
+        """Appends unwritten telemetry items to a structured JSONL fallback file."""
+        import json
+
+        record = {
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "reason": reason,
+        }
+        if comp_params is not None:
+            record["comp_params"] = comp_params
+        if spatial_params is not None:
+            record["spatial_params"] = spatial_params
+        if raw_batch is not None:
+            record["raw_batch"] = raw_batch
+
+        try:
+            self.fallback_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.fallback_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        except Exception as file_exc:
+            logger.error(
+                "Failed to write to telemetry fallback file %s: %s",
+                self.fallback_path,
+                file_exc,
+            )
 
     def _worker_loop(self):
         conn = None
@@ -105,11 +147,15 @@ class SqliteUsageLogger:
                         self._last_error_time = time.time()
                         self._dropped_events_count += len(batch)
                     logger.error(
-                        "SQLite connection unavailable: %s. Logging unwritten batch payload (%d items) to application log.",
+                        "SQLite connection unavailable: %s. Saved unwritten queue batch (%d items) to %s.",
                         exc,
                         len(batch),
+                        self.fallback_path,
                     )
-                    logger.error("Unwritten telemetry batch payload: %s", batch)
+                    self._save_fallback_payload(
+                        reason=f"SQLite connection unavailable: {exc}",
+                        raw_batch=batch,
+                    )
                     continue
 
             now = datetime.datetime.now()
@@ -123,12 +169,16 @@ class SqliteUsageLogger:
                     self._last_error_time = time.time()
                     self._dropped_events_count += len(batch)
                 logger.error(
-                    "Unexpected error in telemetry worker loop: %s. Logging unwritten batch payload (%d items) to application log.",
+                    "Unexpected error in telemetry worker loop: %s. Saved unwritten queue batch (%d items) to %s.",
                     exc,
                     len(batch),
+                    self.fallback_path,
                     exc_info=True,
                 )
-                logger.error("Unwritten telemetry batch payload: %s", batch)
+                self._save_fallback_payload(
+                    reason=f"Unexpected error in worker loop: {exc}",
+                    raw_batch=batch,
+                )
 
         if conn:
             try:
@@ -522,26 +572,34 @@ class SqliteUsageLogger:
                         self._last_error = str(exc)
                         self._last_error_time = time.time()
                     logger.error(
-                        "SQLite write failed after %d attempts: %s. Logging unwritten batch payload (%d comp, %d spatial items) to application log.",
+                        "SQLite write failed after %d attempts: %s. Saved unwritten batch (%d comp, %d spatial items) to %s.",
                         max_retries,
                         exc,
                         len(comp_params),
                         len(spatial_params),
+                        self.fallback_path,
                     )
-                    logger.error("Unwritten telemetry computation payload: %s", comp_params)
-                    logger.error("Unwritten telemetry spatial payload: %s", spatial_params)
+                    self._save_fallback_payload(
+                        reason=f"SQLite write failed after {max_retries} attempts: {exc}",
+                        comp_params=comp_params,
+                        spatial_params=spatial_params,
+                    )
             except Exception as exc:
                 with self._lock:
                     self._last_error = str(exc)
                     self._last_error_time = time.time()
                 logger.error(
-                    "Unexpected error during telemetry batch write: %s. Logging unwritten batch payload (%d comp, %d spatial items) to application log.",
+                    "Unexpected error during telemetry batch write: %s. Saved unwritten batch (%d comp, %d spatial items) to %s.",
                     exc,
                     len(comp_params),
                     len(spatial_params),
+                    self.fallback_path,
                 )
-                logger.error("Unwritten telemetry computation payload: %s", comp_params)
-                logger.error("Unwritten telemetry spatial payload: %s", spatial_params)
+                self._save_fallback_payload(
+                    reason=f"Unexpected error during batch write: {exc}",
+                    comp_params=comp_params,
+                    spatial_params=spatial_params,
+                )
                 return
 
     def close(self, timeout: float = 10.0):
