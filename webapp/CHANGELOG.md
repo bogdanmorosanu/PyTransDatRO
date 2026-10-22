@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Living UI Actionable Elements Inventory & Specification (`docs/ui_actionable_inventory.md`)**:
+  - Authored comprehensive functional specification documenting all actionable UI elements, triggers, reactive surfaces, floating dialogs, and GIS map controllers across the application.
+  - Formulated the standard interaction taxonomy and state mutation contracts (Shared Config Bar, Point Converter, Batch Text Converter, File Upload Queue, Web GIS Map Canvas, Floating Diagnostic Windows, and Usage Telemetry Dashboard).
+  - Defined explicit functional invariants: deferred processing rules for batch/file transformations, smart paste manual trigger policy, comma-separated coordinate clipboard output, and strict clean vector filtering for GeoJSON FeatureCollections and AutoCAD DXF exports.
+  - Linked all documented controls and edge cases to Playwright E2E browser tests in `webapp/e2e/`.
+
 - **Legacy TransdatOnline Historical Statistics Subpage (TelemetryDashboard.ts, LegacyTimelineChart.ts)**:
   - Added new "Legacy" subpage under the "Usage" page presenting 15 years of TransdatOnline historical transformation volumes (2011 to 2026).
   - Built custom SVG LegacyTimelineChart supporting points-only visualization, smooth cubic bezier curve interpolation, gridlines, axis text, interactive crosshairs, and hover tooltips.

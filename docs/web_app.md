@@ -91,6 +91,7 @@ flowchart TD
      - *Bottom-Left Layers Drawer*: 32x32px icon-only button opening a structured drawer organized into Data Layers, Shift Grids (Coming Soon), and Base Maps (OpenStreetMap default, with user choice persisted in `localStorage['pytransdat_basemap']`).
      - *Bottom-Center Coordinates Badge*: Abbreviated `Lat: [val]  Long: [val]` responsive to active angular units (Degrees, DMS, Radians), elevated on mobile screens.
    - **Uniform Geodetic Popups**: Unified attribute tables across all layers distinguishing Stereo 70 Normal Altitude ($H$, Black Sea 1975) from ETRS89 Ellipsoidal Height ($h$, GRS80), Quasigeoid height $\zeta$ in cyan, and 1-click **Copy Attributes** (`Copiază atributele`) key-value clipboard action with in-place feedback.
+   - **Living UI Actionable Elements Inventory**: For a comprehensive, element-by-element functional specification mapping all controls, triggers, expected side-effects, and E2E test files, see [`docs/ui_actionable_inventory.md`](ui_actionable_inventory.md).
 
 4. **Decoupled API Contract**:
    - The frontend communicates with the backend exclusively via standard REST endpoints (`/api/v1/...`).
