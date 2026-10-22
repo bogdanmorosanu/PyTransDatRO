@@ -1,3 +1,4 @@
+import { formatTelemetryNumber, formatTelemetryCompact } from '../utils/numberFormat';
 import { t } from '../i18n';
 import type { TimelineSeriesItem, SourceItem } from '../utils/apiClient';
 
@@ -487,10 +488,10 @@ export class TimelineChart {
         
         let detailsHtml = '';
         if (showCalls) {
-          detailsHtml += `<span><span class="legend-indicator" style="background-color: ${s.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${cVal.toLocaleString()}</strong></span>`;
+          detailsHtml += `<span><span class="legend-indicator" style="background-color: ${s.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${formatTelemetryNumber(cVal)}</strong></span>`;
         }
         if (showPoints) {
-          detailsHtml += `<span><span class="legend-indicator" style="background-color: ${s.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${pVal.toLocaleString()}</strong></span>`;
+          detailsHtml += `<span><span class="legend-indicator" style="background-color: ${s.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${formatTelemetryNumber(pVal)}</strong></span>`;
         }
 
         sourceRowsHtml += `
@@ -516,10 +517,10 @@ export class TimelineChart {
 
       let totalDetailsHtml = '';
       if (showCalls) {
-        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${totalColors.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${totalSelectedCalls.toLocaleString()}</strong></span>`;
+        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${totalColors.callsColor};"></span> ${t('stats.metricTypeCalls')}: <strong>${formatTelemetryNumber(totalSelectedCalls)}</strong></span>`;
       }
       if (showPoints) {
-        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${totalColors.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${totalSelectedPoints.toLocaleString()}</strong></span>`;
+        totalDetailsHtml += `<span><span class="legend-indicator dashed" style="background-color: ${totalColors.pointsColor};"></span> ${t('stats.metricTypePoints')}: <strong>${formatTelemetryNumber(totalSelectedPoints)}</strong></span>`;
       }
 
       const totalHtml = `
@@ -566,14 +567,10 @@ export class TimelineChart {
   }
 
   private formatNumber(num: number): string {
-    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`;
-    return String(num);
+    return formatTelemetryCompact(num, 1);
   }
 
   private formatCompact(num: number): string {
-    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-    if (num >= 1_000) return `${(num / 1_000).toFixed(0)}k`;
-    return String(num);
+    return formatTelemetryCompact(num, 0);
   }
 }

@@ -148,7 +148,7 @@ button.health-dot {
   color: var(--color-danger);
 }
 
-/* Standard Unified Quality Report Component */
+/* Standard Unified Quality Report Component (Two-Section Architecture) */
 .quality-report-card {
   background-color: var(--bg-surface-input);
   border: 1px solid var(--border-subtle);
@@ -156,9 +156,30 @@ button.health-dot {
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   font-size: 12px;
   margin-top: 14px;
+}
+
+.quality-report-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quality-section-header {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.quality-report-divider-dashed {
+  width: 100%;
+  height: 1px;
+  border-top: 1px dashed var(--border-subtle);
+  margin: 2px 0;
 }
 
 .quality-report-row {

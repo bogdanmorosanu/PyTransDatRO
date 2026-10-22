@@ -47,7 +47,8 @@ export class PointConverter {
   private outputWarning: string | null = null;
   private quasigeoidZeta: number | null = null;
   private isCalculating: boolean = false;
-  private validationError: string | null = null;
+  private pendingCalculation: boolean = false;
+  private qualityStatus: 'ready' | 'valid' | 'invalid_input' | 'invalid_angle' | 'out_of_grid' | 'no_data' = 'ready';
 
   constructor(callbacks: PointConverterCallbacks) {
     this.callbacks = callbacks;
@@ -190,6 +191,28 @@ export class PointConverter {
     return this.order;
   }
 
+  public clearCoordinates(): void {
+    this.inputCoo1 = '';
+    this.inputCoo2 = '';
+    this.inputCoo3 = '';
+    this.outputCoords = null;
+    this.outputWarning = null;
+    this.quasigeoidZeta = null;
+    this.qualityStatus = 'ready';
+    this.updateQueryParams();
+    this.callbacks?.onPointTransformed?.({
+      lat: NaN,
+      lon: NaN,
+      outOfGrid: false,
+    });
+    this.render();
+  }
+
+  public setQualityStatus(status: 'ready' | 'valid' | 'invalid_input' | 'invalid_angle' | 'out_of_grid' | 'no_data'): void {
+    this.qualityStatus = status;
+    this.render();
+  }
+
   public setCoordinatesFromMap(lat: number, lon: number): void {
     let latStr: string;
     let lonStr: string;
@@ -304,6 +327,18 @@ export class PointConverter {
         }
       }
     }
+    if (params.has('unit')) {
+      const unitParam = params.get('unit') as AngularUnitType;
+      if (unitParam === 'degrees' || unitParam === 'dms' || unitParam === 'radians') {
+        this.angularUnit = unitParam;
+      }
+    }
+    if (params.has('order')) {
+      const orderParam = params.get('order') as CoordinateOrder;
+      if (orderParam === 'NE' || orderParam === 'EN') {
+        this.order = orderParam;
+      }
+    }
     if (params.has('c1')) this.inputCoo1 = params.get('c1') || this.inputCoo1;
     if (params.has('c2')) this.inputCoo2 = params.get('c2') || this.inputCoo2;
     if (params.has('c3')) this.inputCoo3 = params.get('c3') || this.inputCoo3;
@@ -312,6 +347,8 @@ export class PointConverter {
   private updateQueryParams(): void {
     const params = new URLSearchParams();
     params.set('op', this.op);
+    params.set('unit', this.angularUnit);
+    params.set('order', this.order);
     params.set('c1', this.inputCoo1);
     params.set('c2', this.inputCoo2);
     if (this.inputCoo3.trim() !== '') {
@@ -322,9 +359,12 @@ export class PointConverter {
   }
 
   private async calculate(): Promise<void> {
-    if (this.isCalculating) return;
+    if (this.isCalculating) {
+      this.pendingCalculation = true;
+      return;
+    }
     this.isCalculating = true;
-    this.validationError = null;
+    this.pendingCalculation = false;
 
     try {
       let raw1: number;
@@ -333,6 +373,14 @@ export class PointConverter {
 
       const val1 = this.inputCoo1.trim();
       const val2 = this.inputCoo2.trim();
+
+      if (!val1 && !val2) {
+        this.outputCoords = null;
+        this.outputWarning = null;
+        this.quasigeoidZeta = null;
+        this.qualityStatus = 'ready';
+        return;
+      }
 
       // Determine northing/lat vs easting/lon according to coordinate order
       const northingOrLat = this.order === 'NE' ? val1 : val2;
@@ -349,7 +397,7 @@ export class PointConverter {
           this.outputCoords = null;
           this.outputWarning = null;
           this.quasigeoidZeta = null;
-          this.validationError = t('point.errNonNumericStereo');
+          this.qualityStatus = 'invalid_input';
           return;
         }
 
@@ -380,11 +428,20 @@ export class PointConverter {
           raw2 = NaN;
         }
 
-        if (isNaN(raw1) || isNaN(raw2) || raw1 < -90 || raw1 > 90 || raw2 < -180 || raw2 > 180) {
+        if (isNaN(raw1) || isNaN(raw2)) {
           this.outputCoords = null;
           this.outputWarning = null;
           this.quasigeoidZeta = null;
-          this.validationError = t('point.errInvalidCoords');
+          this.qualityStatus = 'invalid_input';
+          return;
+        }
+
+        // Dedicated check for physically impossible angles: Latitude [-90, 90], Longitude [-180, 180]
+        if (raw1 < -90 || raw1 > 90 || raw2 < -180 || raw2 > 180) {
+          this.outputCoords = null;
+          this.outputWarning = null;
+          this.quasigeoidZeta = null;
+          this.qualityStatus = 'invalid_angle';
           return;
         }
       }
@@ -398,8 +455,7 @@ export class PointConverter {
           this.outputCoords = null;
           this.outputWarning = null;
           this.quasigeoidZeta = null;
-          this.validationError =
-            this.op === 'Stereo70ToETRS89' ? t('point.errNonNumericStereo') : t('point.errInvalidCoords');
+          this.qualityStatus = 'invalid_input';
           return;
         }
         raw3 = Number(trimmed3);
@@ -429,6 +485,14 @@ export class PointConverter {
       const isOutOfGrid = res.warning === 'Out of grid';
       const isNoData = res.warning === 'No data on grid';
       const isUntransformable = isOutOfGrid || isNoData;
+
+      if (isOutOfGrid) {
+        this.qualityStatus = 'out_of_grid';
+      } else if (isNoData) {
+        this.qualityStatus = 'no_data';
+      } else {
+        this.qualityStatus = 'valid';
+      }
 
       // Quasigeoid height calculation in 3D:
       // When Stereo70 -> ETRS89: res.coos[2] is h, input is H => zeta = h - H
@@ -496,10 +560,15 @@ export class PointConverter {
     } catch (err: any) {
       this.outputCoords = null;
       this.outputWarning = err.message || 'Error';
+      this.qualityStatus = 'invalid_input';
       showToast(err.message || 'Error calculating coordinates', 'danger');
     } finally {
       this.isCalculating = false;
       this.render();
+      if (this.pendingCalculation) {
+        this.pendingCalculation = false;
+        this.calculate();
+      }
     }
   }
 
@@ -544,17 +613,6 @@ export class PointConverter {
             />
           </div>
         </div>
-
-        ${
-          this.validationError
-            ? `
-          <div class="error-banner">
-            <span>⚠</span>
-            <span>${this.validationError}</span>
-          </div>
-        `
-            : ''
-        }
 
         <!-- Primary Action Button (no emoji) -->
         <button class="btn btn-primary" id="pt-calculate-btn" style="width: 100%; margin-top: 14px;">
@@ -668,29 +726,27 @@ export class PointConverter {
 
     const canCenterOnMap = !isUntransformable && !isNaN(mapLat) && !isNaN(mapLon) && isInsideRomaniaGrid(mapLat, mapLon);
 
-    let qualityBadges = '';
-    if (this.outputCoords) {
-      qualityBadges = `
-        ${
-          !isUntransformable
-            ? `<span class="status-pill success">✓ ${t('quality.validCoords')}</span>`
-            : ''
-        }
-        ${
-          isOutOfGrid
-            ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}</span>`
-            : isNoData
-            ? `<span class="status-pill warning">⚠ ${t('quality.noGridData')}</span>`
-            : `<span class="status-pill success">✓ ${t('quality.inGrid')}</span>`
-        }
-        <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
-          ${is3D ? t('quality.mode3D') : t('quality.mode2D')}
-        </span>
-      `;
-    } else if (this.validationError) {
-      qualityBadges = `<span class="status-pill danger">✕ ${this.validationError}</span>`;
-    } else {
-      qualityBadges = `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`;
+    let transformQualityBadge = '';
+    switch (this.qualityStatus) {
+      case 'valid':
+        transformQualityBadge = `<span class="status-pill success">✓ ${t('quality.valid')}</span>`;
+        break;
+      case 'invalid_input':
+        transformQualityBadge = `<span class="status-pill danger">✕ ${t('quality.invalidInput')}</span>`;
+        break;
+      case 'invalid_angle':
+        transformQualityBadge = `<span class="status-pill danger">✕ ${t('quality.invalidAngle')}</span>`;
+        break;
+      case 'out_of_grid':
+        transformQualityBadge = `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}</span>`;
+        break;
+      case 'no_data':
+        transformQualityBadge = `<span class="status-pill warning">⚠ ${t('quality.noGridData')}</span>`;
+        break;
+      case 'ready':
+      default:
+        transformQualityBadge = `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`;
+        break;
     }
 
     return `
@@ -723,11 +779,26 @@ export class PointConverter {
           <input type="text" readonly class="form-input mono metric-field" aria-label="${t('point.quasigeoidLabel')}" value="${zetaDisplay}" />
         </div>
 
-        <!-- Unified Quality Report directly beneath outputs -->
+        <!-- Standardized Two-Section Quality Report directly beneath outputs -->
         <div class="quality-report-card">
-          <div class="quality-report-row">
+          <!-- Top Section: Coordinates -->
+          <div class="quality-report-section coords-section">
+            <span class="quality-section-header">${t('quality.sectionCoords')}</span>
             <div class="quality-report-badges">
-              ${qualityBadges}
+              <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                ${is3D ? t('quality.dim3D') : t('quality.dim2D')}
+              </span>
+            </div>
+          </div>
+
+          <!-- Discrete Dashed Separator Line -->
+          <div class="quality-report-divider-dashed"></div>
+
+          <!-- Bottom Section: Transformation -->
+          <div class="quality-report-section transform-section">
+            <span class="quality-section-header">${t('quality.sectionTransform')}</span>
+            <div class="quality-report-badges">
+              ${transformQualityBadge}
             </div>
           </div>
         </div>

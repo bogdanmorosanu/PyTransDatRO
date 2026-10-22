@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { APP_CONFIG } from '../config';
 
 export class VolumeWarningModal {
   private backdrop: HTMLElement | null = null;
@@ -25,7 +26,7 @@ export class VolumeWarningModal {
 
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <button class="btn btn-primary" id="vw-sample-btn">
-              ⚡ ${t('volumeWarning.btnSample')}
+              ⚡ ${t('volumeWarning.btnSample', { sample: APP_CONFIG.batchSampleSize.toLocaleString() })}
             </button>
             <button class="btn btn-secondary" id="vw-all-btn">
               ⚠ ${t('volumeWarning.btnRenderAll')}

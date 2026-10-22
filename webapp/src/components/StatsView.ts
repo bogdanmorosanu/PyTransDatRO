@@ -1,4 +1,5 @@
 import { t, onLanguageChange } from '../i18n';
+import { formatTelemetryNumber, formatTelemetryDecimal } from '../utils/numberFormat';
 import {
   apiClient,
   type GridInfoResponse,
@@ -191,7 +192,9 @@ export class StatsView {
     const summary = this.timelineData?.summary;
     const totalCalls = summary?.total_calls ?? (this.telemetry?.summary.total_calls ?? 0);
     const totalPoints = summary?.total_points ?? (this.telemetry?.summary.total_points ?? 0);
-    const avgRatio = summary?.avg_points_per_call ?? (totalCalls > 0 ? (totalPoints / totalCalls).toFixed(1) : '0');
+    const avgRatio = typeof summary?.avg_points_per_call === 'number'
+      ? formatTelemetryDecimal(summary.avg_points_per_call, 1)
+      : (totalCalls > 0 ? formatTelemetryDecimal(totalPoints / totalCalls, 1) : '0');
     const periodText = summary?.from_date && summary?.to_date
       ? `${summary.from_date} → ${summary.to_date} (${summary.days_count ?? ''} ${t('stats.daysCount', { count: summary.days_count ?? 0 })})`
       : 'All Logged History';
@@ -200,11 +203,11 @@ export class StatsView {
       <!-- KPI Banner -->
       <div class="telemetry-kpi-banner">
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val blue" id="kpi-calls">${totalCalls.toLocaleString()}</div>
+          <div class="telemetry-kpi-val blue" id="kpi-calls">${formatTelemetryNumber(totalCalls)}</div>
           <div class="telemetry-kpi-label">${t('stats.totalCalls')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val cyan" id="kpi-points">${totalPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-val cyan" id="kpi-points">${formatTelemetryNumber(totalPoints)}</div>
           <div class="telemetry-kpi-label">${t('stats.totalPoints')}</div>
         </div>
         <div class="telemetry-kpi-card">
@@ -407,11 +410,11 @@ export class StatsView {
         </div>
         <div class="status-grid">
           <div class="status-badge-card">
-            <div class="status-badge-num" style="color: var(--color-primary-light);">${totalCalls.toLocaleString()}</div>
+            <div class="status-badge-num" style="color: var(--color-primary-light);">${formatTelemetryNumber(totalCalls)}</div>
             <div class="status-badge-label">${t('stats.totalCalls')}</div>
           </div>
           <div class="status-badge-card">
-            <div class="status-badge-num" style="color: var(--color-success);">${totalPoints.toLocaleString()}</div>
+            <div class="status-badge-num" style="color: var(--color-success);">${formatTelemetryNumber(totalPoints)}</div>
             <div class="status-badge-label">${t('stats.totalPoints')}</div>
           </div>
         </div>

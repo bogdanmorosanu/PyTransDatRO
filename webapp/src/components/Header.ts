@@ -4,6 +4,8 @@ import { renderDropdownMenu } from '../ui';
 
 export interface HeaderCallbacks {
   onNavigate: (page: 'studio' | 'telemetry') => void;
+  onResetToFreshState?: () => void;
+  onApiHealthChanged?: (online: boolean) => void;
   onOpenFeedback: (initialType?: 'discrepancy' | 'grid_update' | 'bug' | 'feature' | 'api_down') => void;
   onOpenGridInfo: () => void;
   onOpenGeodeticHelp: () => void;
@@ -75,11 +77,13 @@ export class Header {
       const online = res.ok && res.status === 200;
       if (this.isApiOnline !== online) {
         this.isApiOnline = online;
+        this.callbacks.onApiHealthChanged?.(this.isApiOnline);
         this.render();
       }
     } catch {
       if (this.isApiOnline !== false) {
         this.isApiOnline = false;
+        this.callbacks.onApiHealthChanged?.(this.isApiOnline);
         this.render();
       }
     }
@@ -119,20 +123,8 @@ export class Header {
                 type="button"
                 class="health-dot ${this.isApiOnline ? 'online' : 'offline'}" 
                 id="header-health-dot-btn"
-                title="${this.isApiOnline ? 'API Connected & Healthy' : 'API Offline - Click to report issue'}"
+                title="${this.isApiOnline ? t('header.apiHealthyTooltip') : t('header.apiOfflineTooltip')}"
               ></button>
-              ${
-                !this.isApiOnline
-                  ? `
-                <button type="button" class="header-offline-alert" id="header-offline-alert-btn" title="Report REST API failure">
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 011 1v4a1 1 0 11-2 0V5a1 1 0 011-1zm0 8a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/>
-                  </svg>
-                  <span>Report REST API failure</span>
-                </button>
-              `
-                  : ''
-              }
             </div>
           </div>
         </a>
@@ -326,18 +318,33 @@ export class Header {
     this.element.querySelector('#header-lang-slot')?.replaceWith(langDropdown);
 
     // Attach Event Listeners
+    this.element.querySelector('#header-brand-logo-wrap')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.callbacks.onResetToFreshState) {
+        this.callbacks.onResetToFreshState();
+      } else {
+        this.callbacks.onNavigate('studio');
+      }
+    });
+
+    this.element.querySelector('.brand-title-text')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.callbacks.onNavigate('studio');
+    });
+
+    this.element.querySelector('.header-brand-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.callbacks.onNavigate('studio');
+    });
+
     this.element.querySelector('#nav-btn-studio')?.addEventListener('click', () => {
       this.callbacks.onNavigate('studio');
     });
 
     this.element.querySelector('#nav-btn-telemetry')?.addEventListener('click', () => {
       this.callbacks.onNavigate('telemetry');
-    });
-
-    this.element.querySelector('#header-offline-alert-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      this.callbacks.onOpenFeedback('api_down');
     });
 
     this.element.querySelector('#header-health-dot-btn')?.addEventListener('click', (e) => {

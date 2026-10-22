@@ -1,4 +1,5 @@
-import { t } from '../i18n';
+import { formatTelemetryNumber } from '../utils/numberFormat';
+import { t, getLanguage } from '../i18n';
 import type { SpatialMatrixResponse } from '../utils/apiClient';
 
 export interface SpatialMatrixChartOptions {
@@ -338,10 +339,13 @@ export class SpatialMatrixChart {
       ? (lon < QUADRANT_CENTER.lon ? 'NW' : 'NE')
       : (lon < QUADRANT_CENTER.lon ? 'SW' : 'SE');
 
-    const latMin = lat.toFixed(1);
-    const latMax = (lat + 0.1).toFixed(1);
-    const lonMin = lon.toFixed(1);
-    const lonMax = (lon + 0.1).toFixed(1);
+    const isRo = getLanguage() === 'ro';
+    const fmt = (v: number) => isRo ? v.toFixed(1).replace('.', ',') : v.toFixed(1);
+
+    const latMin = fmt(lat);
+    const latMax = fmt(lat + 0.1);
+    const lonMin = fmt(lon);
+    const lonMax = fmt(lon + 0.1);
 
     const metricLabel = this.options.metric === 'points'
       ? t('stats.metricTypePoints')
@@ -350,7 +354,7 @@ export class SpatialMatrixChart {
     this.tooltipEl.innerHTML = `
       <div class="tooltip-header">
         <span class="tooltip-quadrant-badge">${quad}</span>
-        <span class="tooltip-coords-center">${lat.toFixed(1)}°N, ${lon.toFixed(1)}°E</span>
+        <span class="tooltip-coords-center">${fmt(lat)}°N, ${fmt(lon)}°E</span>
       </div>
       <div class="tooltip-body">
         <div class="tooltip-row">
@@ -359,7 +363,7 @@ export class SpatialMatrixChart {
         </div>
         <div class="tooltip-row">
           <span class="muted">${metricLabel}:</span>
-          <span class="mono font-bold primary-light">${hits > 0 ? hits.toLocaleString() : '0'}</span>
+          <span class="mono font-bold primary-light">${hits > 0 ? formatTelemetryNumber(hits) : '0'}</span>
         </div>
       </div>
     `;

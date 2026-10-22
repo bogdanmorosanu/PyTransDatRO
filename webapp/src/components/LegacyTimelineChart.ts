@@ -1,3 +1,4 @@
+import { formatTelemetryNumber, formatTelemetryCompact } from '../utils/numberFormat';
 import { t } from '../i18n';
 import type { LegacyTimelineSeriesItem } from '../utils/apiClient';
 
@@ -334,7 +335,7 @@ export class LegacyTimelineChart {
               <strong>${t(def.labelKey)}</strong>
             </div>
             <div class="tooltip-source-details">
-              <span><span class="legend-indicator" style="background-color: ${color};"></span> ${t('stats.metricTypePoints')}: <strong>${val.toLocaleString()}</strong></span>
+              <span><span class="legend-indicator" style="background-color: ${color};"></span> ${t('stats.metricTypePoints')}: <strong>${formatTelemetryNumber(val)}</strong></span>
             </div>
           </div>
         `;
@@ -350,7 +351,7 @@ export class LegacyTimelineChart {
               <strong>${t('stats.seriesTotal')}</strong>
             </div>
             <div class="tooltip-source-details">
-              <span><span class="legend-indicator dashed" style="background-color: ${totalColor};"></span> ${t('stats.metricTypePoints')}: <strong>${totalSelected.toLocaleString()}</strong></span>
+              <span><span class="legend-indicator dashed" style="background-color: ${totalColor};"></span> ${t('stats.metricTypePoints')}: <strong>${formatTelemetryNumber(totalSelected)}</strong></span>
             </div>
           </div>
         `;
@@ -383,8 +384,6 @@ export class LegacyTimelineChart {
   }
 
   private formatNumber(num: number): string {
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M';
-    if (num >= 1_000) return (num / 1_000).toFixed(0) + 'k';
-    return num.toString();
+    return formatTelemetryCompact(num, 1);
   }
 }

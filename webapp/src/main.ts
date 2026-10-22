@@ -45,6 +45,8 @@ class App {
   private tabContentContainer!: HTMLElement;
 
   private header!: Header;
+  private globalOfflineBanner!: HTMLElement;
+  private isApiOnline: boolean = true;
   private pointConverter!: PointConverter;
   private batchConverter!: BatchConverter;
   private fileUpload!: FileUpload;
@@ -57,6 +59,7 @@ class App {
 
   constructor() {
     this.rootElement = document.getElementById('app-root')!;
+    this.readInitialQueryParams();
     this.initTheme();
     this.initLayout();
     this.mapView.initMap();
@@ -68,7 +71,32 @@ class App {
     onLanguageChange(() => {
       this.renderSharedConfigBar();
       this.renderTabs();
+      if (!this.isApiOnline) {
+        this.updateOfflineBanner(false);
+      }
     });
+  }
+
+  private readInitialQueryParams(): void {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('op')) {
+      const op = params.get('op') as TransformationOp;
+      if (op === 'Stereo70ToETRS89' || op === 'ETRS89ToStereo70') {
+        this.currentOp = op;
+      }
+    }
+    if (params.has('unit')) {
+      const unit = params.get('unit') as AngularUnitType;
+      if (unit === 'degrees' || unit === 'dms' || unit === 'radians') {
+        this.currentAngularUnit = unit;
+      }
+    }
+    if (params.has('order')) {
+      const order = params.get('order') as CoordinateOrder;
+      if (order === 'NE' || order === 'EN') {
+        this.currentOrder = order;
+      }
+    }
   }
 
   private initTheme(): void {
@@ -82,12 +110,21 @@ class App {
     // 1. Header
     this.header = new Header({
       onNavigate: (page) => this.navigateToPage(page),
+      onResetToFreshState: () => this.resetToFreshState(),
+      onApiHealthChanged: (online) => this.updateOfflineBanner(online),
       onOpenFeedback: (initialType) => this.feedbackPanel.toggle(initialType),
       onOpenGridInfo: () => this.gridMetadataPanel.toggle(),
       onOpenGeodeticHelp: () => this.geodeticHelpPanel.toggle(),
       onToggleMobileView: () => this.toggleMobileView(),
     });
     this.rootElement.appendChild(this.header.getElement());
+
+    // 1b. Global Offline Alert Banner (directly beneath header)
+    this.globalOfflineBanner = document.createElement('div');
+    this.globalOfflineBanner.id = 'global-offline-banner';
+    this.globalOfflineBanner.className = 'global-offline-banner';
+    this.globalOfflineBanner.style.display = 'none';
+    this.rootElement.appendChild(this.globalOfflineBanner);
 
     // 2. Workbench Layout
     this.workbenchLayout = document.createElement('main');
@@ -134,24 +171,33 @@ class App {
           return;
         }
 
-        if (this.currentOp === 'ETRS89ToStereo70') {
-          this.pointConverter.setCoordinatesFromMap(lat, lon);
-        } else {
-          // Stereo 70 ➔ ETRS89: Reverse-calculate clicked lat/lon into Stereo 70 meters
-          try {
-            const res = await apiClient.transformPoint({
-              op: 'ETRS89ToStereo70',
-              coos: [lat, lon],
-              unit: 'degrees',
-            });
-            if (res.warning === 'Out of grid') {
-              showToast(t('point.outOfGridWarn'), 'warning');
-            } else if (res.coos && res.coos.length >= 2) {
+        try {
+          const res = await apiClient.transformPoint({
+            op: 'ETRS89ToStereo70',
+            coos: [lat, lon],
+            unit: 'degrees',
+          });
+
+          const isUntransformable = res.warning === 'Out of grid' || res.warning === 'No data on grid';
+
+          if (isUntransformable) {
+            this.pointConverter.clearCoordinates();
+            this.pointConverter.setQualityStatus(res.warning === 'No data on grid' ? 'no_data' : 'out_of_grid');
+            showToast(res.warning === 'No data on grid' ? t('quality.noGridData') : t('point.outOfGridWarn'), 'warning');
+            return;
+          }
+
+          if (this.currentOp === 'ETRS89ToStereo70') {
+            this.pointConverter.setCoordinatesFromMap(lat, lon);
+          } else {
+            // Stereo 70 ➔ ETRS89
+            if (res.coos && res.coos.length >= 2) {
               this.pointConverter.setStereoCoordinatesFromMap(res.coos[0], res.coos[1]);
             }
-          } catch (err) {
-            console.error('Failed to reverse calculate Stereo 70 coordinates', err);
           }
+        } catch (err) {
+          console.error('Failed to calculate coordinates from map click', err);
+          this.pointConverter.clearCoordinates();
         }
       },
       onOpenVolumeWarning: (count, callback) => {
@@ -228,9 +274,16 @@ class App {
       },
     });
 
+    this.pointConverter.setDirection(this.currentOp);
+    this.pointConverter.setAngularUnit(this.currentAngularUnit);
     this.pointConverter.setCoordinateOrder(this.currentOrder);
+    this.batchConverter.setDirection(this.currentOp);
+    this.batchConverter.setAngularUnit(this.currentAngularUnit);
     this.batchConverter.setCoordinateOrder(this.currentOrder);
+    this.fileUpload.setDirection(this.currentOp);
+    this.fileUpload.setAngularUnit(this.currentAngularUnit);
     this.fileUpload.setCoordinateOrder(this.currentOrder);
+    this.mapView.setCoordinateOrder(this.currentOrder);
 
     this.updateActiveTabContent();
   }
@@ -261,6 +314,7 @@ class App {
     this.pointConverter.setCoordinateOrder(order);
     this.batchConverter.setCoordinateOrder(order);
     this.fileUpload.setCoordinateOrder(order);
+    this.mapView.setCoordinateOrder(order);
   }
 
   private renderSharedConfigBar(): void {
@@ -342,7 +396,7 @@ class App {
 
     // Tier 3: Reusable renderCopyBadge
     const copyBadge = renderCopyBadge({
-      id: 'format-example-badge',
+      id: 'angle-format-example-badge',
       text: sampleText,
       tooltip: t('point.clickToSelect'),
       onCopied: () => showToast(t('point.copiedToast'), 'success'),
@@ -353,13 +407,13 @@ class App {
   private renderTabs(): void {
     this.tabsBar.innerHTML = `
       <span class="tabs-prefix">${t('tabs.prefix')}</span>
-      <button class="tab-btn ${this.activeTab === 'point' ? 'active' : ''}" data-tab="point">
+      <button class="tab-btn ${this.activeTab === 'point' ? 'active' : ''}" id="tab-point" data-tab="point">
         <span>${t('tabs.point')}</span>
       </button>
-      <button class="tab-btn ${this.activeTab === 'batch' ? 'active' : ''}" data-tab="batch">
+      <button class="tab-btn ${this.activeTab === 'batch' ? 'active' : ''}" id="tab-text" data-tab="batch">
         <span>${t('tabs.batch')}</span>
       </button>
-      <button class="tab-btn ${this.activeTab === 'file' ? 'active' : ''}" data-tab="file">
+      <button class="tab-btn ${this.activeTab === 'file' ? 'active' : ''}" id="tab-files" data-tab="file">
         <span>${t('tabs.file')}</span>
       </button>
     `;
@@ -406,6 +460,61 @@ class App {
       this.utilityPanel.classList.add('mobile-active');
       mapPanel.classList.remove('mobile-active');
     }
+  }
+
+  private updateOfflineBanner(online: boolean): void {
+    this.isApiOnline = online;
+    if (online) {
+      this.globalOfflineBanner.style.display = 'none';
+      this.globalOfflineBanner.innerHTML = '';
+    } else {
+      this.globalOfflineBanner.style.display = 'flex';
+      this.globalOfflineBanner.innerHTML = `
+        <div class="global-offline-banner-content">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" class="banner-warn-icon">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 011 1v4a1 1 0 11-2 0V5a1 1 0 011-1zm0 8a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/>
+          </svg>
+          <span class="banner-warn-text">${t('header.apiOfflineMessage')}</span>
+          <button type="button" class="banner-report-btn" id="global-offline-report-btn">
+            ${t('header.reportIssueLink')} ↗
+          </button>
+        </div>
+      `;
+      this.globalOfflineBanner.querySelector('#global-offline-report-btn')?.addEventListener('click', () => {
+        this.feedbackPanel.toggle('api_down');
+      });
+    }
+    setTimeout(() => this.mapView?.invalidateSize(), 60);
+  }
+
+  public resetToFreshState(): void {
+    this.pointConverter.clearCoordinates();
+    this.batchConverter.clear();
+    this.fileUpload.clearQueue();
+
+    this.mapView.clearSinglePoint();
+    this.mapView.clearBatchPoints();
+    this.mapView.clearFilePoints();
+    this.mapView.toggleMeasureMode(false);
+    this.mapView.zoomToRomaniaExtents();
+
+    this.currentOp = 'ETRS89ToStereo70';
+    this.currentOrder = 'NE';
+    this.pointConverter.setDirection('ETRS89ToStereo70');
+    this.pointConverter.setCoordinateOrder('NE');
+    this.batchConverter.setDirection('ETRS89ToStereo70');
+    this.batchConverter.setCoordinateOrder('NE');
+    this.fileUpload.setDirection('ETRS89ToStereo70');
+    this.fileUpload.setCoordinateOrder('NE');
+    this.mapView.setCoordinateOrder('NE');
+    this.renderSharedConfigBar();
+
+    if (this.feedbackPanel.isOpen()) this.feedbackPanel.close();
+    if (this.gridMetadataPanel.isOpen()) this.gridMetadataPanel.close();
+    if (this.geodeticHelpPanel.isOpen()) this.geodeticHelpPanel.close();
+
+    this.switchTab('point');
+    this.navigateToPage('studio');
   }
 
   private navigateToPage(page: AppPage): void {

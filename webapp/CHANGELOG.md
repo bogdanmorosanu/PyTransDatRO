@@ -9,6 +9,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Global Offline Alert Banner & Non-Disruptive Health Dot (`Header.ts`, `main.ts`, `layout.css`)**:
+  - Replaced disruptive header offline warning button with an unobtrusive 8px status circle indicator (`#header-health-dot-btn`) next to the version badge that never displaces adjacent brand elements.
+  - Implemented top system alert banner (`#global-offline-banner`) docked below the header when the REST API is unreachable, featuring an actionable report trigger (`#global-offline-report-btn`) that launches the Feedback modal prefilled with `api_down`.
+- **Brand Logo Fresh First-Load Reset vs. Title SPA Navigation (`Header.ts`, `main.ts`)**:
+  - Wired `#header-brand-logo-wrap` to execute a complete application runtime state purge (`resetToFreshState`): clears Point coordinates, Batch text, File queues, map pins/measurements, floating dialogs, and resets view to Romania extents while preserving user language and theme preferences.
+  - Retained soft client-side SPA navigation to Studio on clicking the title text (`.brand-title-text`).
+- **Two-Section Quality Report Architecture (`PointConverter.ts`, `BatchConverter.ts`, `FileUpload.ts`, `badges.css`)**:
+  - Standardized quality reporting across Point, Text, and Files tabs into two discrete sections: `Coordinates` (Top: `Total`, `2D`, `3D`) and `Transformation` (Bottom: `Valid`, `Invalid Input`, `Invalid Angle`, `Outside Grid`, `No Grid Data`) separated by a discrete dashed divider line (`.quality-report-divider-dashed`).
+  - Added localized subtitle labels (`quality.sectionCoords`, `quality.sectionTransform`, `quality.total`, `quality.dim2D`, `quality.dim3D`, `quality.invalidAngle`, `quality.valid`).
+  - Formatted batch and file transformation metrics with explicit counts: `Label (count)`.
+- **Computation Timeline Total Series Toggle (`TelemetryDashboard.ts`)**:
+  - Added `#comp-toggle-total` button in Computation timeline legend mirroring `#legacy-toggle-total`, allowing users to toggle total series lines on/off.
+
+### Fixed
+- **Golden Rule Quality Reporting & Elimination of Inline Error Banners (`PointConverter.ts`, `pointParser.ts`)**:
+  - Completely removed ad-hoc inline `.error-banner` alerts beneath coordinate input boxes in compliance with the Golden Rule: feedback is communicated exclusively through the Two-Section Quality Report card.
+  - Added dedicated `invalid_angle` classification for non-physical angular inputs ($|\text{Lat}| > 90^\circ$ or $|\text{Lon}| > 180^\circ$) preventing confusing "Out of grid" feedback for impossible inputs.
+  - Preserved DMS angle sexagesimal symbols (`°`, `'`, `"`) as an explicit exception to unit omission.
+- **Untransformable Map Click Coordinate Erase (`main.ts`, `PointConverter.ts`)**:
+  - Clicking untransformable locations (outside grid / no grid data) in Point tab immediately clears both input and output fields (`""` and `—`) in both ETRS89 and Stereo 70 directions, displaying a warning toast and updating quality status.
+- **Single Point Marker Symbology & Color Preservation (`map.css`, `MapView.ts`)**:
+  - Removed `.geodetic-marker.out-of-grid .geodetic-pin-dot` red color override so single point markers strictly retain their assigned layer color at all times while maintaining a continuous soft pulsing ripple animation (`markerPulse`).
+- **Batch Converter Error Row Ergonomics & Height Preservation (`BatchConverter.ts`)**:
+  - Error rows in batch output text now output only Point Name (if present) and quality comment (e.g. `104, # Invalid input` or `101, # Invalid angle` or `# Invalid input`), completely omitting invalid coordinate numbers.
+  - Implemented vertical textarea height caching (`savedInputHeight`, `savedOutputHeight`) across `Transform` calculations.
+  - Removed premature "File Downloaded" toasts on CSV, GeoJSON, and DXF exports to align with native browser save dialogs.
+  - Added dynamic mouse cursor switching to `default` arrow when hovering over `#batch-input-area` scrollbar gutter.
+- **Universal Romanian Comma Decimals in Telemetry & Display Surfaces (`numberFormat.ts`, `MapView.ts`, `GeodeticHelpPanel.ts`, `SpatialMatrixChart.ts`)**:
+  - Hardened `formatTelemetryDecimal` and `formatTelemetryPercent` to ensure all percentage and decimal values outside coordinate boxes use comma `,` in Romanian locale.
+  - Applied localized decimal formatting to GIS measure tool distances, scale bar labels, and spatial heatmap tooltips.
+
+### Changed
+- Reconciled `docs/ui_actionable_inventory.md` to document smart-paste auto-calculation as an intentional convenience feature and clarify that volume warning guards Leaflet DOM rendering rather than blocking text mathematical transformation.
 - **Living UI Actionable Elements Inventory & Specification (`docs/ui_actionable_inventory.md`)**:
   - Authored comprehensive functional specification documenting all actionable UI elements, triggers, reactive surfaces, floating dialogs, and GIS map controllers across the application.
   - Formulated the standard interaction taxonomy and state mutation contracts (Shared Config Bar, Point Converter, Batch Text Converter, File Upload Queue, Web GIS Map Canvas, Floating Diagnostic Windows, and Usage Telemetry Dashboard).
@@ -26,7 +59,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - GET /api/v1/telemetry/legacy/stats: Overall summary of points transformed and timeline limits.
   - GET /api/v1/telemetry/legacy/timeline: Time-series data supporting daily, weekly, and monthly bucket expressions with date bounds slicing and faceted filtering.
 - **Data Integrity & Deduplication Tooling (	ools/)**:
-  - 	ools/audit_legacy_stats_integrity.py: Audits timeline continuity across 5,758 calendar days and outputs structured reports into eports/legacy_stats_integrity_report.txt.
+  - 	ools/audit_legacy_stats_integrity.py: Audits timeline continuity across 5,758 calendar days and outputs structured reports into 
+eports/legacy_stats_integrity_report.txt.
   - 	ools/extract_legacy_stats.py: Resolves MySQL concurrency race conditions by aggregating records per calendar day and enforcing unique constraints in SQLite.
 
 ### Changed

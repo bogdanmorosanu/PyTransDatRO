@@ -52,10 +52,17 @@ export class BatchConverter {
   private lastTransformedItems: ExportPointItem[] = [];
   private lastMapPoints: BatchMapPoint[] = [];
   private lastSummary: {
+    totalCount: number;
     inGridCount: number;
     outOfGridCount: number;
-    syntaxErrorCount: number;
+    noDataCount: number;
+    invalidInputCount: number;
+    invalidAngleCount: number;
+    count2D: number;
+    count3D: number;
   } | null = null;
+  private savedInputHeight?: string;
+  private savedOutputHeight?: string;
   private isProcessing: boolean = false;
 
   constructor(callbacks: BatchConverterCallbacks) {
@@ -94,6 +101,15 @@ export class BatchConverter {
 
   public getElement(): HTMLElement {
     return this.container;
+  }
+
+  public clear(): void {
+    this.inputText = '';
+    this.outputText = '';
+    this.lastTransformedItems = [];
+    this.lastMapPoints = [];
+    this.lastSummary = null;
+    this.render();
   }
 
   public setDirection(op: TransformationOp): void {
@@ -179,6 +195,9 @@ export class BatchConverter {
 
       let validCount = 0;
       let outOfGridCount = 0;
+      let noDataCount = 0;
+      let count2D = 0;
+      let count3D = 0;
       let validRowIndex = 0;
       let pointIndex = 0;
 
@@ -192,7 +211,14 @@ export class BatchConverter {
           continue;
         }
         if (row.error) {
-          outputLines.push(`${row.rawLine} # Error: ${row.error}`);
+          const commentText = row.errorType === 'invalid_angle' ? '# Invalid angle' : '# Invalid input';
+          outputLines.push(row.pointId ? `${row.pointId}, ${commentText}` : commentText);
+          items.push({
+            pointId: row.pointId || `Point ${pointIndex + 1}`,
+            coords: [],
+            warning: row.errorType === 'invalid_angle' ? 'Invalid angle' : 'Invalid input',
+            isGeo: this.op === 'Stereo70ToETRS89',
+          });
           continue;
         }
 
@@ -205,7 +231,11 @@ export class BatchConverter {
           apiRes.warning === 'Out of grid' || apiRes.warning === 'No data on grid';
 
         if (isUntransformable) {
-          outOfGridCount++;
+          if (apiRes.warning === 'No data on grid') {
+            noDataCount++;
+          } else {
+            outOfGridCount++;
+          }
           const warnComment = `# ${apiRes.warning}`;
           outputLines.push(row.pointId ? `${row.pointId}, ${warnComment}` : warnComment);
           items.push({
@@ -218,6 +248,11 @@ export class BatchConverter {
         }
 
         validCount++;
+        if (row.coords.length >= 3) {
+          count3D++;
+        } else {
+          count2D++;
+        }
 
         const item: ExportPointItem = {
           pointId: pointLabel,
@@ -319,10 +354,25 @@ export class BatchConverter {
       this.outputText = outputLines.join('\n');
       this.lastTransformedItems = items;
       this.lastMapPoints = mapPoints;
+      let invalidInputCount = 0;
+      let invalidAngleCount = 0;
+      for (const r of syntaxErrorRows) {
+        if (r.errorType === 'invalid_angle') {
+          invalidAngleCount++;
+        } else {
+          invalidInputCount++;
+        }
+      }
+
       this.lastSummary = {
+        totalCount: validRows.length + syntaxErrorRows.length,
         inGridCount: validCount,
         outOfGridCount: outOfGridCount,
-        syntaxErrorCount: syntaxErrorRows.length,
+        noDataCount: noDataCount,
+        invalidInputCount,
+        invalidAngleCount,
+        count2D,
+        count3D,
       };
 
       this.callbacks.onPointsPlotted(mapPoints);
@@ -336,7 +386,31 @@ export class BatchConverter {
     }
   }
 
+  private captureTextareaHeights(): void {
+    const inputArea = this.container.querySelector('#batch-input-area') as HTMLTextAreaElement | null;
+    if (inputArea && inputArea.style.height) {
+      this.savedInputHeight = inputArea.style.height;
+    }
+    const outputArea = this.container.querySelector('#batch-output-area') as HTMLTextAreaElement | null;
+    if (outputArea && outputArea.style.height) {
+      this.savedOutputHeight = outputArea.style.height;
+    }
+  }
+
+  private restoreTextareaHeights(): void {
+    if (this.savedInputHeight) {
+      const inputArea = this.container.querySelector('#batch-input-area') as HTMLTextAreaElement | null;
+      if (inputArea) inputArea.style.height = this.savedInputHeight;
+    }
+    if (this.savedOutputHeight) {
+      const outputArea = this.container.querySelector('#batch-output-area') as HTMLTextAreaElement | null;
+      if (outputArea) outputArea.style.height = this.savedOutputHeight;
+    }
+  }
+
   private render(): void {
+    this.captureTextareaHeights();
+
     this.container.innerHTML = `
       <div class="studio-card">
         <!-- Vertical Stack: Input Textarea with Direction-Aware Dynamic Placeholder -->
@@ -348,12 +422,13 @@ export class BatchConverter {
             aria-label="${t('batch.inputLabel')}"
             rows="6" 
             placeholder="${this.getDynamicPlaceholder()}"
+            ${this.isProcessing ? 'disabled readonly' : ''}
             style="resize: vertical; font-size: 12px; line-height: 1.4;"
           >${this.inputText}</textarea>
         </div>
 
         <!-- Transform Primary Button -->
-        <button class="btn btn-primary" id="batch-transform-btn" style="width: 100%; margin-bottom: ${this.outputText ? '16px' : '0'};">
+        <button class="btn btn-primary" id="batch-transform-btn" ${this.isProcessing ? 'disabled' : ''} style="width: 100%; margin-bottom: ${this.outputText ? '16px' : '0'};">
           <span>${this.isProcessing ? t('batch.calculating') : t('batch.transformBtn')}</span>
         </button>
 
@@ -376,22 +451,57 @@ export class BatchConverter {
             >${this.outputText}</textarea>
           </div>
 
-          <!-- Standardized Quality Report Widget -->
+          <!-- Standardized Two-Section Quality Report directly beneath outputs -->
           ${
             this.lastSummary
               ? `
             <div class="quality-report-card" style="margin-bottom: 12px;">
-              <div class="quality-report-row">
+              <!-- Top Section: Coordinates -->
+              <div class="quality-report-section coords-section">
+                <span class="quality-section-header">${t('quality.sectionCoords')}</span>
                 <div class="quality-report-badges">
-                  <span class="status-pill success">✓ ${t('quality.inGrid')}: ${this.lastSummary.inGridCount}</span>
+                  <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                    ${t('quality.total')}: ${this.lastSummary.totalCount}
+                  </span>
+                  <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                    ${t('quality.dim2D')}: ${this.lastSummary.count2D}
+                  </span>
+                  <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                    ${t('quality.dim3D')}: ${this.lastSummary.count3D}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Discrete Dashed Separator Line -->
+              <div class="quality-report-divider-dashed"></div>
+
+              <!-- Bottom Section: Transformation -->
+              <div class="quality-report-section transform-section">
+                <span class="quality-section-header">${t('quality.sectionTransform')}</span>
+                <div class="quality-report-badges">
                   ${
-                    this.lastSummary.outOfGridCount > 0
-                      ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}: ${this.lastSummary.outOfGridCount}</span>`
+                    this.lastSummary.inGridCount > 0
+                      ? `<span class="status-pill success">✓ ${t('quality.valid')} (${this.lastSummary.inGridCount})</span>`
                       : ''
                   }
                   ${
-                    this.lastSummary.syntaxErrorCount > 0
-                      ? `<span class="status-pill danger">✕ ${t('quality.syntaxErrors', { count: this.lastSummary.syntaxErrorCount })}</span>`
+                    this.lastSummary.outOfGridCount > 0
+                      ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')} (${this.lastSummary.outOfGridCount})</span>`
+                      : ''
+                  }
+                  ${
+                    this.lastSummary.noDataCount > 0
+                      ? `<span class="status-pill warning">⚠ ${t('quality.noGridData')} (${this.lastSummary.noDataCount})</span>`
+                      : ''
+                  }
+                  ${
+                    this.lastSummary.invalidAngleCount > 0
+                      ? `<span class="status-pill danger">✕ ${t('quality.invalidAngle')} (${this.lastSummary.invalidAngleCount})</span>`
+                      : ''
+                  }
+                  ${
+                    this.lastSummary.invalidInputCount > 0
+                      ? `<span class="status-pill danger">✕ ${t('quality.invalidInput')} (${this.lastSummary.invalidInputCount})</span>`
                       : ''
                   }
                 </div>
@@ -456,14 +566,32 @@ export class BatchConverter {
     `;
 
     this.attachEventListeners();
+    this.restoreTextareaHeights();
   }
 
   private attachEventListeners(): void {
-    // Input sync
-    const inputArea = this.container.querySelector('#batch-input-area') as HTMLTextAreaElement;
+    // Input sync and scrollbar hover cursor detection
+    const inputArea = this.container.querySelector('#batch-input-area') as HTMLTextAreaElement | null;
     if (inputArea) {
+      inputArea.addEventListener('mousemove', (e: MouseEvent) => {
+        const isOverScrollbar = e.offsetX > inputArea.clientWidth || e.offsetY > inputArea.clientHeight;
+        inputArea.style.cursor = isOverScrollbar ? 'default' : 'text';
+      });
+      inputArea.addEventListener('mouseleave', () => {
+        inputArea.style.cursor = 'text';
+      });
+      inputArea.addEventListener('mouseup', () => {
+        if (inputArea.style.height) this.savedInputHeight = inputArea.style.height;
+      });
       inputArea.addEventListener('input', () => {
         this.inputText = inputArea.value;
+      });
+    }
+
+    const outputArea = this.container.querySelector('#batch-output-area') as HTMLTextAreaElement | null;
+    if (outputArea) {
+      outputArea.addEventListener('mouseup', () => {
+        if (outputArea.style.height) this.savedOutputHeight = outputArea.style.height;
       });
     }
 
@@ -504,22 +632,19 @@ export class BatchConverter {
       }
     });
 
-    // Export buttons
+    // Export buttons: Native download triggers silently without premature toasts
     this.container.querySelector('#batch-export-csv')?.addEventListener('click', () => {
       const detectedDelim = this.delimiter === 'auto' ? detectDelimiter(this.inputText.split(/\r?\n/)) : this.delimiter;
       const csvSep = detectedDelim === ' ' ? ',' : detectedDelim;
       exportToCSV(this.lastTransformedItems, csvSep, this.order);
-      showToast(t('batch.csvDownloaded'), 'success');
     });
 
     this.container.querySelector('#batch-export-geojson')?.addEventListener('click', () => {
       exportToGeoJSON(this.lastTransformedItems);
-      showToast(t('batch.geoJsonDownloaded'), 'success');
     });
 
     this.container.querySelector('#batch-export-dxf')?.addEventListener('click', () => {
       exportToDXF(this.lastTransformedItems);
-      showToast(t('batch.dxfDownloaded'), 'success');
     });
   }
 }

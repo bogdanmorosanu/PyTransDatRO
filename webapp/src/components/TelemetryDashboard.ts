@@ -1,3 +1,4 @@
+import { formatTelemetryNumber, formatTelemetryDecimal, formatTelemetryPercent } from '../utils/numberFormat';
 import { t, onLanguageChange } from '../i18n';
 import {
   apiClient,
@@ -91,6 +92,7 @@ export class TelemetryDashboard {
   private hasCustomRange: boolean = false;
   private customStartDate: string = '2023-11-01';
   private customEndDate: string = new Date().toISOString().slice(0, 10);
+  private compShowTotal: boolean = true;
 
   private chart: TimelineChart;
   private spatialChart: SpatialMatrixChart;
@@ -385,7 +387,7 @@ export class TelemetryDashboard {
       totalPoints = this.timelineData?.summary?.total_points ?? (this.telemetry?.summary.total_points ?? 0);
     }
 
-    const avgRatio = totalCalls > 0 ? (totalPoints / totalCalls).toFixed(1) : '0';
+    const avgRatio = totalCalls > 0 ? formatTelemetryDecimal(totalPoints / totalCalls, 1) : '0';
 
     // Filter out unknown source from UI
     const displaySources = this.availableSources.filter((s) => s.name !== 'unknown');
@@ -407,11 +409,11 @@ export class TelemetryDashboard {
       <!-- KPI Banner: Neutral Theme Colors, Clean Info Presentation -->
       <div class="telemetry-kpi-banner">
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${totalPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(totalPoints)}</div>
           <div class="telemetry-kpi-label">${t('stats.totalPoints')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${totalCalls.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(totalCalls)}</div>
           <div class="telemetry-kpi-label">${t('stats.totalCalls')}</div>
         </div>
         <div class="telemetry-kpi-card">
@@ -565,21 +567,30 @@ export class TelemetryDashboard {
       totalHtml = `
         <div class="legend-total-row">
           <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
-          <div class="legend-group-items">
-            ${showCalls ? `
-              <span class="legend-sub-item interactive-legend-item" data-legend-series="total:calls" title="Click to change line color">
-                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.callsColor} 0, ${totalColors.callsColor} 7px, transparent 7px, transparent 12px);"></span>
-                <span>${t('stats.metricTypeCalls')}</span>
-                ${renderSwatchPopover('total:calls', totalColors.callsColor)}
-              </span>
-            ` : ''}
-            ${showPoints ? `
-              <span class="legend-sub-item interactive-legend-item" data-legend-series="total:points" title="Click to change line color">
-                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.pointsColor} 0, ${totalColors.pointsColor} 7px, transparent 7px, transparent 12px);"></span>
-                <span>${t('stats.metricTypePoints')}</span>
-                ${renderSwatchPopover('total:points', totalColors.pointsColor)}
-              </span>
-            ` : ''}
+          <div class="legend-group-items" style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="telemetry-toggle-btn individual ${this.compShowTotal ? 'active' : ''}" id="comp-toggle-total" style="padding: 2px 8px; font-size: 11px;">
+              ${this.compShowTotal ? '✓ ' + t('stats.seriesTotal') : t('stats.seriesTotal')}
+            </button>
+            ${
+              this.compShowTotal
+                ? `
+              ${showCalls ? `
+                <span class="legend-sub-item interactive-legend-item" data-legend-series="total:calls" title="Click to change line color">
+                  <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.callsColor} 0, ${totalColors.callsColor} 7px, transparent 7px, transparent 12px);"></span>
+                  <span>${t('stats.metricTypeCalls')}</span>
+                  ${renderSwatchPopover('total:calls', totalColors.callsColor)}
+                </span>
+              ` : ''}
+              ${showPoints ? `
+                <span class="legend-sub-item interactive-legend-item" data-legend-series="total:points" title="Click to change line color">
+                  <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.pointsColor} 0, ${totalColors.pointsColor} 7px, transparent 7px, transparent 12px);"></span>
+                  <span>${t('stats.metricTypePoints')}</span>
+                  ${renderSwatchPopover('total:points', totalColors.pointsColor)}
+                </span>
+              ` : ''}
+            `
+                : ''
+            }
           </div>
         </div>
       `;
@@ -706,9 +717,20 @@ export class TelemetryDashboard {
       });
     });
 
+    // Total series toggle
+    this.element.querySelector('#comp-toggle-total')?.addEventListener('click', () => {
+      this.toggleCompTotal();
+    });
+
     this.element.addEventListener('click', () => {
       this.element.querySelectorAll('.legend-color-popover.open').forEach((p) => p.classList.remove('open'));
     });
+  }
+
+  private toggleCompTotal(): void {
+    this.compShowTotal = !this.compShowTotal;
+    this.render();
+    this.mountChart();
   }
 
   private mountChart(): void {
@@ -721,7 +743,7 @@ export class TelemetryDashboard {
       this.chart.update(this.timelineData.series, {
         activeSourceKeys: this.activeSourceKeys,
         availableSources: this.availableSources,
-        showTotal: true,
+        showTotal: this.compShowTotal,
         metricFilter: this.computationMetricFilter,
       });
     }
@@ -848,11 +870,11 @@ export class TelemetryDashboard {
       <div class="spatial-overview-banner">
         <div class="spatial-overview-col left-col">
           <div class="overview-sublabel">${this.spatialMetric === 'points' ? t('stats.totalPoints') : t('stats.totalCalls')}</div>
-          <div class="overview-main-val mono">${totalVal.toLocaleString()}</div>
+          <div class="overview-main-val mono">${formatTelemetryNumber(totalVal)}</div>
         </div>
         <div class="spatial-overview-col right-col">
           <div class="overview-sublabel">${t('stats.activeCellsLabel')}</div>
-          <div class="overview-main-val mono">${activeCells.toLocaleString()}</div>
+          <div class="overview-main-val mono">${formatTelemetryNumber(activeCells)}</div>
         </div>
       </div>
 
@@ -861,32 +883,32 @@ export class TelemetryDashboard {
         <div class="quadrant-card nw">
           <div class="quadrant-name">${t('stats.quadrantNW')}</div>
           <div class="quadrant-val-row">
-            <span class="quadrant-value mono">${qNW.value.toLocaleString()}</span>
-            <span class="quadrant-share mono">(${qNW.percentage}%)</span>
+            <span class="quadrant-value mono">${formatTelemetryNumber(qNW.value)}</span>
+            <span class="quadrant-share mono">(${formatTelemetryPercent(qNW.percentage, 1)})</span>
           </div>
         </div>
 
         <div class="quadrant-card ne">
           <div class="quadrant-name">${t('stats.quadrantNE')}</div>
           <div class="quadrant-val-row">
-            <span class="quadrant-value mono">${qNE.value.toLocaleString()}</span>
-            <span class="quadrant-share mono">(${qNE.percentage}%)</span>
+            <span class="quadrant-value mono">${formatTelemetryNumber(qNE.value)}</span>
+            <span class="quadrant-share mono">(${formatTelemetryPercent(qNE.percentage, 1)})</span>
           </div>
         </div>
 
         <div class="quadrant-card sw">
           <div class="quadrant-name">${t('stats.quadrantSW')}</div>
           <div class="quadrant-val-row">
-            <span class="quadrant-value mono">${qSW.value.toLocaleString()}</span>
-            <span class="quadrant-share mono">(${qSW.percentage}%)</span>
+            <span class="quadrant-value mono">${formatTelemetryNumber(qSW.value)}</span>
+            <span class="quadrant-share mono">(${formatTelemetryPercent(qSW.percentage, 1)})</span>
           </div>
         </div>
 
         <div class="quadrant-card se">
           <div class="quadrant-name">${t('stats.quadrantSE')}</div>
           <div class="quadrant-val-row">
-            <span class="quadrant-value mono">${qSE.value.toLocaleString()}</span>
-            <span class="quadrant-share mono">(${qSE.percentage}%)</span>
+            <span class="quadrant-value mono">${formatTelemetryNumber(qSE.value)}</span>
+            <span class="quadrant-share mono">(${formatTelemetryPercent(qSE.percentage, 1)})</span>
           </div>
         </div>
       </div>
@@ -1000,7 +1022,7 @@ export class TelemetryDashboard {
             </div>
             <div class="legend-color-step">
               <span class="step-swatch level-4"></span>
-              <span class="step-label">${t('stats.levelPeak', { count: maxCellHits.toLocaleString() })}</span>
+              <span class="step-label">${t('stats.levelPeak', { count: formatTelemetryNumber(maxCellHits) })}</span>
             </div>
           </div>
 
@@ -1219,6 +1241,12 @@ export class TelemetryDashboard {
     this.fetchLegacyData();
   }
 
+  private toggleLegacyTotal(): void {
+    this.legacyShowTotal = !this.legacyShowTotal;
+    this.render();
+    this.mountLegacyChart();
+  }
+
   private mountLegacyChart(): void {
     const slot = this.element.querySelector('#legacy-chart-slot');
     if (!slot) return;
@@ -1283,23 +1311,23 @@ export class TelemetryDashboard {
       <!-- KPI Banner: Points Only -->
       <div class="telemetry-kpi-banner">
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${totalPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(totalPoints)}</div>
           <div class="telemetry-kpi-label">${t('stats.legacyTotalPoints')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${appPoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(appPoints)}</div>
           <div class="telemetry-kpi-label">${t('stats.legacyAppPoints')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${servicePoints.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(servicePoints)}</div>
           <div class="telemetry-kpi-label">${t('stats.legacyServicePoints')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${st70Points.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(st70Points)}</div>
           <div class="telemetry-kpi-label">${t('stats.legacyStereo70Points')}</div>
         </div>
         <div class="telemetry-kpi-card">
-          <div class="telemetry-kpi-val neutral-val">${st30Points.toLocaleString()}</div>
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(st30Points)}</div>
           <div class="telemetry-kpi-label">${t('stats.legacyStereo30Points')}</div>
         </div>
       </div>
@@ -1448,12 +1476,21 @@ export class TelemetryDashboard {
       totalHtml = `
         <div class="legend-total-row">
           <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
-          <div class="legend-group-items">
-            <span class="legend-sub-item interactive-legend-item" data-legend-series="total" title="Click to change line color">
-              <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColor} 0, ${totalColor} 7px, transparent 7px, transparent 12px);"></span>
-              <span>${t('stats.legacyTotalPoints')}</span>
-              ${renderSwatchPopover('total', totalColor)}
-            </span>
+          <div class="legend-group-items" style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="telemetry-toggle-btn individual ${this.legacyShowTotal ? 'active' : ''}" id="legacy-toggle-total" style="padding: 2px 8px; font-size: 11px;">
+              ${this.legacyShowTotal ? '✓ ' + t('stats.seriesTotal') : t('stats.seriesTotal')}
+            </button>
+            ${
+              this.legacyShowTotal
+                ? `
+              <span class="legend-sub-item interactive-legend-item" data-legend-series="total" title="Click to change line color">
+                <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColor} 0, ${totalColor} 7px, transparent 7px, transparent 12px);"></span>
+                <span>${t('stats.legacyTotalPoints')}</span>
+                ${renderSwatchPopover('total', totalColor)}
+              </span>
+            `
+                : ''
+            }
           </div>
         </div>
       `;
@@ -1503,6 +1540,11 @@ export class TelemetryDashboard {
         const op = (e.currentTarget as HTMLElement).getAttribute('data-legacy-op');
         if (op) this.toggleLegacyOp(op);
       });
+    });
+
+    // Total overlay toggle
+    this.element.querySelector('#legacy-toggle-total')?.addEventListener('click', () => {
+      this.toggleLegacyTotal();
     });
 
     // Date range inputs

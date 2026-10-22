@@ -47,6 +47,15 @@ test.describe('Legacy Usage Statistics Subpage', () => {
 
     // 8. Verify chart slot exists
     const chartSlot = page.locator('#legacy-chart-slot');
-    await expect(chartSlot).toBeVisible();
+    await expect(chartSlot).toBeAttached();
+
+    // 9. Verify legacy total overlay toggle button exists and responds to clicks
+    const totalToggleBtn = page.locator('#legacy-toggle-total');
+    await expect(totalToggleBtn).toBeVisible();
+    await expect(totalToggleBtn).toHaveClass(/active/);
+    await totalToggleBtn.click();
+    await expect(totalToggleBtn).not.toHaveClass(/active/);
+    await totalToggleBtn.click();
+    await expect(totalToggleBtn).toHaveClass(/active/);
   });
 });

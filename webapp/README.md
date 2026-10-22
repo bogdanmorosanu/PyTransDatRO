@@ -59,7 +59,7 @@ webapp/
 ├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build options and dev server API proxy
-├── e2e/                    # Playwright end-to-end browser test suite (19 tests)
+├── e2e/                    # Playwright end-to-end browser test suite (25 tests)
 │   ├── fixtures.ts         # Offline tile & font stubs and page helpers
 │   ├── helpers/            # Shared locator and assertion helpers
 │   ├── smoke.spec.ts       # Critical DOM shell and initial layout smoke tests
@@ -120,6 +120,7 @@ webapp/
         ├── pointParser.ts  # Auto-delimiter detector & strict coordinate validator
         ├── exporters.ts    # Client-side CSV, GeoJSON, and AutoCAD DXF generator
         ├── gridBounds.ts   # Coarse SPG grid envelope union validation
+        ├── numberFormat.ts # Locale-aware number & compact formatter for telemetry (RO comma, EN dot)
         └── toast.ts        # Non-intrusive floating toast notifications
 ```
 
@@ -226,20 +227,22 @@ npm run build
 ```
 
 ### Unit Tests (Vitest)
-The unit test suite executes 68 tests in $< 350\text{ ms}$ covering:
+The unit test suite executes 80 tests in $< 400\text{ ms}$ covering:
 - **`dmsParser.test.ts`**: Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), whitespace handling, degree symbol variations, sexagesimal conversion.
 - **`pointParser.test.ts`**: Delimiter detection (tabs, spaces, commas, semicolons), point IDs, coordinate ordering (`NE(H)` vs `EN(H)`).
+- **`numberFormat.test.ts`**: Romanian comma `,` decimal formatting across telemetry and UI display surfaces while strictly preserving dot-decimal notation for CAD/GIS coordinate outputs.
 - **`gridBounds.test.ts`**: Romania envelope pre-flight bounding box validation.
 - **`exporters.test.ts`**: Pure client-side CSV, GeoJSON, and AutoCAD DXF R12 generator output fidelity.
 - **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu` with active checkmarks, `renderSegmentedControl`, etc.) and the dual-theme `Map Projection Graticule` brand logo (`getLogoInlineSvg`, `getLogoStandaloneSvg`).
 
 ### End-to-End Browser Tests (Playwright)
-The Playwright suite executes 19 browser specs against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
+The Playwright suite executes 25 browser specs against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
 - **`smoke.spec.ts`**: DOM shell, layout containers, and initial component mounting.
-- **`point.spec.ts`**: Single-point coordinate conversions, direction toggling, angular units, copy buttons, and map pin popups.
-- **`batch.spec.ts`**: Delimiter detection, coordinate swapping, comment/blank line preservation, out-of-grid row suppression, and export triggers.
-- **`file.spec.ts`**: File dropzone, queue management, streaming transformation progress, and batch downloads.
+- **`point.spec.ts`**: Single-point coordinate conversions, direction toggling, angular units, copy buttons, map pin popups, untransformable map click coordinate erasing, and layer color preservation with pulse animation.
+- **`batch.spec.ts`**: Delimiter detection, coordinate swapping, comment/blank line preservation, error row formatting (`PointId, # [reason]`), textarea vertical height persistence, scrollbar hover cursor, and export triggers.
+- **`file.spec.ts`**: File dropzone, queue management, streaming transformation progress, and batch downloads without premature toasts.
 - **`map.spec.ts`**: Zoom constraints, Home button, layer visibility toggles, measurement ruler, and center vs fit-bounds actions.
 - **`i18n.spec.ts`**: Reactive Romanian (`RO`) / English (`EN`) dropdown switching, attribute updates, and localStorage persistence.
-- **`errors.spec.ts`**: Pre-flight validation, syntax errors, "No data on grid" badges, and rate-limit error displays.
+- **`errors.spec.ts`**: Pre-flight validation, Two-Section Quality Report card layout (`Coordinates` top, dashed divider, `Transformation` bottom), impossible angle detection, and rate-limit error displays.
+- **`legacy.spec.ts`**: Legacy TransdatOnline historical telemetry subpage, SVG curve rendering, timeline series toggles, and date presets.
 

@@ -47,15 +47,6 @@
   z-index: 1;
 }
 
-.geodetic-marker.out-of-grid .geodetic-pin-dot {
-  background-color: var(--color-danger) !important;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8) !important;
-}
-
-.geodetic-marker.out-of-grid .geodetic-pin-pulse {
-  background-color: rgba(239, 68, 68, 0.4) !important;
-}
-
 @keyframes markerPulse {
   0% { transform: scale(0.6); opacity: 1; }
   100% { transform: scale(1.8); opacity: 0; }

@@ -212,3 +212,36 @@ test('valid in-grid point: Center on Map keeps zoom, Zoom to Extents goes to lev
   expect(Math.abs(zoomed.center.lng - p.lon)).toBeLessThan(0.001);
   expect(zoomed.zoom).toBe(14);
 });
+
+test('measure tool deactivates on Escape key', async ({ page }) => {
+  await openApp(page);
+  const measureBtn = page.locator('#map-measure-btn');
+  await expect(measureBtn).toBeVisible();
+  
+  // Click measure button to activate
+  await measureBtn.click();
+  await expect(measureBtn).toHaveClass(/active/);
+  
+  // Press Escape to cancel measurement mode
+  await page.keyboard.press('Escape');
+  await expect(measureBtn).not.toHaveClass(/active/);
+});
+
+test('map coordinate badge honors coordinate order selection', async ({ page }) => {
+  await openApp(page);
+  const badge = page.locator('.map-coords-badge');
+  await expect(badge).toBeVisible();
+  
+  // Default is NE order -> Lat first, Long second
+  await expect(badge).toHaveText(/^Lat:.*Long:/);
+  
+  // Toggle coordinate order to EN(H)
+  await page.getByRole('radio', { name: 'EN(H)' }).click();
+  
+  // Badge must update to show Long first, Lat second
+  await expect(badge).toHaveText(/^Long:.*Lat:/);
+  
+  // Toggle back to NE(H)
+  await page.getByRole('radio', { name: 'NE(H)' }).click();
+  await expect(badge).toHaveText(/^Lat:.*Long:/);
+});

@@ -1,4 +1,5 @@
 import { t, onLanguageChange } from '../i18n';
+import { formatTelemetryDecimal } from '../utils/numberFormat';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
 import { type CoordinateOrder } from '../utils/pointParser';
 import { parseAngleToDeg } from '../utils/dmsParser';
@@ -25,6 +26,8 @@ interface QueuedFileItem {
   validRows?: number;
   outOfGridRows?: number;
   errorRows?: number;
+  count2D?: number;
+  count3D?: number;
   points?: MapPointItem[];
 }
 
@@ -70,6 +73,12 @@ export class FileUpload {
 
   public getCoordinateOrder(): CoordinateOrder {
     return this.order;
+  }
+
+  public clearQueue(): void {
+    this.fileQueue = [];
+    this.callbacks?.onClearFiles?.();
+    this.render();
   }
 
   private addFilesToQueue(files: FileList | File[]): void {
@@ -300,8 +309,30 @@ export class FileUpload {
         try {
           const inText = await item.file.text();
           item.points = this.parsePairedPoints(inText, text, item.file.name);
+          let c2D = 0;
+          let c3D = 0;
+          const inLines = inText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('//'));
+          for (const line of inLines) {
+            const tokens = line.split(/[;, \t]+/).filter(Boolean);
+            if (tokens.length >= 4) {
+              c3D++;
+            } else if (tokens.length === 3) {
+              const t2Num = parseFloat(tokens[2]);
+              if (!isNaN(t2Num)) {
+                c3D++;
+              } else {
+                c2D++;
+              }
+            } else if (tokens.length === 2) {
+              c2D++;
+            }
+          }
+          item.count2D = c2D;
+          item.count3D = c3D;
         } catch {
           item.points = [];
+          item.count2D = 0;
+          item.count3D = 0;
         }
       } catch (err: any) {
         item.status = 'error';
@@ -347,6 +378,9 @@ export class FileUpload {
     const totalValid = this.fileQueue.reduce((acc, f) => acc + (f.validRows || 0), 0);
     const totalOutGrid = this.fileQueue.reduce((acc, f) => acc + (f.outOfGridRows || 0), 0);
     const totalErrors = this.fileQueue.reduce((acc, f) => acc + (f.errorRows || 0), 0);
+    const total2D = this.fileQueue.reduce((acc, f) => acc + (f.count2D || 0), 0);
+    const total3D = this.fileQueue.reduce((acc, f) => acc + (f.count3D || 0), 0);
+    const totalPoints = totalValid + totalOutGrid + totalErrors;
 
     this.container.innerHTML = `
       <div class="studio-card">
@@ -370,7 +404,7 @@ export class FileUpload {
           <div style="color: var(--text-muted); font-size: 11.5px;">
             ${t('file.dropzoneHint')}
           </div>
-          <input type="file" id="file-input-hidden" aria-label="${t('file.dropzoneTitle')}" multiple accept=".csv,.txt,.xyz" style="display: none;" />
+          <input type="file" id="file-input-hidden" aria-label="${t('file.dropzoneTitle')}" multiple accept=".csv,.txt,.xyz,.dat" style="display: none;" />
         </div>
 
         <!-- 2. Queued Files List with File Details and Per-File Quality Metrics -->
@@ -383,7 +417,7 @@ export class FileUpload {
             </div>
             ${this.fileQueue
               .map((item) => {
-                const sizeKb = (item.file.size / 1024).toFixed(1);
+                const sizeKb = formatTelemetryDecimal(item.file.size / 1024, 1);
                 let badgeClass = 'pending';
                 let statusLabel = t('file.statusPending');
                 if (item.status === 'processing') {
@@ -455,30 +489,56 @@ export class FileUpload {
           completedCount > 0
             ? `
           <div class="quality-report-card" style="margin-top: 14px;">
-            <div class="quality-report-row">
+            <!-- Top Section: Coordinates -->
+            <div class="quality-report-section coords-section">
+              <span class="quality-section-header">${t('quality.sectionCoords')}</span>
               <div class="quality-report-badges">
-                <span class="status-pill success">✓ ${t('file.summaryTransformed', { count: completedCount })}</span>
-                <span class="status-pill success">✓ ${t('quality.inGrid')}: ${totalValid}</span>
+                <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                  ${t('quality.total')}: ${totalPoints}
+                </span>
+                <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                  ${t('quality.dim2D')}: ${total2D}
+                </span>
+                <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+                  ${t('quality.dim3D')}: ${total3D}
+                </span>
+              </div>
+            </div>
+
+            <!-- Discrete Dashed Separator Line -->
+            <div class="quality-report-divider-dashed"></div>
+
+            <!-- Bottom Section: Transformation -->
+            <div class="quality-report-section transform-section">
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span class="quality-section-header">${t('quality.sectionTransform')}</span>
+                ${
+                  completedCount > 1
+                    ? `
+                  <button class="btn btn-secondary" id="file-download-all-btn" style="padding: 3px 8px; font-size: 11px;">
+                    <span>${t('file.downloadAll')}</span>
+                  </button>
+                `
+                    : ''
+                }
+              </div>
+              <div class="quality-report-badges">
+                ${
+                  totalValid > 0
+                    ? `<span class="status-pill success">✓ ${t('quality.valid')} (${totalValid})</span>`
+                    : ''
+                }
                 ${
                   totalOutGrid > 0
-                    ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}: ${totalOutGrid}</span>`
+                    ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')} (${totalOutGrid})</span>`
                     : ''
                 }
                 ${
                   totalErrors > 0
-                    ? `<span class="status-pill danger">✕ ${t('quality.syntaxErrors', { count: totalErrors })}</span>`
+                    ? `<span class="status-pill danger">✕ ${t('quality.invalidInput')} (${totalErrors})</span>`
                     : ''
                 }
               </div>
-              ${
-                completedCount > 1
-                  ? `
-                <button class="btn btn-secondary" id="file-download-all-btn" style="padding: 4px 10px; font-size: 11.5px;">
-                  <span>${t('file.downloadAll')}</span>
-                </button>
-              `
-                  : ''
-              }
             </div>
           </div>
 

@@ -43,7 +43,7 @@ test.describe('point transform API failures', () => {
 
     await page.getByRole('button', { name: 'Transform', exact: true }).click();
 
-    await expect(page.getByText(/429|rate limit|too many requests/i)).toBeVisible();
+    await expect(page.locator('.toast').getByText(/429|rate limit|too many requests/i)).toBeVisible();
     const results = page.getByRole('group', { name: 'Computed coordinates' });
     await expect(results.getByLabel('Northing')).toHaveValue(EMPTY_OUTPUT);
   });

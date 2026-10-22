@@ -9,6 +9,7 @@ export interface ParsedPointRow {
   coords: number[]; // Normalized to [North/Lat, East/Long, (Elevation)]
   originalOrder: CoordinateOrder;
   error?: string;
+  errorType?: 'invalid_input' | 'invalid_angle';
   isComment?: boolean;
   isEmpty?: boolean;
 }
@@ -92,6 +93,7 @@ export function parseInputLines(
         coords: [],
         originalOrder: order,
         error: 'Too few columns (minimum 2 coordinates required)',
+        errorType: 'invalid_input',
       });
       continue;
     }
@@ -179,6 +181,7 @@ export function parseInputLines(
         coords: [],
         originalOrder: order,
         error: `Invalid number of coordinate columns: ${coordTokens.length}`,
+        errorType: 'invalid_input',
       });
       continue;
     }
@@ -202,6 +205,34 @@ export function parseInputLines(
         };
         c1 = parseGeoToken(coordTokens[0]);
         c2 = parseGeoToken(coordTokens[1]);
+
+        if (isNaN(c1) || isNaN(c2)) {
+          rows.push({
+            lineIndex: i,
+            rawLine: line,
+            pointId,
+            coords: [],
+            originalOrder: order,
+            error: 'Invalid coordinate syntax',
+            errorType: 'invalid_input',
+          });
+          continue;
+        }
+
+        const latVal = order === 'EN' ? c2 : c1;
+        const lonVal = order === 'EN' ? c1 : c2;
+        if (Math.abs(latVal) > 90 || Math.abs(lonVal) > 180) {
+          rows.push({
+            lineIndex: i,
+            rawLine: line,
+            pointId,
+            coords: [],
+            originalOrder: order,
+            error: 'Invalid angle',
+            errorType: 'invalid_angle',
+          });
+          continue;
+        }
       } else {
         c1 = parseStrictDecimal(coordTokens[0]);
         c2 = parseStrictDecimal(coordTokens[1]);
@@ -236,6 +267,7 @@ export function parseInputLines(
         coords: [],
         originalOrder: order,
         error: err.message || 'Invalid coordinate format',
+        errorType: 'invalid_input',
       });
     }
   }

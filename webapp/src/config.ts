@@ -14,6 +14,8 @@ export interface AppConfig {
   defaultMapZoom: number;
   /** Point volume warning threshold triggering sample/render confirmation dialog. */
   batchWarningThreshold: number;
+  /** Number of coordinates to sample when the user selects 'sample' in the volume warning dialog. */
+  batchSampleSize: number;
   /** Maximum allowable coordinates in an in-memory batch conversion. */
   maxBatchPoints: number;
   /** Maximum allowable coordinates in a streaming file conversion. */
@@ -27,6 +29,7 @@ export const APP_CONFIG: AppConfig = {
   defaultMapCenter: [45.9432, 24.9668],
   defaultMapZoom: 7,
   batchWarningThreshold: Number(import.meta.env.VITE_BATCH_WARNING_THRESHOLD) || 2000,
+  batchSampleSize: Number(import.meta.env.VITE_BATCH_SAMPLE_SIZE) || 1000,
   maxBatchPoints: 20000,
   maxFilePoints: 100000,
   maxFileSizeMb: 50,

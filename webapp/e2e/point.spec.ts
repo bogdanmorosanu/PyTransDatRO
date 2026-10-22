@@ -97,7 +97,7 @@ test.describe('Stereo 70 -> ETRS89 (decimal degrees, 3D)', () => {
           ),
         )
         .toBe(true);
-      await expect(results.getByText(/In Grid/)).toBeVisible();
+      await expect(results.getByText(/Valid/)).toBeVisible();
 
       const after = await mapView();
       expect(after.center).toEqual(before.center);
@@ -213,5 +213,36 @@ test.describe('points without a transformation', () => {
     await expect(results.getByLabel('Longitude')).toHaveValue(EMPTY_OUTPUT);
     // A point that could not be transformed is not "valid coordinates".
     await expect(results.getByText('Valid coordinates')).toHaveCount(0);
+  });
+});
+
+test.describe('URL Deep-Linking Hydration', () => {
+  test('hydrates op, unit, order, and coordinates from query parameters', async ({ page }) => {
+    await page.goto('/?op=Stereo70ToETRS89&unit=dms&order=EN&c1=500000.000&c2=500000.000&c3=100.000');
+    
+    // Verify radio direction
+    const radio = page.getByRole('radio', { name: 'Stereo 70 → ETRS89' });
+    await expect(radio).toBeChecked();
+    
+    // Verify angular unit select
+    const unitSelect = page.locator('#angular-unit-select');
+    await expect(unitSelect).toHaveValue('dms');
+    
+    // Verify order control
+    const orderBtn = page.locator('#shared-order-en');
+    await expect(orderBtn).toHaveClass(/active/);
+    
+    // Verify input values
+    const i1 = page.locator('#pt-input-1');
+    const i2 = page.locator('#pt-input-2');
+    const i3 = page.locator('#pt-input-3');
+    await expect(i1).toHaveValue('500000.000');
+    await expect(i2).toHaveValue('500000.000');
+    await expect(i3).toHaveValue('100.000');
+    
+    // Verify computed output has DMS symbol
+    const results = page.getByRole('group', { name: 'Computed coordinates' });
+    await expect(results.getByLabel('Latitude')).not.toHaveValue('—');
+    await expect(results.getByLabel('Latitude')).toHaveValue(/°/);
   });
 });

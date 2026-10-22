@@ -82,12 +82,15 @@ All visual styling is governed by semantic CSS custom properties in [`webapp/src
 - **Primary Technical Metric (`--color-metric-text`)**:
   - Dark Theme: `#56d4dd` | Light Theme: `#0550ae`
   - **Purpose**: Strictly reserved for spatial and cartographic scalar measurements, notably the **Quasigeoid Height** ($\zeta = h - H$).
-- **Success (`#10b981`)**: Strictly for verified API health and valid in-grid coordinates (`In Grid`).
+- **Success (`#10b981`)**: Strictly for verified API health and valid in-grid coordinates (`In Grid` / `Valid`).
 - **Warning (`#f59e0b`)**: Strictly for cautionary notices (`Outside Grid`, `No Grid Data`, or high-volume point warnings > 2,000 points).
-- **Danger / Error (`#ef4444`)**: Strictly for syntax errors (`Syntax Error`), network failures, or unparseable input.
+- **Danger / Error (`#ef4444`)**: Strictly for input syntax failures (`Invalid Values`, `Invalid Angle`), network failures, or unparseable input.
 
 > [!IMPORTANT]
 > **Data Values Rule**: Quasigeoid height $\zeta$, coordinate shifts $\Delta E, \Delta N$, and coordinate tuples must **never** be rendered in green, red, or yellow. They are physical scalar measurements and must use either neutral monospace typography (`--text-main`) or the dedicated technical metric accent palette (`--color-metric-text`).
+
+> [!NOTE]
+> **Map Marker Symbology & Layer Color Preservation**: Single-point map markers do not turn red when clicked or positioned outside the Romanian grid boundary. The marker strictly honors its configured layer color (e.g., `#3b82f6` for Stereo 70, `#10b981` for ETRS89) and features continuous soft pulsing animation (`.marker-pulsing`). Grid validity is communicated exclusively via the Two-Section Quality Report card and coordinate readouts.
 
 ---
 
@@ -132,8 +135,8 @@ Every interactive and informational element in the web application belongs to on
   - Compact two-option radio switcher used for Coordinate Order (`NE(H)` vs `EN(H)`) in Tier 2 of the Shared Config Bar, featuring an elevated `--btn-primary-bg` active pill with a `1px solid var(--btn-primary-border)` border.
 - **`C1.3` Mutually Exclusive Telemetry Segmented Tray (`.telemetry-btn-toggle-group`, `.telemetry-toggle-btn`)**:
   - Enclosed single-choice pill tray used in the Usage dashboard for Time Presets (`All Time`, `12M`, `YTD`, `30D`, `7D`), Granularity (`Daily`, `Weekly`, `Monthly`), and Spatial Scaling (`Logarithmic`, `Linear`).
-- **`C1.4` Standalone Multi-Choice Filter Toggles (`.telemetry-individual-toggle-group`, `.telemetry-toggle-btn.individual`)**:
-  - Physically separated toggle buttons (`gap: 8px`, independent borders, no outer tray) used when multiple series can be enabled simultaneously (`SOURCES`: Web App, REST API, Desktop / CLI; `METRIC`: Points, Calls).
+- **`C1.4` Standalone Multi-Choice Filter Toggles (`.telemetry-individual-toggle-group`, `.telemetry-toggle-btn.individual`, `#comp-toggle-total`)**:
+  - Physically separated toggle buttons (`gap: 8px`, independent borders, no outer tray) used when multiple series can be enabled simultaneously (`SOURCES`: Web App, REST API, Desktop / CLI; `METRIC`: Points, Calls; and computation timeline `#comp-toggle-total`).
   - Features an embedded `6px × 6px` circular ON/OFF status dot (`::before`): **ON** renders a solid accent dot (`--color-primary`), `--btn-primary-bg` surface fill, and `--btn-primary-border` border; **OFF** renders a hollow ring dot, recessed `--bg-surface-input` background, and `opacity: 0.62`.
 
 ### Category C2: Navigation & Section Headers
@@ -151,10 +154,15 @@ Every interactive and informational element in the web application belongs to on
   - Tier 3 Shared Config Bar readout showing a live clickable angle format sample (`45.84123450` / `45°50'28.44420"` / `0.7997813210`).
 - **`C3.2` Dedicated Quasigeoid Metric Field (`.quasigeoid-field`, `.quasigeoid-label`, `.quasigeoid-value`)**:
   - Full-width row below single-point coordinate outputs displaying $\zeta = h - H$ in the technical accent palette (`--color-metric-text`, `--color-metric-bg`, `--color-metric-border`).
-- **`C3.3` Semantic Quality Report Cards & Status Pills (`.quality-report`, `.quality-pill`, `.status-pill`, `.file-status-pill`)**:
-  - Post-transformation diagnostic bar displaying `In Grid`, `Outside Grid`, `No Grid Data`, `Syntax Error`, and `2D/3D` badges.
-- **`C3.4` Live API Health Dot & Stage Badge (`.health-dot.online|.offline`, `.brand-stage-badge`, `.header-offline-alert`)**:
-  - `7.5px` glowing semantic status indicator and monospace version tag (`v1.0.0-beta`) aligned beneath the brand title.
+- **`C3.3` Two-Section Golden Rule Quality Report Cards (`.quality-report-card`, `.quality-report-section`, `.quality-report-divider-dashed`, `.quality-pill`)**:
+  - Unified post-transformation diagnostic card across Point, Text, and Files tabs that eliminates ad-hoc inline `.error-banner` alerts:
+    - **Top Section (`.coords-section`)**: Micro-label `Coordinates` (`Coordonate` in RO) displaying input coordinate structure pills: `Total` (for batch/files), `2D`, and `3D`.
+    - **Dashed Divider (`.quality-report-divider-dashed`)**: Subtle `1px dashed var(--border-subtle)` line separating input traits from transformation outcomes.
+    - **Bottom Section (`.transform-section`)**: Micro-label `Transformation` (`Transformare` in RO) displaying engine geodetic diagnostic outcomes: `Valid` (green), `Outside Grid` (amber), `No Grid Data` (amber), `Invalid Values` (red), and `Invalid Angle` (red).
+    - Labels read naturally as `[Section] + [Label]` (e.g., `Coordinates: 3D`, `Transformation: Outside Grid`).
+- **`C3.4` Live API Health Dot & Global Offline Alert Banner (`.health-dot.online|.offline`, `.brand-stage-badge`, `#global-offline-banner`)**:
+  - Stable `8px × 8px` semantic status indicator and monospace version tag (`v1.0.0-beta`) aligned beneath the brand title. The dot never expands or shifts neighboring header elements.
+  - When the backend API is unreachable, a persistent high-visibility `#global-offline-banner` renders at the top of the workbench with a direct issue reporting action (`#global-offline-report-btn`) opening the Feedback dialog.
 
 ### Category C4: Input Controls & Output Readout Fields
 - **`C4.1` Asymmetrical 3-Column Coordinate Inputs (`.coord-grid-3`, `.coord-input-box`, `.coord-col-label`)**:
@@ -162,7 +170,10 @@ Every interactive and informational element in the web application belongs to on
 - **`C4.2` Persistent Read-Only Coordinate Outputs (`.coord-output-box`, `.computed-coords-wrapper`)**:
   - Non-shifting monospace output boxes displaying computed tuples or `—` when idle.
 - **`C4.3` Batch Textareas & Streaming File Dropzone (`.batch-textarea`, `.dropzone`, `.file-queue-list`, `.file-queue-item`)**:
-  - Multi-line monospace text editors and drag-and-drop file queues with per-file status pills and remove triggers.
+  - Multi-line monospace text editors with vertical height resize persistence across sessions via `localStorage['pytransdat_batch_textarea_h']`.
+  - Native scrollbar hover cursor detection applying `cursor: default` over the scrollbar gutter and thumb to prevent unwanted text `I-beam` cursor interference.
+  - Non-destructive batch error formatting omitting dummy coordinates on unconvertible lines (`PointId, # [reason]`) to prevent downstream GIS failures.
+  - File queue and direct client-side downloads without premature completion toasts prior to native OS save dialogs.
 - **`C4.4` Native Select Dropdowns & Date Inputs (`renderSelect`, `.form-select`, `.telemetry-date-input`)**:
   - Custom-chevron `<select>` controls and `color-scheme`-aware native `<input type="date">` pickers.
 - **`C4.5` Action Buttons (`.btn-primary`, `.btn-secondary`, `.btn-outline`, `.btn-icon`, `renderCopyButton` / `.copy-code-btn`)**:
@@ -222,6 +233,10 @@ The top navigation bar (`52px` fixed height) serves as the unified application c
    - **Language Selector Dropdown Menu (`#header-lang-details`)**: Because the language control displays the **current active state** (`RO` or `EN`), it is rendered as a disclosure **Dropdown Menu** (`renderDropdownMenu` with `.nav-menu-trigger`, a `14px` globe SVG icon, the active language code, and a rotating chevron `▾`). Opening the menu displays `Română (RO)` and `English (EN)` (`role="menuitemradio"`, `aria-checked`) with an active checkmark (`✓`, `.menu-check-icon`) next to the currently selected language.
    - **Theme Toggle Button (`#header-theme-btn`)**: Because the theme toggle is an **immediate action** that flips the visual mode according to the sun/moon icon shown, it is rendered as a single-click icon button (`.btn-icon`).
 
+7. **Brand Logo Reset (`resetToFreshState`) vs. Brand Title Navigation**:
+   - **Brand Title (`#header-brand-title` / `PyTransDatRO`)**: Standard SPA route activation (`navigateTab('point')` or default view), preserving currently entered coordinates, batch text, files, and layer states.
+   - **Brand Logo (`#header-brand-logo` / `.brand-logo-wrap`)**: Explicit First-Load Reset Action. Clicking the cartographic logo resets the application to a pristine state identical to a fresh page load: clears single-point inputs/outputs, batch textareas, file drop queues, map markers, and resets direction to default `ETRS89 ➔ Stereo 70`.
+
 ---
 
 ## 6. Dual-Theme Brand Logo (`Map Projection Graticule`)
@@ -260,8 +275,12 @@ Before committing any frontend UI or map changes, verify:
 - [ ] Is the left workbench panel width maintained at `480px` and paired with the `1.35fr 1.35fr 0.8fr` 3-column coordinate grid?
 - [ ] Does the header display the 2-line lowercase `"powered by"` / `"PyTransDatRO"` attribution in the left header zone without an oblique `↗` arrow, while external links inside dropdown menus retain `↗` (`.ext-icon`)?
 - [ ] Is the Language selector rendered as a status-displaying Dropdown Menu (`#header-lang-details`) with active checkmarks, distinct from the single-click Theme Toggle icon button (`#header-theme-btn`)?
+- [ ] Does clicking the brand logo trigger a clean first-load reset (`resetToFreshState`) while clicking the brand title performs soft SPA tab navigation?
+- [ ] Does the Quality Report adhere to the Two-Section layout (`Coordinates` top, dashed divider, `Transformation` bottom) with zero ad-hoc inline `.error-banner` elements?
+- [ ] Do map markers preserve their layer color outside the grid with continuous soft pulse animation?
 - [ ] Does the Help menu include `RomGEO Web API` (`https://api.romgeo.ro/api/v1/`) at the bottom of the ANCPI / ROMPOS list and use capital `GEO` (`RomGEO`) across all links?
 - [ ] Does the `Map Projection Graticule` brand logo use inline CSS-variable SVG rendering (`getLogoInlineSvg`) and `syncFaviconWithTheme` so it adapts cleanly to both Dark and Light themes?
 - [ ] Does Quasigeoid Height ($\zeta = h - H$) use the dedicated technical accent metric palette (`--color-metric-text: var(--accent)`) and never status green/red/yellow?
 - [ ] Do folder bookmark tabs merge seamlessly with the `.studio-card` container below (zero gap)?
-- [ ] Does `npm --prefix webapp test` pass and `npm --prefix webapp run build` compile with 0 TypeScript/bundler errors?
+- [ ] Do all 80 automated Vitest unit tests (`npm --prefix webapp test`) and 25 Playwright E2E browser tests (`.\test-e2e.ps1`) pass with 0 errors?
+- [ ] Does `npm --prefix webapp run build` compile with 0 TypeScript/bundler errors?

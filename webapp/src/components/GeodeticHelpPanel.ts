@@ -1,4 +1,5 @@
-import { t } from '../i18n';
+import { t, getLanguage } from '../i18n';
+import { formatTelemetryNumber } from '../utils/numberFormat';
 import { apiClient, type GridComparisonResponse } from '../utils/apiClient';
 
 export class GeodeticHelpPanel {
@@ -194,7 +195,7 @@ export class GeodeticHelpPanel {
 
   private getBenchmarkCardHtml(): string {
     const title = t('geodeticHelp.benchmarkTitle');
-    const pointsCount = (this.comparisonData?.total_points || 9046).toLocaleString();
+    const pointsCount = formatTelemetryNumber(this.comparisonData?.total_points || 9046);
     const subtitle = t('geodeticHelp.benchmarkSubtitle').replace('{count}', pointsCount);
 
     if (this.isLoadingComparison && !this.comparisonData) {
@@ -209,22 +210,27 @@ export class GeodeticHelpPanel {
 
     const st70ToEtrs = this.comparisonData?.st70_to_etrs89;
     const etrsToSt70 = this.comparisonData?.etrs89_to_st70;
+    const isRo = getLanguage() === 'ro';
+    const fmt = (val: number, d: number) => {
+      const s = val.toFixed(d);
+      return isRo ? s.replace('.', ',') : s;
+    };
 
     const maxS70LatLon = st70ToEtrs
-      ? `ΔLat/Lon ≤ ${Math.max(st70ToEtrs.max_abs_error.latitude_sec || 0, st70ToEtrs.max_abs_error.longitude_sec || 0).toFixed(6)}" / ΔH: ${(st70ToEtrs.max_abs_error.elevation_m * 1000).toFixed(1)} mm`
-      : 'ΔLat/Lon ≤ 0.000010" / ΔH: 0.5 mm';
+      ? `ΔLat/Lon ≤ ${fmt(Math.max(st70ToEtrs.max_abs_error.latitude_sec || 0, st70ToEtrs.max_abs_error.longitude_sec || 0), 6)}" / ΔH: ${fmt(st70ToEtrs.max_abs_error.elevation_m * 1000, 1)} mm`
+      : (isRo ? 'ΔLat/Lon ≤ 0,000010" / ΔH: 0,5 mm' : 'ΔLat/Lon ≤ 0.000010" / ΔH: 0.5 mm');
 
     const meanS70LatLon = st70ToEtrs
-      ? `~0.000005" / ${(st70ToEtrs.mean_abs_error.elevation_m * 1000).toFixed(2)} mm`
-      : '~0.000005" / 0.25 mm';
+      ? `~${fmt(0.000005, 6)}" / ${fmt(st70ToEtrs.mean_abs_error.elevation_m * 1000, 2)} mm`
+      : (isRo ? '~0,000005" / 0,25 mm' : '~0.000005" / 0.25 mm');
 
     const maxEtrsEN = etrsToSt70
-      ? `ΔE/N ≤ ${(Math.max(etrsToSt70.max_abs_error.easting_m || 0, etrsToSt70.max_abs_error.northing_m || 0) * 1000).toFixed(2)} mm / ΔH: ${(etrsToSt70.max_abs_error.elevation_m * 1000).toFixed(1)} mm`
-      : 'ΔE/N ≤ 0.34 mm / ΔH: 0.5 mm';
+      ? `ΔE/N ≤ ${fmt(Math.max(etrsToSt70.max_abs_error.easting_m || 0, etrsToSt70.max_abs_error.northing_m || 0) * 1000, 2)} mm / ΔH: ${fmt(etrsToSt70.max_abs_error.elevation_m * 1000, 1)} mm`
+      : (isRo ? 'ΔE/N ≤ 0,34 mm / ΔH: 0,5 mm' : 'ΔE/N ≤ 0.34 mm / ΔH: 0.5 mm');
 
     const meanEtrsEN = etrsToSt70
-      ? `~${(Math.max(etrsToSt70.mean_abs_error.easting_m || 0, etrsToSt70.mean_abs_error.northing_m || 0) * 1000).toFixed(2)} mm / ${(etrsToSt70.mean_abs_error.elevation_m * 1000).toFixed(2)} mm`
-      : '~0.08 mm / 0.25 mm';
+      ? `~${fmt(Math.max(etrsToSt70.mean_abs_error.easting_m || 0, etrsToSt70.mean_abs_error.northing_m || 0) * 1000, 2)} mm / ${fmt(etrsToSt70.mean_abs_error.elevation_m * 1000, 2)} mm`
+      : (isRo ? '~0,08 mm / 0,25 mm' : '~0.08 mm / 0.25 mm');
 
     const st70Status = st70ToEtrs?.status || 'PASS';
     const etrsStatus = etrsToSt70?.status || 'PASS';

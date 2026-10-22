@@ -97,7 +97,34 @@ test('batch reports a no-data-zone point as untransformable and not as a success
   expect(out[1]).not.toContain('549364');
 
   // Summary pills: only the valid point counts as in-grid / successful.
-  await expect(page.getByText(/In Grid: 1$/)).toBeVisible();
-  await expect(page.getByText(/In Grid: 2/)).toHaveCount(0);
-  await expect(page.getByText(/Outside Grid: 1|No Grid Data: 1/)).toBeVisible();
+  await expect(page.getByText(/Valid \(1\)/i)).toBeVisible();
+  await expect(page.getByText(/Valid \(2\)/i)).toHaveCount(0);
+  await expect(page.getByText(/Outside Grid \(1\)|No Grid Data \(1\)/i)).toBeVisible();
+});
+
+test('batch renders extended breakdown badges (Total points and 2D/3D count pills)', async ({ page }) => {
+  await openApp(page);
+  await openTab(page, 'Text');
+  await setDirectionStereoToEtrs(page);
+  
+  // Mixed 2D and 3D points
+  const input = [
+    '500000.000, 500000.000, 100.000',
+    '500200.000, 500150.000',
+  ].join('\n');
+  
+  await page.getByRole('textbox', { name: 'Input Coordinates' }).fill(input);
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
+  
+  await expect(page.getByRole('textbox', { name: 'Computed Results' })).toBeVisible();
+  
+  // Quality report badges verification
+  const qualityCard = page.locator('.quality-report-card');
+  await expect(qualityCard).toBeVisible();
+  await expect(qualityCard.locator('.coords-section')).toBeVisible();
+  await expect(qualityCard.locator('.transform-section')).toBeVisible();
+  await expect(qualityCard.getByText(/Total: 2/i)).toBeVisible();
+  await expect(qualityCard.getByText(/2D: 1/i)).toBeVisible();
+  await expect(qualityCard.getByText(/3D: 1/i)).toBeVisible();
+  await expect(qualityCard.getByText(/Valid \(2\)/i)).toBeVisible();
 });
