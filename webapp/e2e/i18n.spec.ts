@@ -11,7 +11,7 @@ test('switching language en -> ro updates labels and persists across reload', as
   await openApp(page);
 
   const tabs = page.locator('.tabs-bar');
-  await expect(tabs.getByText(en.tabs.prefix)).toBeVisible();
+  await expect(tabs.getByRole('button', { name: en.tabs.point, exact: true })).toBeVisible();
   await expect(tabs.getByRole('button', { name: en.tabs.file, exact: true })).toBeVisible();
   await expect(page.getByRole('radio', { name: en.point.opETRSToS70 })).toBeVisible();
   await expect(page.getByText(en.point.unitLabel).first()).toBeVisible();
@@ -20,7 +20,6 @@ test('switching language en -> ro updates labels and persists across reload', as
   await page.getByRole('menuitemradio', { name: ro.header.langRo }).click();
 
   const assertRomanian = async (): Promise<void> => {
-    await expect(tabs.getByText(ro.tabs.prefix)).toBeVisible();
     await expect(tabs.getByRole('button', { name: ro.tabs.point, exact: true })).toBeVisible();
     await expect(tabs.getByRole('button', { name: ro.tabs.file, exact: true })).toBeVisible();
     await expect(page.getByRole('radio', { name: ro.point.opETRSToS70 })).toBeVisible();

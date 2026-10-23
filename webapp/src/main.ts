@@ -65,7 +65,10 @@ class App {
     this.initLayout();
     this.mapView.initMap();
     if (E2E_ENABLED) {
-      window.__e2e = { mapView: () => this.mapView.getSnapshot() };
+      window.__e2e = {
+        mapView: () => this.mapView.getSnapshot(),
+        fireMapClick: (lat: number, lng: number) => this.mapView.fireMapClick(lat, lng),
+      };
     }
     this.mapView.setAngularUnit(this.currentAngularUnit);
 
@@ -547,13 +550,18 @@ class App {
 
     this.currentOp = 'ETRS89ToStereo70';
     this.currentOrder = 'NE';
+    this.currentAngularUnit = 'degrees';
     this.pointConverter.setDirection('ETRS89ToStereo70');
     this.pointConverter.setCoordinateOrder('NE');
+    this.pointConverter.setAngularUnit('degrees');
     this.batchConverter.setDirection('ETRS89ToStereo70');
     this.batchConverter.setCoordinateOrder('NE');
+    this.batchConverter.setAngularUnit('degrees');
     this.fileUpload.setDirection('ETRS89ToStereo70');
     this.fileUpload.setCoordinateOrder('NE');
+    this.fileUpload.setAngularUnit('degrees');
     this.mapView.setCoordinateOrder('NE');
+    this.mapView.setAngularUnit('degrees');
     this.renderSharedConfigBar();
 
     if (this.feedbackPanel.isOpen()) this.feedbackPanel.close();

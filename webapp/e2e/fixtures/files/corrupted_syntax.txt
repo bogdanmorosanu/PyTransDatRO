@@ -1,0 +1,4 @@
+PointID,Coordinate1,Coordinate2,Coordinate3
+101,500abc.000,500000.000,100.000
+102,500000.000,500xyz.000,100.000
+103,500000.000,500000.000,bad_height

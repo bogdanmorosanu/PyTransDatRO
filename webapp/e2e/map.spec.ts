@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { REFERENCE_POINTS } from './referencePoints';
-import { expect, test, type MapViewSnapshot } from './fixtures';
+import { expect, test, fireMapClick, type MapViewSnapshot } from './fixtures';
 import { openApp, openTab, setDirectionStereoToEtrs } from './helpers/ui';
 
 // Romania's envelope per .agents/rules/webapp-design.md section 7.
@@ -10,9 +10,9 @@ async function transformBatch(page: Page): Promise<void> {
   await openTab(page, 'Text');
   await setDirectionStereoToEtrs(page);
   const input = REFERENCE_POINTS.map((p) => `${p.north}, ${p.east}, ${p.height}`).join('\n');
-  await page.getByRole('textbox', { name: 'Input Coordinates' }).fill(input);
-  await page.getByRole('button', { name: 'Transform', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Computed Results' })).toBeVisible();
+  await page.locator('#batch-input-area').fill(input);
+  await page.locator('#batch-transform-btn').click();
+  await expect(page.locator('#batch-output-area')).toBeVisible();
 }
 
 /** Waits until the map is idle: no zoom animation class and identical snapshots across two 250ms intervals. */
@@ -115,9 +115,9 @@ async function transformSinglePoint(
 async function transformBatchText(page: Page, rows: string[]): Promise<void> {
   await openTab(page, 'Text');
   await setDirectionStereoToEtrs(page);
-  await page.getByRole('textbox', { name: 'Input Coordinates' }).fill(rows.join('\n'));
-  await page.getByRole('button', { name: 'Transform', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Computed Results' })).toBeVisible();
+  await page.locator('#batch-input-area').fill(rows.join('\n'));
+  await page.locator('#batch-transform-btn').click();
+  await expect(page.locator('#batch-output-area')).toBeVisible();
 }
 
 test('single out-of-grid point: Center on Map and Zoom to Extents never pan outside Romania', async ({
@@ -128,7 +128,7 @@ test('single out-of-grid point: Center on Map and Zoom to Extents never pan outs
   const before = await settled(page, mapView);
   await transformSinglePoint(page, OUT_OF_GRID.north, OUT_OF_GRID.east, () =>
     expect(
-      page.getByRole('group', { name: 'Computed coordinates' }).getByText(/Outside Grid/),
+      page.locator('.report-card').getByText(/Outside Grid/i),
     ).toBeVisible({ timeout: 2_000 }),
   );
 
@@ -186,7 +186,7 @@ test('valid in-grid point: Center on Map keeps zoom, Zoom to Extents goes to lev
   const p = REFERENCE_POINTS[0];
   const before = await settled(page, mapView);
   // The card already shows the default point's result from load; wait for this point's latitude.
-  const latitude = page.getByRole('group', { name: 'Computed coordinates' }).getByLabel('Latitude');
+  const latitude = page.locator('.result-card').getByLabel('Latitude');
   await transformSinglePoint(page, p.north, p.east, () =>
     expect
       .poll(async () => Math.abs(parseFloat(await latitude.inputValue()) - p.lat), {
@@ -217,11 +217,11 @@ test('measure tool deactivates on Escape key', async ({ page }) => {
   await openApp(page);
   const measureBtn = page.locator('#map-measure-btn');
   await expect(measureBtn).toBeVisible();
-  
+
   // Click measure button to activate
   await measureBtn.click();
   await expect(measureBtn).toHaveClass(/active/);
-  
+
   // Press Escape to cancel measurement mode
   await page.keyboard.press('Escape');
   await expect(measureBtn).not.toHaveClass(/active/);
@@ -231,17 +231,128 @@ test('map coordinate badge honors coordinate order selection', async ({ page }) 
   await openApp(page);
   const badge = page.locator('.map-coords-badge');
   await expect(badge).toBeVisible();
-  
+
   // Default is NE order -> Lat first, Long second
   await expect(badge).toHaveText(/^Lat:.*Long:/);
-  
+
   // Toggle coordinate order to EN(H)
   await page.getByRole('radio', { name: 'EN(H)' }).click();
-  
+
   // Badge must update to show Long first, Lat second
   await expect(badge).toHaveText(/^Long:.*Lat:/);
-  
+
   // Toggle back to NE(H)
   await page.getByRole('radio', { name: 'NE(H)' }).click();
   await expect(badge).toHaveText(/^Lat:.*Long:/);
+});
+
+test('untransformable map click outside grid empties inputs and outputs and displays outside grid status', async ({
+  page,
+}) => {
+  await openApp(page);
+  // Default is Point tab with initial coordinates. Wait for loaded values.
+  const latInput = page.locator('#pt-input-1');
+  await expect(latInput).not.toHaveValue('');
+
+  // Fire map click in the Black Sea outside Romania grid (lat 43.0, lng 31.0)
+  await fireMapClick(page, 43.0, 31.0);
+
+  // Both input and output coordinate fields must be emptied
+  await expect(page.locator('#pt-input-1')).toHaveValue('');
+  await expect(page.locator('#pt-input-2')).toHaveValue('');
+  await expect(page.locator('.result-card input.form-input').first()).toHaveValue('');
+
+  // Report card displays Outside Grid status pill
+  await expect(page.locator('.report-card').getByText(/Outside Grid/i)).toBeVisible();
+
+  // Warning toast appears
+  await expect(page.locator('.toast.warning')).toBeVisible();
+});
+
+test('measurement ruler tool: 3-click lifecycle (start, complete, reset) and escape key cancellation', async ({
+  page,
+}) => {
+  await openApp(page);
+  const measureBtn = page.locator('#map-measure-btn');
+  await expect(measureBtn).toBeVisible();
+
+  // Activate measure mode
+  await measureBtn.click();
+  await expect(measureBtn).toHaveClass(/active/);
+
+  // Click 1: Start point
+  await fireMapClick(page, 45.0, 25.0);
+
+  // Click 2: End point -> Completes measurement and displays distance tooltip
+  await fireMapClick(page, 46.0, 26.0);
+  const tooltip = page.locator('.measure-tooltip');
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toContainText(/Distance:/i);
+
+  // Click 3: Third click cleanly clears previous measurement line/tooltip and starts fresh measurement
+  await fireMapClick(page, 45.5, 25.5);
+  // Tooltip from previous line should now be removed
+  await expect(page.locator('.measure-tooltip')).toHaveCount(0);
+
+  // Press Escape to cancel measurement mode
+  await page.keyboard.press('Escape');
+  await expect(measureBtn).not.toHaveClass(/active/);
+});
+
+test('layers drawer: toggle panel, change layer color swatch, and persist in localStorage', async ({
+  page,
+}) => {
+  await openApp(page);
+
+  // Toggle open the layers panel
+  await page.locator('#map-layers-toggle').click();
+  const panel = page.locator('#map-layers-panel');
+  await expect(panel).toHaveClass(/open/);
+
+  // Click single point color trigger to open preset popover
+  const colorTrigger = panel.locator('.layer-color-trigger[data-color-for="point"]');
+  await colorTrigger.click();
+  const popover = panel.locator('#swatch-popover-point');
+  await expect(popover).toBeVisible();
+
+  // Pick emerald swatch (#10b981)
+  await popover.locator('.color-swatch-option[data-color="#10b981"]').click();
+
+  // Trigger button background updates
+  await expect(colorTrigger).toHaveCSS('background-color', 'rgb(16, 185, 129)');
+
+  // Verify persistence in localStorage
+  const savedColors = await page.evaluate(() => window.localStorage.getItem('pytransdat_map_colors'));
+  expect(savedColors).toContain('#10b981');
+});
+
+test('single point marker: popup shows geodetic attribute table and copy attributes button', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await openApp(page);
+  // Default loaded point creates single point marker with pulsing dot
+  const pinDot = page.locator('.geodetic-pin-dot');
+  await expect(pinDot).toBeVisible();
+
+  // Click marker to open Leaflet popup
+  await pinDot.click();
+  const popup = page.locator('.geodetic-popup');
+  await expect(popup).toBeVisible();
+
+  // Verify geodetic attribute table contents
+  const table = popup.locator('.geodetic-popup-table');
+  await expect(table.getByText(/Point Name\/Number/i)).toBeVisible();
+  await expect(table.getByText(/Northing/i)).toBeVisible();
+  await expect(table.getByText(/Easting/i)).toBeVisible();
+  await expect(table.getByText(/Latitude/i)).toBeVisible();
+  await expect(table.getByText(/Longitude/i)).toBeVisible();
+  await expect(table.getByText(/Quasigeoid Height/i)).toBeVisible();
+  await expect(table.getByText(/Grid Coverage/i)).toBeVisible();
+
+  // Click Copy Attributes button
+  const copyBtn = popup.locator('.geodetic-popup-copy-btn');
+  await copyBtn.click();
+  await expect(copyBtn).toContainText(/Copied/i);
 });

@@ -213,6 +213,14 @@ export class MapView {
     };
   }
 
+  public fireMapClick(lat: number, lng: number): void {
+    if (this.isMeasuringMode) {
+      this.handleMeasureClick(L.latLng(lat, lng));
+      return;
+    }
+    this.callbacks.onMapPointClicked(lat, lng);
+  }
+
   public invalidateSize(): void {
     if (this.map) {
       this.map.invalidateSize();
@@ -987,6 +995,17 @@ export class MapView {
         dashArray: '6, 6',
       });
       this.measureLayer.addLayer(finalLine);
+
+      if (!this.measureTooltip && this.map) {
+        this.measureTooltip = L.tooltip({
+          permanent: true,
+          className: 'measure-tooltip',
+          direction: 'right',
+          offset: [10, 0],
+        })
+          .setLatLng(latlng)
+          .addTo(this.map);
+      }
 
       if (this.measureTooltip) {
         this.measureTooltip.setLatLng(latlng).setContent(`${t('map.distanceLabel')}: ${distStr}`);

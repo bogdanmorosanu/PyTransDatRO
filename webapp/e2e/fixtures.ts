@@ -26,6 +26,17 @@ export async function readMapView(page: Page): Promise<MapViewSnapshot> {
   }) as Promise<MapViewSnapshot>;
 }
 
+export async function fireMapClick(page: Page, lat: number, lng: number): Promise<void> {
+  await page.evaluate(
+    ({ lat, lng }) => {
+      const handle = (window as unknown as { __e2e?: { fireMapClick?(lat: number, lng: number): void } }).__e2e;
+      if (!handle?.fireMapClick) throw new Error('fireMapClick missing on window.__e2e');
+      handle.fireMapClick(lat, lng);
+    },
+    { lat, lng },
+  );
+}
+
 async function stubExternal(route: Route): Promise<void> {
   const url = new URL(route.request().url());
   const type = route.request().resourceType();

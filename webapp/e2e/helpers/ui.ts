@@ -13,8 +13,24 @@ export async function openTab(page: Page, tab: TabName): Promise<void> {
 }
 
 export async function setDirectionStereoToEtrs(page: Page): Promise<void> {
-  await page.getByRole('radio', { name: 'Stereo 70 → ETRS89' }).click();
-  await expect(page.getByRole('radio', { name: 'Stereo 70 → ETRS89' })).toBeChecked();
+  await page.getByRole('radio', { name: 'Stereo70 to ETRS89' }).click();
+  await expect(page.getByRole('radio', { name: 'Stereo70 to ETRS89' })).toBeChecked();
+}
+
+export async function setDirectionEtrsToStereo(page: Page): Promise<void> {
+  await page.getByRole('radio', { name: 'ETRS89 to Stereo70' }).click();
+  await expect(page.getByRole('radio', { name: 'ETRS89 to Stereo70' })).toBeChecked();
+}
+
+export async function setCoordinateOrder(page: Page, order: 'NE' | 'EN'): Promise<void> {
+  const btn = page.locator(`.sliding-toggle-btn[data-order-val="${order}"]`);
+  await btn.click();
+  await expect(btn).toHaveClass(/active/);
+}
+
+export async function setAngularUnit(page: Page, unit: 'degrees' | 'dms' | 'radians'): Promise<void> {
+  await page.locator('#angular-unit-select').selectOption(unit);
+  await expect(page.locator('#angular-unit-select')).toHaveValue(unit);
 }
 
 /** Splits a textarea value into lines (1-to-1, blanks preserved). */

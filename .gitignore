@@ -56,3 +56,4 @@ webapp/test-results/
 webapp/playwright-report/
 webapp/dist-e2e/
 webapp/e2e/.tmp/
+test-results/

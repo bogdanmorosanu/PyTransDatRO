@@ -128,7 +128,7 @@ npm --prefix webapp test
 # Run Vitest in interactive watch mode
 npm --prefix webapp run test:watch
 ```
-*(Runs all 66 TypeScript unit tests in $< 350\text{ ms}$).*
+*(Runs all 80 TypeScript unit tests in $< 350\text{ ms}$).*
 
 ---
 
@@ -164,13 +164,13 @@ npx --prefix webapp playwright install chromium
 - **Recommended Single-Command Runners (Auto-detects Python & Conda)**:
   ```powershell
   # Windows PowerShell
-  .\test-e2e.ps1         # Run all 27 E2E browser tests (headless)
+  .\test-e2e.ps1         # Run all 59 E2E browser tests across 11 suites (headless)
   .\test-e2e.ps1 -Ui     # Open interactive visual runner with time-travel debugging
   .\test-all.ps1         # Run Python suite + Vitest unit tests + Playwright E2E in one go
   ```
   ```bash
   # macOS / Linux (POSIX)
-  ./test-e2e.sh          # Run all 19 E2E browser tests (headless)
+  ./test-e2e.sh          # Run all 59 E2E browser tests across 11 suites (headless)
   ./test-e2e.sh --ui     # Open interactive visual runner
   ./test-all.sh          # Run full verification suite
   ```

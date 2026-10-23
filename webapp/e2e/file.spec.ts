@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { DISPLAY_DECIMALS, REFERENCE_POINTS, matchesAtDisplayPrecision } from './referencePoints';
 import { expect, test } from './fixtures';
 import { openApp, openTab } from './helpers/ui';
+import { uploadDiskFixtures, uploadMemoryFiles, readDownloadContent } from './helpers/files';
 
 test('file upload transforms a CSV and the downloaded file is 1-to-1 with the input', async ({
   page,
@@ -149,4 +150,173 @@ test('multiple file upload shows per-file report breakdown with total line, and 
 
   // Map actions should now be disabled because all points have been removed
   await expect(page.locator('#file-center-map-btn')).toBeDisabled();
+});
+
+test('staged multi-batch file transformation handles initial settings, settings shift, and subsequent file upload independently', async ({
+  page,
+  externalRequests,
+}) => {
+  void externalRequests;
+  await openApp(page);
+  await openTab(page, 'Files');
+
+  // Stage 1: Upload File 1 with default settings (ETRS89 -> Stereo 70, Degrees)
+  const p1 = REFERENCE_POINTS[0];
+  const file1Content = `${p1.id},${p1.lat.toFixed(12)},${p1.lon.toFixed(12)},${p1.ellipsoidalHeight}\n`;
+  await uploadMemoryFiles(page, [{ name: 'staged_etrs.csv', content: file1Content }]);
+
+  // Transform File 1
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
+  await expect(page.locator('.file-status-badge.completed')).toHaveCount(1);
+
+  // Stage 2: Shift Settings in UI: Direction Stereo70 to ETRS89, EN order, DMS units
+  await page.getByRole('radio', { name: 'Stereo70 to ETRS89' }).click();
+  await page.locator('button[data-order-val="EN"]').click();
+  await page.locator('#angular-unit-select').selectOption('dms');
+
+  // Stage 3: Upload File 2 with Stereo 70 coordinates: Easting, Northing, Altitude
+  const file2Content = `201,500000.000,500000.000,100.000\n`;
+  await uploadMemoryFiles(page, [{ name: 'staged_stereo.csv', content: file2Content }]);
+
+  // Verify queue has File 1 completed in output queue, and File 2 pending in input queue
+  await expect(page.locator('.result-card .file-queue-item')).toHaveCount(1);
+  await expect(page.locator('.studio-card:not(.result-card) .file-queue-item')).toHaveCount(1);
+
+  // Stage 4: Click Transform
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
+  await expect(page.locator('.result-card .file-queue-item')).toHaveCount(2);
+
+  // Report card subrows show both files and total row
+  const subrows = page.locator('.quality-report-subrow');
+  await expect(subrows).toHaveCount(3); // 2 files + 1 total
+  await expect(subrows.nth(0)).toContainText('staged_etrs.csv');
+  await expect(subrows.nth(1)).toContainText('staged_stereo.csv');
+
+  // Stage 5: Download File 2 (second completed item)
+  const downloadBtns = page.locator('.result-card .file-download-btn');
+  const [download2] = await Promise.all([
+    page.waitForEvent('download'),
+    downloadBtns.nth(1).click(),
+  ]);
+  const content2 = await readDownloadContent(download2);
+  // Transformed File 2 must have DMS formatting and longitude first (~24°59')
+  expect(content2).toContain('201');
+  expect(content2).toContain('24°');
+  expect(content2).toContain('45°');
+  expect(content2).toContain('"');
+
+  // Stage 6: Download File 1 (first completed item)
+  const [download1] = await Promise.all([
+    page.waitForEvent('download'),
+    downloadBtns.nth(0).click(),
+  ]);
+  const content1 = await readDownloadContent(download1);
+  // Transformed File 1 must have Stereo 70 Northing, Easting in meters
+  expect(content1).toContain(String(p1.id));
+  expect(content1).toContain(p1.north.toFixed(4).slice(0, 6));
+});
+
+test('corrupted file with mixed error rows preserves 1-to-1 row count and omits coordinates on invalid lines', async ({
+  page,
+  externalRequests,
+}) => {
+  void externalRequests;
+  await openApp(page);
+  await openTab(page, 'Files');
+
+  await uploadDiskFixtures(page, ['mixed_errors.csv']);
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
+
+  await expect(page.locator('.file-status-badge.completed')).toBeVisible();
+
+  // Download output
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('.file-download-btn').click(),
+  ]);
+  const content = await readDownloadContent(download);
+  const outLines = content.split(/\r?\n/).filter((l) => l.length > 0);
+
+  // Fixture has 8 non-empty lines (comments + valid + errors)
+  expect(outLines).toHaveLength(7); // Line 3 was empty so 7 non-empty lines
+
+  // Comment lines preserved
+  expect(outLines[0]).toBe('# Header comment describing survey');
+  // Valid lines transformed
+  expect(outLines[1]).toContain('101');
+  expect(outLines[1]).not.toContain('#');
+
+  // Error lines omit coordinates and include comment
+  expect(outLines[2]).toContain('102');
+  expect(outLines[2]).toContain('#');
+
+  // 103 was impossible angle 99 deg
+  expect(outLines[4]).toContain('103');
+  expect(outLines[4]).toContain('#');
+
+  // 104 was out of grid
+  expect(outLines[5]).toContain('104');
+  expect(outLines[5]).toContain('#');
+
+  // 105 was valid
+  expect(outLines[6]).toContain('105');
+  expect(outLines[6]).not.toContain('#');
+});
+
+test('file queue lifecycle: individual item removal before transform and clear queue purge input items', async ({
+  page,
+  externalRequests,
+}) => {
+  void externalRequests;
+  await openApp(page);
+  await openTab(page, 'Files');
+
+  // Upload 2 files
+  await uploadMemoryFiles(page, [
+    { name: 'queue_a.csv', content: '1,46.0,25.0,100\n' },
+    { name: 'queue_b.csv', content: '2,46.0,25.0,100\n' },
+  ]);
+  await expect(page.locator('.studio-card:not(.result-card) .file-queue-item')).toHaveCount(2);
+
+  // Remove first item using its ✕ button
+  await page.locator('.studio-card:not(.result-card) .file-queue-remove').first().click();
+  await expect(page.locator('.studio-card:not(.result-card) .file-queue-item')).toHaveCount(1);
+  await expect(page.locator('.file-queue-name')).toHaveText('queue_b.csv');
+
+  // Add another file
+  await uploadMemoryFiles(page, [
+    { name: 'queue_c.csv', content: '3,46.0,25.0,100\n' },
+  ]);
+  await expect(page.locator('.studio-card:not(.result-card) .file-queue-item')).toHaveCount(2);
+
+  // Click Clear Queue
+  await page.locator('#file-clear-queue-btn').click();
+  await expect(page.locator('.studio-card:not(.result-card) .file-queue-item')).toHaveCount(0);
+});
+
+test('volume warning modal appears when transforming > 2,000 points and handles sample preview', async ({
+  page,
+  externalRequests,
+}) => {
+  void externalRequests;
+  await openApp(page);
+  await openTab(page, 'Files');
+
+  // Generate 2050 points
+  const largeBatch = Array.from({ length: 2050 }, (_, i) => `${i + 1},46.00000000,25.00000000,100.000`).join('\n');
+  await uploadMemoryFiles(page, [{ name: 'large_volume.csv', content: largeBatch }]);
+
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
+
+  // Volume Warning Modal should appear
+  const modal = page.locator('#modal-root .modal-dialog');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('.modal-title')).toContainText('High Volume Point Warning');
+
+  // Click Sample Preview button
+  await modal.locator('#vw-sample-btn').click();
+  await expect(modal).not.toBeVisible();
+
+  // Status completed
+  await expect(page.locator('.file-status-badge.completed')).toBeVisible();
 });

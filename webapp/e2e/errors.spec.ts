@@ -2,11 +2,11 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 const POINT_ENDPOINT = '**/api/v1/transform/point';
-const EMPTY_OUTPUT = '—';
+const EMPTY_OUTPUT = '';
 
 async function loadAndSettle(page: Page): Promise<void> {
   await page.goto('/');
-  const results = page.getByRole('group', { name: 'Computed coordinates' });
+  const results = page.locator('.result-card');
   await expect(results.getByLabel('Northing')).not.toHaveValue(EMPTY_OUTPUT);
 }
 
@@ -21,7 +21,7 @@ test.describe('point transform API failures', () => {
     await page.getByRole('button', { name: 'Transform', exact: true }).click();
 
     await expect(page.getByText(/API Error: 500/)).toBeVisible();
-    const results = page.getByRole('group', { name: 'Computed coordinates' });
+    const results = page.locator('.result-card');
     await expect(results.getByLabel('Northing')).toHaveValue(EMPTY_OUTPUT);
     await expect(results.getByLabel('Easting')).toHaveValue(EMPTY_OUTPUT);
   });
@@ -44,7 +44,7 @@ test.describe('point transform API failures', () => {
     await page.getByRole('button', { name: 'Transform', exact: true }).click();
 
     await expect(page.locator('.toast').getByText(/429|rate limit|too many requests/i)).toBeVisible();
-    const results = page.getByRole('group', { name: 'Computed coordinates' });
+    const results = page.locator('.result-card');
     await expect(results.getByLabel('Northing')).toHaveValue(EMPTY_OUTPUT);
   });
 });

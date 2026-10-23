@@ -58,7 +58,7 @@ webapp/
 ├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build options and dev server API proxy
-├── e2e/                    # Playwright end-to-end browser test suite (27 tests)
+├── e2e/                    # Playwright end-to-end browser test suite (59 tests across 11 specs)
 │   ├── fixtures.ts         # Offline tile & font stubs and page helpers
 │   ├── helpers/            # Shared locator and assertion helpers
 │   ├── smoke.spec.ts       # Critical DOM shell and initial layout smoke tests
@@ -235,7 +235,7 @@ The unit test suite executes 80 tests in $< 400\text{ ms}$ covering:
 - **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu` with active checkmarks, `renderSegmentedControl`, etc.) and the dual-theme `Map Projection Graticule` brand logo (`getLogoInlineSvg`, `getLogoStandaloneSvg`).
 
 ### End-to-End Browser Tests (Playwright)
-The Playwright suite executes 25 browser specs against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
+The Playwright suite executes 59 browser specs across 11 test suites against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
 - **`smoke.spec.ts`**: DOM shell, layout containers, and initial component mounting.
 - **`point.spec.ts`**: Single-point coordinate conversions, direction toggling, angular units, copy buttons, map pin popups, untransformable map click coordinate erasing, and layer color preservation with pulse animation.
 - **`batch.spec.ts`**: Delimiter detection, coordinate swapping, comment/blank line preservation, error row formatting (`PointId, # [reason]`), textarea vertical height persistence, scrollbar hover cursor, and export triggers.
@@ -244,6 +244,9 @@ The Playwright suite executes 25 browser specs against an isolated FastAPI backe
 - **`i18n.spec.ts`**: Reactive Romanian (`RO`) / English (`EN`) dropdown switching, attribute updates, and localStorage persistence.
 - **`errors.spec.ts`**: Pre-flight validation, Two-Section Quality Report card layout (`Coordinates` top, dashed divider, `Transformation` bottom), impossible angle detection, and rate-limit error displays.
 - **`legacy.spec.ts`**: Legacy TransdatOnline historical telemetry subpage, SVG curve rendering, timeline series toggles, and date presets.
+- **`lifecycle.spec.ts`**: Brand Logo fresh state reset, soft title navigation, offline alert banner & health dot reactivity, floating panels (Grid Metadata search filter, Geodetic Help live benchmark card), and bot challenge verification.
+- **`computation.spec.ts`**: Usage Computation subpage, centered Archetype 8.1 KPI cards, calendar date range clamping, and segmented source curves.
+- **`spatial.spec.ts`**: Usage Spatial subpage, quadrant breakdown cards, and 0.1° punchcard matrix.
 
 
 
