@@ -713,7 +713,7 @@ export class PointConverter {
 
     this.container.innerHTML = `
       <!-- Card 1: Input Section -->
-      <div class="studio-card" role="group" aria-label="${t('point.inputCoordsHint')}">
+      <div class="studio-card input-card" role="group" aria-label="${t('point.inputCoordsHint')}">
         <div class="section-micro-label">${t('point.inputCoordsHint')}</div>
 
         <div class="coord-grid-3">

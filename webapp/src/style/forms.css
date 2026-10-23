@@ -87,13 +87,13 @@ textarea.form-input {
 }
 
 .config-unit-select {
-  height: 28px;
+  height: 31px;
   width: 95px;
   min-width: 95px;
   max-width: 105px;
   padding: 0 20px 0 8px;
   font-size: 11.5px;
-  line-height: 26px;
+  line-height: 29px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   vertical-align: middle;
@@ -110,7 +110,7 @@ textarea.form-input {
   padding: 2px;
   user-select: none;
   width: 100%;
-  height: 28px;
+  height: 31px;
   box-sizing: border-box;
 }
 
@@ -149,10 +149,10 @@ textarea.form-input {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 2px 8px;
+  padding: 3px 8px;
   font-size: 11.5px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--text-dim);
   cursor: pointer;
   text-align: center;

@@ -132,7 +132,7 @@ All visual styling is governed by semantic CSS custom properties in `webapp/src/
 - **Unspaced DMS**: `DD°MM'SS.SSSSS"` (e.g., `46°00'00.00000"`), with zero whitespace after `°` or `'`.
 - **Degrees**: `DD.DDDDDDDD` (8 decimal places).
 - **Radians**: `R.RRRRRRRRRR` (10 decimal places).
-- **Pure Numeric Readouts**: Input and output boxes display pure numbers only (never append `m`, `°`, or `rad` inside the text field). Cleared or uncomputed output boxes display an em-dash (`—`) to prevent vertical layout shift.
+- **Pure Numeric Readouts**: Input and output boxes display pure numbers only (never append `m`, `°`, or `rad` inside the text field). Cleared or untransformable output boxes display empty fields (`""`) to prevent displaying misleading numbers.
 
 ---
 

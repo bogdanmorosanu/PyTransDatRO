@@ -260,10 +260,10 @@ export class TimelineChart {
 
     // Add Axis Title Labels (Neutral grey matching X-axis)
     if (showCalls) {
-      leftAxisLabelsSvg += `<text x="${padding.left - 8}" y="${padding.top - 12}" text-anchor="end" class="chart-axis-title">${t('stats.metricTypeCalls')}</text>`;
+      leftAxisLabelsSvg += `<text x="${padding.left - 8}" y="${padding.top - 10}" text-anchor="end" class="chart-axis-title calls-title">${t('stats.metricTypeCalls')}</text>`;
     }
     if (showPoints) {
-      rightAxisLabelsSvg += `<text x="${width - padding.right + 8}" y="${padding.top - 12}" text-anchor="start" class="chart-axis-title">${t('stats.metricTypePoints')}</text>`;
+      rightAxisLabelsSvg += `<text x="${width - padding.right + 8}" y="${padding.top - 10}" text-anchor="start" class="chart-axis-title points-title">${t('stats.metricTypePoints')}</text>`;
     }
 
     // Build series paths

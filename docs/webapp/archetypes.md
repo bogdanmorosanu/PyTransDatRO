@@ -157,8 +157,8 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Altitude / Height Input 3 (#pt-input-3)` (Point Mode)
 
 ### Archetype 5.2: Monospace Read-Only Output Fields
-*Non-editable output boxes displaying computed coordinate values with a persistent em-dash `—` when empty.*
-- **Styling Standard**: Monospace typography, compact 30px height (`height: 30px; padding: 4px 10px; font-size: 12.5px`), non-editable but selectable, elevated surface background (`--bg-surface-elevated`), persistent em-dash `—` when uncalculated.
+*Non-editable output boxes displaying computed coordinate values, remaining strictly empty (`""`) when uncalculated or untransformable.*
+- **Styling Standard**: Monospace typography, compact 30px height (`height: 30px; padding: 4px 10px; font-size: 12.5px`), non-editable but selectable, elevated surface background (`--bg-surface-elevated`), remaining empty (`""`) when uncalculated or untransformable.
 - **Member Instances**:
   - `Coordinate Output 1 (.output-grid-3 input:nth-child(1))` (Point Mode)
   - `Coordinate Output 2 (.output-grid-3 input:nth-child(2))` (Point Mode)

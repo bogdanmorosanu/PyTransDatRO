@@ -220,7 +220,11 @@ export class TelemetryDashboard {
 
       // Track earliest available date from database
       if (res.summary.from_date && this.activePreset === 'all') {
-        this.minHistoryDate = res.summary.from_date;
+        let fromDate = res.summary.from_date;
+        if (fromDate.length === 7) {
+          fromDate = `${fromDate}-01`;
+        }
+        this.minHistoryDate = fromDate;
         if (!this.hasCustomRange) {
           this.customStartDate = this.minHistoryDate;
         }
@@ -293,8 +297,6 @@ export class TelemetryDashboard {
         <!-- Top Navigation Bar -->
         <div class="telemetry-page-header">
           <div class="telemetry-title-block">
-            <div class="telemetry-page-title">${t('stats.title')}</div>
-            <div class="header-brand-nav-divider"></div>
             <nav class="telemetry-nav-tabs" role="tablist">
               <button 
                 type="button" 
@@ -471,24 +473,29 @@ export class TelemetryDashboard {
             </div>
           </div>
 
-          <div class="telemetry-range-limits-pill">
-            <span class="limit-subtle">${t('stats.sliderEarliest', { date: this.minHistoryDate })}</span>
-            <span class="limit-divider">•</span>
-            <span class="limit-subtle">${t('stats.sliderToday', { date: this.maxHistoryDate })}</span>
+          <div class="telemetry-date-limits-cluster">
+            <div class="telemetry-info-subgroup">
+              <span class="info-label">${t('stats.earliestAvailable')}</span>
+              <span class="info-field-readonly">${this.minHistoryDate.length === 7 ? `${this.minHistoryDate}-01` : this.minHistoryDate}</span>
+            </div>
+            <div class="telemetry-info-subgroup">
+              <span class="info-label">${t('stats.currentDate')}</span>
+              <span class="info-field-readonly">${this.maxHistoryDate}</span>
+            </div>
           </div>
         </div>
 
-        <!-- Row 3: Merged SOURCES (Left) & METRIC (Right) -->
+        <!-- Row 3: Merged Sources (Left) & Metric (Right) -->
         <div class="telemetry-deck-row merged-filters-row">
           <div class="filters-left-group">
-            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
-            <div class="sources-toggle-list">
+            <label class="form-label">${t('stats.sourcesFilterLabel')}</label>
+            <div class="telemetry-btn-toggle-group multi-select">
               ${sourceTogglesHtml}
             </div>
           </div>
           <div class="filters-right-group">
-            <span class="facet-label">${t('stats.metricFilterLabel')}</span>
-            <div class="telemetry-individual-toggle-group">
+            <label class="form-label">${t('stats.metricFilterLabel')}</label>
+            <div class="telemetry-btn-toggle-group multi-select">
               <button class="telemetry-toggle-btn individual ${this.compShowPoints ? 'active' : ''}" id="comp-metric-points-btn">
                 ${t('stats.metricPoints')}
               </button>
@@ -560,20 +567,19 @@ export class TelemetryDashboard {
       `);
     }
 
-    // Line 2: Dedicated Total row
+    // Top-Left Dedicated Total Cluster (Stationary Anchor)
     let totalHtml = '';
     if (this.activeSourceKeys.size > 0) {
       const totalColors = this.chart.getTotalSeriesColors();
       totalHtml = `
-        <div class="legend-total-row">
-          <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
-          <div class="legend-group-items" style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="telemetry-toggle-btn individual ${this.compShowTotal ? 'active' : ''}" id="comp-toggle-total" style="padding: 2px 8px; font-size: 11px;">
-              ${this.compShowTotal ? '✓ ' + t('stats.seriesTotal') : t('stats.seriesTotal')}
-            </button>
-            ${
-              this.compShowTotal
-                ? `
+        <div class="legend-total-cluster">
+          <button type="button" class="telemetry-toggle-btn individual ${this.compShowTotal ? 'active' : ''}" id="comp-toggle-total" style="padding: 2px 8px; font-size: 11px;">
+            ${t('stats.seriesTotal')}
+          </button>
+          ${
+            this.compShowTotal
+              ? `
+            <div class="legend-total-swatches">
               ${showCalls ? `
                 <span class="legend-sub-item interactive-legend-item" data-legend-series="total:calls" title="Click to change line color">
                   <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColors.callsColor} 0, ${totalColors.callsColor} 7px, transparent 7px, transparent 12px);"></span>
@@ -588,20 +594,20 @@ export class TelemetryDashboard {
                   ${renderSwatchPopover('total:points', totalColors.pointsColor)}
                 </span>
               ` : ''}
-            `
-                : ''
-            }
-          </div>
+            </div>
+          `
+              : ''
+          }
         </div>
       `;
     }
 
     return `
       <div class="chart-legend-container">
-        <div class="legend-sources-row">
+        ${totalHtml}
+        <div class="legend-sources-cluster">
           ${sourceGroups.join('')}
         </div>
-        ${totalHtml}
       </div>
     `;
   }
@@ -866,15 +872,15 @@ export class TelemetryDashboard {
       .join('');
 
     return `
-      <!-- Overall Stats Area: Full-Width Summary Rectangle -->
-      <div class="spatial-overview-banner">
-        <div class="spatial-overview-col left-col">
-          <div class="overview-sublabel">${this.spatialMetric === 'points' ? t('stats.totalPoints') : t('stats.totalCalls')}</div>
-          <div class="overview-main-val mono">${formatTelemetryNumber(totalVal)}</div>
+      <!-- Overall Stats Area: 2 Archetype 8.1 Standalone KPI Cards -->
+      <div class="telemetry-kpi-banner two-cards">
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(totalVal)}</div>
+          <div class="telemetry-kpi-label">${this.spatialMetric === 'points' ? t('stats.totalPoints') : t('stats.totalCalls')}</div>
         </div>
-        <div class="spatial-overview-col right-col">
-          <div class="overview-sublabel">${t('stats.activeCellsLabel')}</div>
-          <div class="overview-main-val mono">${formatTelemetryNumber(activeCells)}</div>
+        <div class="telemetry-kpi-card">
+          <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(activeCells)}</div>
+          <div class="telemetry-kpi-label">${t('stats.activeCellsLabel')}</div>
         </div>
       </div>
 
@@ -938,7 +944,7 @@ export class TelemetryDashboard {
           </div>
         </div>
 
-        <!-- Row 2: Native Themed Calendar Inputs & Limits -->
+        <!-- Row 2: Native Themed Calendar Inputs & Limits (Info Archetype) -->
         <div class="telemetry-deck-row telemetry-date-controls-row">
           <div class="telemetry-date-inputs-cluster">
             <div class="date-input-group">
@@ -964,23 +970,28 @@ export class TelemetryDashboard {
             </div>
           </div>
 
-          <div class="telemetry-range-limits-pill">
-            <span class="limit-subtle">${t('stats.sliderEarliest', { date: this.minHistoryDate })}</span>
-            <span class="limit-divider">•</span>
-            <span class="limit-subtle">${t('stats.sliderToday', { date: this.maxHistoryDate })}</span>
+          <div class="telemetry-date-limits-cluster">
+            <div class="telemetry-info-subgroup">
+              <span class="info-label">${t('stats.earliestAvailable')}</span>
+              <span class="info-field-readonly">${this.minHistoryDate.length === 7 ? `${this.minHistoryDate}-01` : this.minHistoryDate}</span>
+            </div>
+            <div class="telemetry-info-subgroup">
+              <span class="info-label">${t('stats.currentDate')}</span>
+              <span class="info-field-readonly">${this.maxHistoryDate}</span>
+            </div>
           </div>
         </div>
 
         <!-- Row 3: Merged SOURCES (Left) & METRIC (Right) -->
         <div class="telemetry-deck-row merged-filters-row">
           <div class="filters-left-group">
-            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
-            <div class="sources-toggle-list">
+            <label class="form-label">${t('stats.sourcesFilterLabel')}</label>
+            <div class="telemetry-btn-toggle-group multi-select">
               ${spatialSourceTogglesHtml}
             </div>
           </div>
           <div class="filters-right-group">
-            <span class="facet-label">${t('stats.metricFilterLabel')}</span>
+            <label class="form-label">${t('stats.metricFilterLabel')}</label>
             <div class="telemetry-btn-toggle-group">
               <button class="telemetry-toggle-btn ${this.spatialMetric === 'points' ? 'active' : ''}" id="spatial-metric-points-btn">
                 ${t('stats.metricPoints')}
@@ -1028,7 +1039,7 @@ export class TelemetryDashboard {
 
           <!-- Bottom-Right Scaling Selector -->
           <div class="spatial-scaling-selector-bottom">
-            <span class="facet-label">${t('stats.scaleToggleLabel')}</span>
+            <label class="form-label">${t('stats.scaleToggleLabel')}</label>
             <div class="telemetry-btn-toggle-group">
               <button class="telemetry-toggle-btn ${this.spatialScaleMode === 'log' ? 'active' : ''}" id="spatial-scale-log-btn">
                 ${t('stats.scaleLog')}
@@ -1309,7 +1320,7 @@ export class TelemetryDashboard {
 
     return `
       <!-- KPI Banner: Points Only -->
-      <div class="telemetry-kpi-banner">
+      <div class="telemetry-kpi-banner five-cards">
         <div class="telemetry-kpi-card">
           <div class="telemetry-kpi-val neutral-val">${formatTelemetryNumber(totalPoints)}</div>
           <div class="telemetry-kpi-label">${t('stats.legacyTotalPoints')}</div>
@@ -1381,18 +1392,23 @@ export class TelemetryDashboard {
             </div>
           </div>
 
-          <div class="telemetry-range-limits-pill">
-            <span class="limit-subtle">${t('stats.legacyArchiveSpan', { date: this.legacyMinDate })}</span>
-            <span class="limit-divider">•</span>
-            <span class="limit-subtle">${t('stats.legacyArchiveEnd', { date: this.legacyMaxDate })}</span>
+          <div class="telemetry-date-limits-cluster">
+            <div class="telemetry-info-subgroup">
+              <span class="info-label">${t('stats.archiveStart')}</span>
+              <span class="info-field-readonly">${this.legacyMinDate}</span>
+            </div>
+            <div class="telemetry-info-subgroup">
+              <span class="info-label">${t('stats.archiveEnd')}</span>
+              <span class="info-field-readonly">${this.legacyMaxDate}</span>
+            </div>
           </div>
         </div>
 
         <!-- Row 3: Faceted Filters: Source (Left) & Operation (Right) -->
         <div class="telemetry-deck-row merged-filters-row">
           <div class="filters-left-group">
-            <span class="facet-label">${t('stats.sourcesFilterLabel')}</span>
-            <div class="sources-toggle-list">
+            <label class="form-label">${t('stats.sourcesFilterLabel')}</label>
+            <div class="telemetry-btn-toggle-group multi-select">
               <button type="button" class="telemetry-toggle-btn individual ${hasApp ? 'active' : ''}" data-legacy-source="app">
                 ${t('stats.legacySourceApp')}
               </button>
@@ -1403,8 +1419,8 @@ export class TelemetryDashboard {
           </div>
 
           <div class="filters-right-group">
-            <span class="facet-label">${t('stats.legacyOpLabel')}</span>
-            <div class="telemetry-individual-toggle-group">
+            <label class="form-label">${t('stats.legacyOpLabel')}</label>
+            <div class="telemetry-btn-toggle-group multi-select">
               <button type="button" class="telemetry-toggle-btn individual ${hasSt70 ? 'active' : ''}" data-legacy-op="st70">
                 ${t('stats.legacyOpStereo70')}
               </button>
@@ -1474,34 +1490,33 @@ export class TelemetryDashboard {
     if (this.legacyActiveSources.size > 0 && this.legacyActiveOps.size > 0) {
       const totalColor = this.legacyChart.getTotalColor();
       totalHtml = `
-        <div class="legend-total-row">
-          <span class="legend-group-title">${t('stats.seriesTotal')}:</span>
-          <div class="legend-group-items" style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="telemetry-toggle-btn individual ${this.legacyShowTotal ? 'active' : ''}" id="legacy-toggle-total" style="padding: 2px 8px; font-size: 11px;">
-              ${this.legacyShowTotal ? '✓ ' + t('stats.seriesTotal') : t('stats.seriesTotal')}
-            </button>
-            ${
-              this.legacyShowTotal
-                ? `
+        <div class="legend-total-cluster">
+          <button type="button" class="telemetry-toggle-btn individual ${this.legacyShowTotal ? 'active' : ''}" id="legacy-toggle-total" style="padding: 2px 8px; font-size: 11px;">
+            ${t('stats.seriesTotal')}
+          </button>
+          ${
+            this.legacyShowTotal
+              ? `
+            <div class="legend-total-swatches">
               <span class="legend-sub-item interactive-legend-item" data-legend-series="total" title="Click to change line color">
                 <span class="legend-line-sample dashed-sample" style="background: repeating-linear-gradient(90deg, ${totalColor} 0, ${totalColor} 7px, transparent 7px, transparent 12px);"></span>
                 <span>${t('stats.legacyTotalPoints')}</span>
                 ${renderSwatchPopover('total', totalColor)}
               </span>
-            `
-                : ''
-            }
-          </div>
+            </div>
+          `
+              : ''
+          }
         </div>
       `;
     }
 
     return `
       <div class="chart-legend-container">
+        ${totalHtml}
         <div class="legend-sources-row">
           ${sourceGroups.join('')}
         </div>
-        ${totalHtml}
       </div>
     `;
   }

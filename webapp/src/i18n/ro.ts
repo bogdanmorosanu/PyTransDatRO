@@ -12,7 +12,7 @@ export const ro = {
   app: {
     title: 'PyTransDatRO',
     subtitle: 'Studio Geodezic Național',
-    version: 'v1.0.0-beta',
+    version: 'v{version}',
     feedbackBtn: 'Semnalează Neconcordanță',
     devDocsBtn: 'API & Documentație',
     themeToggle: 'Schimbă Tema',
@@ -384,6 +384,8 @@ Detalii eroare observate:
     sliderToday: 'Data Curentă ({date})',
     earliestAvailable: 'Prima înregistrare',
     currentDate: 'Data curentă',
+    archiveStart: 'Start arhivă',
+    archiveEnd: 'Sfârșit arhivă',
     pointsPerCall: 'Puncte / Apel',
     loadingTimeline: 'Se încarcă datele de telemetrie...',
     noDataFound: 'Nu există date de telemetrie pentru perioada selectată.',

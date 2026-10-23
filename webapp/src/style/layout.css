@@ -78,7 +78,8 @@
 .brand-text-column {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  justify-content: center;
+  gap: 3.5px;
   line-height: 1.15;
 }
 
@@ -87,6 +88,9 @@
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.25px;
+  text-align: center;
+  display: block;
+  width: 100%;
 }
 
 .brand-meta-subrow {
@@ -233,8 +237,8 @@
 .header-tab-indicator {
   position: absolute;
   bottom: -10px;
-  left: 6px;
-  right: 6px;
+  left: 12px;
+  right: 12px;
   height: 2.5px;
   background-color: transparent;
   border-radius: 2px 2px 0 0;
@@ -288,6 +292,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-height: 31px;
 }
 
 .config-row .form-label {
@@ -316,6 +321,9 @@
   color: var(--text-dim);
   user-select: none;
   white-space: nowrap;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Secondary Tabs Navigation (Point, Text, Files & Usage Sub-Nav - Archetype 1.2) */
@@ -697,6 +705,30 @@ input.form-input[readonly]:focus,
   font-size: 16px;
   font-weight: 700;
   color: var(--text-main);
+}
+
+.modal-close-btn,
+.modal-header .btn-icon {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover,
+.modal-header .btn-icon:hover {
+  color: var(--text-main);
+  background-color: var(--bg-surface-hover);
+  border-color: transparent;
 }
 
 .modal-body {

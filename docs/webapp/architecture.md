@@ -116,7 +116,7 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
   - Ellipsoidal Height $h = 100.0\text{ m}$
 - **Asymmetrical 3-Column Layout**: Northing/Lat (`1.35fr`), Easting/Lon (`1.35fr`), and Altitude/Height (`0.8fr`) so long DMS strings never wrap or clip.
 - **Auto 2D/3D Dimensionality Detection**: Empty 3rd coordinate $\to$ 2D mode; provided 3rd coordinate $\to$ 3D mode (calculates $\zeta = h - H$).
-- **Output Hygiene**: Pure numeric values only (strips `m`, `°`, `rad` from text boxes). Displays persistent `—` when cleared or invalid, preventing vertical layout shift.
+- **Output Hygiene**: Pure numeric values only (strips `m`, `°`, `rad` from text boxes). Displays empty text fields (`""`) when cleared or untransformable, eliminating stale or misleading numbers.
 - **Top-Right Code-Block Copy Action**: Header copy icon with instant `✓ Copied` feedback.
 - **Focus Auto-Select**: All coordinate inputs execute `input.select()` on focus.
 - **Dedicated Quasigeoid Height Field**: Rendered in its own dedicated box on its own row using technical metric cyan-blue (`--color-metric-text`).
@@ -160,7 +160,7 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **Smart Map Click & Untransformable Erase**:
   - In `ETRS89ToStereo70`: Populates clicked lat/lon formatted in active angular units.
   - In `Stereo 70ToETRS89`: Calls backend API to reverse-calculate clicked point into Stereo 70 projection meters. Map clicks only capture coordinates when the Single Point tab is active.
-  - **Untransformable Erase**: If clicked location lies outside Romania's grid envelope or in an area without grid data, input and output coordinate fields are immediately erased (`""` and `—`) in both directions to eliminate user confusion, accompanied by a warning toast and `Outside Grid` status.
+  - **Untransformable Erase**: If clicked location lies outside Romania's grid envelope or in an area without grid data, both input and output coordinate fields are immediately erased (`""` in both inputs and outputs) in both directions to eliminate user confusion, accompanied by a warning toast and `Outside Grid` status.
 - **Ergonomic Map Controls**:
   - *Top-Left Dock*: Zoom In/Out, **Zoom to Romania (Home)** extents button, **Single-Distance Measurement Tool** (with clear action), and **Fullscreen Toggle** (synchronized via `fullscreenchange`).
   - *Top-Right Dock*: Stateful persistent Legend widget (persisted in `localStorage['pytransdat_legend_open']`) positioned above a high-contrast segmented **GIS Graphic Scale Bar** with start `0` and end `[max] m/km` labels.

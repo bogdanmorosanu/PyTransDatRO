@@ -12,7 +12,7 @@ export const en = {
   app: {
     title: 'PyTransDatRO',
     subtitle: 'National Geodetic Studio',
-    version: 'v1.0.0-beta',
+    version: 'v{version}',
     feedbackBtn: 'Report Discrepancy',
     devDocsBtn: 'API & Documentation',
     themeToggle: 'Toggle Theme',
@@ -384,6 +384,8 @@ Observed Error Details:
     sliderToday: 'Current Date ({date})',
     earliestAvailable: 'Earliest Available',
     currentDate: 'Current Date',
+    archiveStart: 'Archive Start',
+    archiveEnd: 'Archive End',
     pointsPerCall: 'Points / Call',
     loadingTimeline: 'Loading telemetry timeline...',
     noDataFound: 'No telemetry records found for the selected period.',

@@ -453,6 +453,10 @@ async def get_telemetry_timeline(
             days_count = len(all_dates)
             period_count = len(series_items)
 
+        # Ensure resolved_from is a full YYYY-MM-DD date string even if monthly aggregation was used
+        if resolved_from and len(resolved_from) == 7:
+            resolved_from = f"{resolved_from}-01"
+
         avg_ratio = round(total_points_all / total_calls_all, 2) if total_calls_all > 0 else 0.0
 
         return TimelineResponse(
