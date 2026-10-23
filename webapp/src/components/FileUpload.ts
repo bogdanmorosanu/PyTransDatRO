@@ -87,7 +87,28 @@ export class FileUpload {
   }
 
   public clearQueue(): void {
+    for (const item of this.fileQueue) {
+      if (item.downloadUrl) {
+        URL.revokeObjectURL(item.downloadUrl);
+      }
+    }
     this.fileQueue = [];
+    this.callbacks?.onClearFiles?.();
+    this.render();
+  }
+
+  public clearOutputFiles(): void {
+    const outputItems = this.fileQueue.filter(
+      (f) => f.status === 'completed' || f.status === 'error'
+    );
+    for (const item of outputItems) {
+      if (item.downloadUrl) {
+        URL.revokeObjectURL(item.downloadUrl);
+      }
+    }
+    this.fileQueue = this.fileQueue.filter(
+      (f) => f.status !== 'completed' && f.status !== 'error'
+    );
     this.callbacks?.onClearFiles?.();
     this.render();
   }
@@ -116,7 +137,10 @@ export class FileUpload {
   private removeFileFromQueue(id: string): void {
     const idx = this.fileQueue.findIndex((f) => f.id === id);
     if (idx === -1) return;
-    this.fileQueue.splice(idx, 1);
+    const [removed] = this.fileQueue.splice(idx, 1);
+    if (removed?.downloadUrl) {
+      URL.revokeObjectURL(removed.downloadUrl);
+    }
     if (this.fileQueue.length === 0) {
       this.callbacks?.onClearFiles?.();
     } else {
@@ -134,7 +158,8 @@ export class FileUpload {
   private parsePairedPoints(
     inText: string,
     outText: string,
-    fileName: string
+    fileName: string,
+    skipHeader: boolean = false
   ): MapPointItem[] {
     const inLines = inText.split(/\r?\n/);
     const outLines = outText.split(/\r?\n/);
@@ -164,11 +189,16 @@ export class FileUpload {
       return { pointId: null, tokens: allTokens };
     };
 
+    let headerBypassed = false;
     let rowIdx = 0;
     for (let i = 0; i < maxRows; i++) {
       const inRaw = inLines[i]?.trim();
       const outRaw = outLines[i]?.trim();
-      if (!inRaw || inRaw.startsWith('#')) continue;
+      if (!inRaw || inRaw.startsWith('#') || inRaw.startsWith('//')) continue;
+      if (skipHeader && !headerBypassed) {
+        headerBypassed = true;
+        continue;
+      }
       rowIdx++;
 
       const inParsed = parseLineTokens(inRaw);
@@ -277,7 +307,13 @@ export class FileUpload {
       this.render();
 
       try {
-        const response = await apiClient.transformFile(item.file, this.op, this.angularUnit, 'auto');
+        const response = await apiClient.transformFile(
+          item.file,
+          this.op,
+          this.angularUnit,
+          'auto',
+          this.skipHeader
+        );
         const blob = await response.blob();
         const text = await blob.text();
         item.downloadUrl = URL.createObjectURL(blob);
@@ -285,7 +321,14 @@ export class FileUpload {
         item.status = 'completed';
 
         // Parse per-file quality metrics
-        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('//'));
+        const rawLines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('//'));
+        let lines = rawLines;
+        if (this.skipHeader) {
+          const firstNonCommentIdx = lines.findIndex((l) => !l.startsWith('#'));
+          if (firstNonCommentIdx !== -1) {
+            lines = lines.filter((_, idx) => idx !== firstNonCommentIdx);
+          }
+        }
         let valCount = 0;
         let outGridCount = 0;
         let errCount = 0;
@@ -319,10 +362,14 @@ export class FileUpload {
 
         try {
           const inText = await item.file.text();
-          item.points = this.parsePairedPoints(inText, text, item.file.name);
+          item.points = this.parsePairedPoints(inText, text, item.file.name, this.skipHeader);
           let c2D = 0;
           let c3D = 0;
-          const inLines = inText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('//'));
+          const rawInLines = inText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('#') && !l.startsWith('//'));
+          let inLines = rawInLines;
+          if (this.skipHeader && inLines.length > 0) {
+            inLines = inLines.slice(1);
+          }
           for (const line of inLines) {
             const tokens = line.split(/[;, \t]+/).filter(Boolean);
             if (tokens.length >= 4) {
@@ -492,7 +539,7 @@ export class FileUpload {
             outputFiles.length > 0
               ? `
             <div style="display: flex; gap: 6px; align-items: center;">
-              <button class="btn btn-outline btn-secondary-action" id="file-clear-output-btn">
+              <button class="btn btn-secondary btn-secondary-action" id="file-clear-output-btn">
                 <span>${t('file.clearOutput')}</span>
               </button>
               ${
@@ -582,31 +629,81 @@ export class FileUpload {
           <div class="quality-report-divider-dashed"></div>
 
           <!-- Bottom Row: Transformation -->
-          <div class="quality-report-row">
-            <span class="quality-label">${t('quality.sectionTransform')}</span>
-            <div class="quality-report-badges">
-              ${
-                totalValid > 0
-                  ? `<span class="status-pill success">${t('quality.valid')} (${totalValid})</span>`
-                  : ''
-              }
-              ${
-                totalOutGrid > 0
-                  ? `<span class="status-pill warning">${t('quality.outsideGrid')} (${totalOutGrid})</span>`
-                  : ''
-              }
-              ${
-                totalErrors > 0
-                  ? `<span class="status-pill danger">${t('quality.invalidInput')} (${totalErrors})</span>`
-                  : ''
-              }
-              ${
-                completedCount === 0 && totalErrors === 0
-                  ? `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`
-                  : ''
-              }
+          ${
+            outputFiles.length > 1
+              ? `
+            <div class="quality-report-section">
+              <span class="quality-label">${t('quality.sectionTransform')}</span>
+              ${outputFiles
+                .map((f) => {
+                  const val = f.validRows || 0;
+                  const oog = f.outOfGridRows || 0;
+                  const err = f.errorRows || 0;
+                  const isErrStatus = f.status === 'error';
+
+                  return `
+                    <div class="quality-report-subrow">
+                      <span class="file-name" title="${f.file.name}">${f.file.name}</span>
+                      <div class="quality-report-badges">
+                        ${val > 0 ? `<span class="status-pill success">${t('quality.valid')} (${val})</span>` : ''}
+                        ${oog > 0 ? `<span class="status-pill warning">${t('quality.outsideGrid')} (${oog})</span>` : ''}
+                        ${err > 0 ? `<span class="status-pill danger">${t('quality.invalidInput')} (${err})</span>` : ''}
+                        ${
+                          val === 0 && oog === 0 && err === 0
+                            ? isErrStatus
+                              ? `<span class="status-pill danger">${t('file.statusError')}</span>`
+                              : `<span class="status-pill success">${t('quality.valid')} (0)</span>`
+                            : ''
+                        }
+                      </div>
+                    </div>
+                  `;
+                })
+                .join('')}
+              <div class="quality-report-divider-dotted"></div>
+              <div class="quality-report-subrow total-row">
+                <span class="total-label">${t('quality.total')}</span>
+                <div class="quality-report-badges">
+                  ${totalValid > 0 ? `<span class="status-pill success">${t('quality.valid')} (${totalValid})</span>` : ''}
+                  ${totalOutGrid > 0 ? `<span class="status-pill warning">${t('quality.outsideGrid')} (${totalOutGrid})</span>` : ''}
+                  ${totalErrors > 0 ? `<span class="status-pill danger">${t('quality.invalidInput')} (${totalErrors})</span>` : ''}
+                  ${
+                    totalValid === 0 && totalOutGrid === 0 && totalErrors === 0
+                      ? `<span class="status-pill success">${t('quality.valid')} (0)</span>`
+                      : ''
+                  }
+                </div>
+              </div>
             </div>
-          </div>
+          `
+              : `
+            <div class="quality-report-row">
+              <span class="quality-label">${t('quality.sectionTransform')}</span>
+              <div class="quality-report-badges">
+                ${
+                  totalValid > 0
+                    ? `<span class="status-pill success">${t('quality.valid')} (${totalValid})</span>`
+                    : ''
+                }
+                ${
+                  totalOutGrid > 0
+                    ? `<span class="status-pill warning">${t('quality.outsideGrid')} (${totalOutGrid})</span>`
+                    : ''
+                }
+                ${
+                  totalErrors > 0
+                    ? `<span class="status-pill danger">${t('quality.invalidInput')} (${totalErrors})</span>`
+                    : ''
+                }
+                ${
+                  completedCount === 0 && totalErrors === 0
+                    ? `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`
+                    : ''
+                }
+              </div>
+            </div>
+          `
+          }
         </div>
       </div>
 
@@ -699,7 +796,7 @@ export class FileUpload {
     });
 
     this.container.querySelector('#file-clear-output-btn')?.addEventListener('click', () => {
-      // Reserved for user implementation
+      this.clearOutputFiles();
     });
 
     // Center on map from completed files

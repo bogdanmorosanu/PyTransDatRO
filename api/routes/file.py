@@ -191,6 +191,9 @@ async def transform_file(
     delimiter: str = Form(
         default="auto", description="Delimiter: auto, comma, semicolon, tab, or space"
     ),
+    skip_header: bool = Form(
+        default=False, description="Whether to ignore the first header line without transformation"
+    ),
     trans: TransRO = Depends(get_trans_engine),
     source: int = Depends(get_client_source),
     settings: Settings = Depends(get_settings),
@@ -249,6 +252,7 @@ async def transform_file(
         max_rows = settings.max_file_points
         logged_errors = 0
         max_logged_errors = 5
+        header_skipped = False
 
         # Read line by line from uploaded stream
         buffer = ""
@@ -285,6 +289,11 @@ async def transform_file(
                         if chosen_delim is None:
                             chosen_delim = _detect_delimiter(line)
 
+                        if skip_header and not header_skipped:
+                            header_skipped = True
+                            yield (line + "\n").encode("utf-8")
+                            continue
+
                         delim_char = chosen_delim if chosen_delim != " " else " "
                         row_count += 1
                         if row_count > max_rows:
@@ -320,15 +329,19 @@ async def transform_file(
                 else:
                     if chosen_delim is None:
                         chosen_delim = _detect_delimiter(line)
-                    delim_char = chosen_delim if chosen_delim != " " else " "
-                    row_count += 1
-                    if row_count > max_rows:
-                        yield f"# Limit exceeded: maximum {max_rows:,} points allowed\n".encode(
-                            "utf-8"
-                        )
-                        return
-                    out = _transform_line(line, delim_char, op, unit, file_trans, source=source)
-                    yield out.encode("utf-8")
+                    if skip_header and not header_skipped:
+                        header_skipped = True
+                        yield (line + "\n").encode("utf-8")
+                    else:
+                        delim_char = chosen_delim if chosen_delim != " " else " "
+                        row_count += 1
+                        if row_count > max_rows:
+                            yield f"# Limit exceeded: maximum {max_rows:,} points allowed\n".encode(
+                                "utf-8"
+                            )
+                            return
+                        out = _transform_line(line, delim_char, op, unit, file_trans, source=source)
+                        yield out.encode("utf-8")
         finally:
             buffered_collector.flush_all()
 

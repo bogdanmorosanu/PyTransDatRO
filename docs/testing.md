@@ -164,7 +164,7 @@ npx --prefix webapp playwright install chromium
 - **Recommended Single-Command Runners (Auto-detects Python & Conda)**:
   ```powershell
   # Windows PowerShell
-  .\test-e2e.ps1         # Run all 19 E2E browser tests (headless)
+  .\test-e2e.ps1         # Run all 27 E2E browser tests (headless)
   .\test-e2e.ps1 -Ui     # Open interactive visual runner with time-travel debugging
   .\test-all.ps1         # Run Python suite + Vitest unit tests + Playwright E2E in one go
   ```

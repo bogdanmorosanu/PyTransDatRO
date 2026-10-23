@@ -140,6 +140,7 @@ Streams transformations of an uploaded `.csv` or `.txt` file (up to `settings.ma
   - `op`: `"Stereo70ToETRS89"` or `"ETRS89ToStereo70"`.
   - `unit`: `"radians"`, `"degrees"`, or `"dms"` (`FileAngleUnitEnum`, default: `"radians"`).
   - `delimiter`: `"auto"`, `"comma"`, `"semicolon"`, `"tab"`, `"space"` (default: `"auto"`; returns HTTP `422` if unrecognized).
+  - `skip_header`: `true` or `false` (boolean form field, default: `false`). When `true`, passes the first non-comment data line verbatim to the output stream without transforming it or appending error/warning comments. Delimiter auto-detection is performed on the header row if `delimiter="auto"`.
 * **Behavior**:
   - Automatically detects delimiter from first non-comment row when `auto` is set.
   - Strips empty lines and preserves `#` comment rows.

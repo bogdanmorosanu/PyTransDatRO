@@ -283,13 +283,15 @@ export const apiClient = {
     file: File,
     op: TransformationOp,
     unit: AngleUnit = 'degrees',
-    delimiter: string = 'auto'
+    delimiter: string = 'auto',
+    skipHeader: boolean = false
   ): Promise<Response> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('op', op);
     formData.append('unit', unit);
     formData.append('delimiter', delimiter);
+    formData.append('skip_header', String(skipHeader));
 
     const res = await fetch(apiUrl('/api/v1/transform/file'), {
       method: 'POST',

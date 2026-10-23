@@ -852,6 +852,42 @@ def test_modern_file_upload_size_and_row_limits(client):
         app.dependency_overrides.pop(get_settings, None)
 
 
+def test_modern_file_skip_header_option(client):
+    """Verifies skip_header=True passes the first line verbatim without error comment or warning."""
+    csv_with_header = (
+        "PointID,StereoN,StereoE,Height\n"
+        "P1,500000.0,500000.0,100.0\n"
+        "P2,500000.0,500000.0,120.0\n"
+    )
+
+    # 1. With skip_header=False (default): header line is parsed as coordinates and flagged
+    files_no_skip = {"file": ("header.csv", io.BytesIO(csv_with_header.encode("utf-8")), "text/csv")}
+    res_no_skip = client.post(
+        "/api/v1/transform/file",
+        files=files_no_skip,
+        data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma", "skip_header": "false"},
+    )
+    assert res_no_skip.status_code == 200
+    lines_no_skip = res_no_skip.text.strip().splitlines()
+    assert len(lines_no_skip) == 3
+    assert lines_no_skip[0].endswith("# Invalid coordinate data")
+    assert lines_no_skip[1].startswith("P1,45.999")
+
+    # 2. With skip_header=True: header line is preserved verbatim
+    files_skip = {"file": ("header.csv", io.BytesIO(csv_with_header.encode("utf-8")), "text/csv")}
+    res_skip = client.post(
+        "/api/v1/transform/file",
+        files=files_skip,
+        data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma", "skip_header": "true"},
+    )
+    assert res_skip.status_code == 200
+    lines_skip = res_skip.text.strip().splitlines()
+    assert len(lines_skip) == 3
+    assert lines_skip[0] == "PointID,StereoN,StereoE,Height"
+    assert lines_skip[1].startswith("P1,45.999")
+    assert lines_skip[2].startswith("P2,45.999")
+
+
 def test_health_check_degraded_and_telemetry_flags(client):
     """Verifies /health reports degraded when trans is None, and tracks telemetry health."""
     from unittest.mock import MagicMock

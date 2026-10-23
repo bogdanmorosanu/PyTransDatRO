@@ -58,7 +58,7 @@ webapp/
 ├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build options and dev server API proxy
-├── e2e/                    # Playwright end-to-end browser test suite (25 tests)
+├── e2e/                    # Playwright end-to-end browser test suite (27 tests)
 │   ├── fixtures.ts         # Offline tile & font stubs and page helpers
 │   ├── helpers/            # Shared locator and assertion helpers
 │   ├── smoke.spec.ts       # Critical DOM shell and initial layout smoke tests
