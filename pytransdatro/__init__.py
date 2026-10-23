@@ -8,7 +8,7 @@ from pytransdatro import exceptions
 from pytransdatro.trans_ro import TransRO
 from pytransdatro.types import Coord2D, Coord3D, Sequence2D, Sequence3D
 
-__version__ = "1.0.0"
+__version__ = "1.0.0-beta"
 
 __all__ = [
     "TransRO",

@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import { APP_CONFIG } from '../config';
 import { apiClient } from '../utils/apiClient';
 import { showToast } from '../utils/toast';
 
@@ -200,7 +201,7 @@ export class FeedbackPanel {
         report_type: this.currentType,
         description,
         client_timestamp: new Date().toISOString(),
-        app_version: t('app.version') || 'v2.1',
+        app_version: `v${APP_CONFIG.appVersion.replace(/^v/, '')}`,
         active_grid: this.activeGridInfo,
         honeypot,
       });

@@ -5,9 +5,13 @@
  * with resilient fallbacks for local and production deployment modes.
  */
 
+declare const __APP_VERSION__: string | undefined;
+
 export interface AppConfig {
   /** Application display title. Defaults to 'PyTransDatRO'. */
   appName: string;
+  /** Application semantic version (injected at build time from package.json). */
+  appVersion: string;
   /** Base URL for API requests. Defaults to empty string (same-origin / Vite dev proxy). */
   apiBaseUrl: string;
   /** Default geographic map center: Romania centroid [Latitude, Longitude]. */
@@ -28,6 +32,7 @@ export interface AppConfig {
 
 export const APP_CONFIG: AppConfig = {
   appName: import.meta.env.VITE_APP_NAME || 'PyTransDatRO',
+  appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : (import.meta.env.VITE_APP_VERSION || '1.0.0-beta'),
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
   defaultMapCenter: [45.9432, 24.9668],
   defaultMapZoom: 7,

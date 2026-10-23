@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from starlette.testclient import TestClient
 
+import pytransdatro
 from api.main import app
 
 
@@ -123,6 +124,8 @@ def test_health_check(client):
     data = res.json()
     assert data["status"] == "healthy"
     assert data["grid_loaded"] is True
+    assert data["engine_version"] == pytransdatro.__version__
+    assert app.version == pytransdatro.__version__
     assert data["telemetry_active"] is True
     assert data["telemetry_status"] == "healthy"
 
@@ -855,17 +858,22 @@ def test_modern_file_upload_size_and_row_limits(client):
 def test_modern_file_skip_header_option(client):
     """Verifies skip_header=True passes the first line verbatim without error comment or warning."""
     csv_with_header = (
-        "PointID,StereoN,StereoE,Height\n"
-        "P1,500000.0,500000.0,100.0\n"
-        "P2,500000.0,500000.0,120.0\n"
+        "PointID,StereoN,StereoE,Height\nP1,500000.0,500000.0,100.0\nP2,500000.0,500000.0,120.0\n"
     )
 
     # 1. With skip_header=False (default): header line is parsed as coordinates and flagged
-    files_no_skip = {"file": ("header.csv", io.BytesIO(csv_with_header.encode("utf-8")), "text/csv")}
+    files_no_skip = {
+        "file": ("header.csv", io.BytesIO(csv_with_header.encode("utf-8")), "text/csv")
+    }
     res_no_skip = client.post(
         "/api/v1/transform/file",
         files=files_no_skip,
-        data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma", "skip_header": "false"},
+        data={
+            "op": "Stereo70ToETRS89",
+            "unit": "degrees",
+            "delimiter": "comma",
+            "skip_header": "false",
+        },
     )
     assert res_no_skip.status_code == 200
     lines_no_skip = res_no_skip.text.strip().splitlines()
@@ -878,7 +886,12 @@ def test_modern_file_skip_header_option(client):
     res_skip = client.post(
         "/api/v1/transform/file",
         files=files_skip,
-        data={"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma", "skip_header": "true"},
+        data={
+            "op": "Stereo70ToETRS89",
+            "unit": "degrees",
+            "delimiter": "comma",
+            "skip_header": "true",
+        },
     )
     assert res_skip.status_code == 200
     lines_skip = res_skip.text.strip().splitlines()

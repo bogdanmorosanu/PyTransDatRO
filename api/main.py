@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from api.config import Settings, configure_logging, get_settings
 from api.middleware.rate_limit import SlidingWindowRateLimiter
 from api.routes import batch, feedback, file, health, info, legacy, point
+from pytransdatro import __version__ as pytransdatro_version
 from pytransdatro.telemetry import SqliteUsageLogger
 from pytransdatro.trans_ro import TransRO
 
@@ -57,7 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "(Stereo 70 <-> ETRS89), featuring 100% backward compatibility with the legacy "
             "TransDatOnline service, modern streaming endpoints, and zero-overhead telemetry."
         ),
-        version="1.0.0",
+        version=pytransdatro_version,
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",

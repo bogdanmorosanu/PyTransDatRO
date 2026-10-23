@@ -119,7 +119,7 @@ export class Header {
           <div class="brand-text-column">
             <span class="brand-title-text">${APP_CONFIG.appName}</span>
             <div class="brand-meta-subrow">
-              <span class="brand-stage-badge">${t('app.version')}</span>
+              <span class="brand-stage-badge">v${APP_CONFIG.appVersion.replace(/^v/, '')}</span>
               <span 
                 class="health-dot ${this.isApiOnline ? 'online' : 'offline'}" 
                 id="header-health-dot"
@@ -153,7 +153,7 @@ export class Header {
             role="tab" 
             aria-selected="${this.activePage === 'studio'}"
           >
-            <span>Transform</span>
+            <span>${t('header.viewTransform')}</span>
             <span class="header-tab-indicator"></span>
           </button>
           <button 
@@ -163,7 +163,7 @@ export class Header {
             role="tab" 
             aria-selected="${this.activePage === 'telemetry'}"
           >
-            <span>Usage</span>
+            <span>${t('header.viewUsageData')}</span>
             <span class="header-tab-indicator"></span>
           </button>
         </nav>

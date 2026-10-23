@@ -4,6 +4,8 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Request
 
+from pytransdatro import __version__ as pytransdatro_version
+
 router = APIRouter(tags=["Health & Monitoring"])
 
 
@@ -16,7 +18,7 @@ async def health_check(request: Request) -> Dict[str, Any]:
     response: Dict[str, Any] = {
         "status": "healthy" if has_trans else "degraded",
         "grid_loaded": has_trans,
-        "engine_version": "1.0.0",
+        "engine_version": pytransdatro_version,
         "telemetry_active": False,
         "telemetry_status": "disabled",
     }

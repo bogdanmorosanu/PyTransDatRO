@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytransdatro"
-version = "1.0.0"
+version = "1.0.0-beta"
 description = "Pure Python implementation of Romanian geodetic coordinate transformations (Stereo 70 <-> ETRS89)"
 authors = [{ name = "PyTransDatRO Authors" }]
 readme = "README.md"

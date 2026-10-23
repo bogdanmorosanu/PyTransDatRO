@@ -245,3 +245,12 @@ The Playwright suite executes 25 browser specs against an isolated FastAPI backe
 - **`errors.spec.ts`**: Pre-flight validation, Two-Section Quality Report card layout (`Coordinates` top, dashed divider, `Transformation` bottom), impossible angle detection, and rate-limit error displays.
 - **`legacy.spec.ts`**: Legacy TransdatOnline historical telemetry subpage, SVG curve rendering, timeline series toggles, and date presets.
 
+
+
+---
+
+## 9. Single-Source-of-Truth Versioning & Build Injection
+
+- The frontend package version is declared in `webapp/package.json` and synchronized across repository metadata via `tools/bump_version.py`.
+- At compile time, Vite injects `__APP_VERSION__` via `define` in `vite.config.ts`.
+- Exposed centrally in `src/config.ts` (`APP_CONFIG.appVersion`) and rendered reactively across the brand header badge (`v${APP_CONFIG.appVersion}`) and telemetry/feedback reporting payloads.
