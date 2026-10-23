@@ -1,4 +1,4 @@
-# PyTransDatRO Web Application Architecture & Specification
+# PyTransDatRO Web Application — Software Architecture & Specification
 
 ## 1. Overview & Architecture
 
@@ -27,7 +27,7 @@ flowchart TD
 
     subgraph Backend["FastAPI Web Server (api/)"]
         Static["StaticFiles Mount<br/>GET / -> webapp/dist/"]
-        APIRoutes["Modern REST API<br/>/api/v1/transform/*<br/>/api/v1/grid/info<br/>/api/v1/telemetry/stats"]
+        APIRoutes["Modern REST API<br/>/api/v1/transform/*<br/>/api/v1/grid/info<br/>/api/v1/telemetry/*"]
     end
 
     subgraph CoreEngine["Pure Python Core (pytransdatro/)"]
@@ -41,13 +41,16 @@ flowchart TD
     TransRO -.-> Logger
 ```
 
+> [!NOTE]
+> Visual design tokens and UI philosophy live in [`design_system.md`](./design_system.md). Component groupings live in [`archetypes.md`](./archetypes.md). The exhaustive interaction inventory and test mapping live in [`actionable_inventory.md`](./actionable_inventory.md).
+
 ---
 
 ## 2. Technology Stack & Key Invariants
 
-1. **Vanilla CSS Design System, GitHub Primer Neutral Palette & Modular Stylesheets**:
+1. **Vanilla CSS Design System & Modular Stylesheets**:
    - Zero bulky CSS frameworks (no Bootstrap, no Tailwind runtime overhead).
-   - Driven entirely by custom CSS design tokens defined in [`webapp/src/style/variables.css`](../webapp/src/style/variables.css) and documented in [`webapp/design_guide.md`](../webapp/design_guide.md).
+   - Driven entirely by custom CSS design tokens defined in `webapp/src/style/variables.css` and documented in [`design_system.md`](./design_system.md).
    - **GitHub Primer Dual-Theme Palette & Subtle Surface + Border (`#8`) Primary Button (`data-theme="dark | light"`)**:
      - Dark mode uses neutral carbon-slate `#0d1117` (`--bg-app`) and `#161b22` (`--bg-surface`); Light mode uses `#f6f8fa` (`--bg-app`) and `#ffffff` (`--bg-surface`).
      - The full-width `Transform` primary button uses the **Subtle Surface + Border (`#8`)** token set (`--btn-primary-bg: #1f2630`, `--btn-primary-border: #48586a`, `--btn-primary-text: #e6edf3` in dark mode; `--btn-primary-bg: #eaeef2`, `--btn-primary-border: #8c959f`, `--btn-primary-text: #1f2328` in light mode).
@@ -65,7 +68,7 @@ flowchart TD
    - **Dual-Theme Brand Logo (`Map Projection Graticule`, `webapp/src/assets/logos.ts`)**:
      - The official **Map Projection Graticule** vector mark is rendered inline via CSS variables (`getLogoInlineSvg(36)`) in the header and synchronized dynamically with the browser favicon (`syncFaviconWithTheme`).
    - **The Trinity Balance**: Simplicity (zero decorative emojis), Optimal ergonomics (480px workbench panel, asymmetrical 3-column coordinate layout), and Modern GIS/Cartographic engineering precision.
-   - **Metric Color Isolation**: Physical scalar measurements (e.g., Quasigeoid Height $\zeta = h - H$) use the dedicated cyan/teal metric token (`--color-metric-text`), strictly isolated from status colors (never green or red).
+   - **Metric Color Isolation**: Physical scalar measurements (e.g., Quasigeoid Height $\zeta = h - H$) use the dedicated cyan/teal metric token (`--color-metric-text`), strictly isolated from status colors (never green, red, or yellow).
    - **Seamless Folder Bookmark Tabs**: Physical continuity between the `.tabs-bar` and the active card container below with zero background gap.
 
 2. **Reusable TypeScript UI Factory System (`webapp/src/ui/`)**:
@@ -91,9 +94,8 @@ flowchart TD
      - *Bottom-Left Layers Drawer*: 32x32px icon-only button opening a structured drawer organized into Data Layers, Shift Grids (Coming Soon), and Base Maps (OpenStreetMap default, with user choice persisted in `localStorage['pytransdat_basemap']`).
      - *Bottom-Center Coordinates Badge*: Abbreviated `Lat: [val]  Long: [val]` responsive to active angular units (Degrees, DMS, Radians), elevated on mobile screens.
    - **Uniform Geodetic Popups**: Unified attribute tables across all layers distinguishing Stereo 70 Normal Altitude ($H$, Black Sea 1975) from ETRS89 Ellipsoidal Height ($h$, GRS80), Quasigeoid height $\zeta$ in cyan, and 1-click **Copy Attributes** (`Copiază atributele`) key-value clipboard action with in-place feedback.
-   - **Living UI Actionable Elements Inventory**: For a comprehensive, element-by-element functional specification mapping all controls, triggers, expected side-effects, and E2E test files, see [`docs/ui_actionable_inventory.md`](ui_actionable_inventory.md).
 
-4. **Decoupled API Contract**:
+5. **Decoupled API Contract**:
    - The frontend communicates with the backend exclusively via standard REST endpoints (`/api/v1/...`).
    - Every outbound request injects the HTTP header `X-Client-Source: web_app`, allowing backend telemetry to accurately differentiate browser traffic from automated scripts or desktop CAD plugins.
 
@@ -119,7 +121,8 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **Focus Auto-Select**: All coordinate inputs execute `input.select()` on focus.
 - **Dedicated Quasigeoid Height Field**: Rendered in its own dedicated box on its own row using technical metric cyan-blue (`--color-metric-text`).
 - **Unspaced DMS Formatting & Paste Guard**: `DD°MM'SS.SSSSS"` formatting with single-DMS paste splitting protection. Sexagesimal symbols (`°`, `'`, `"`) are explicitly retained on angle displays as a geodetic exception to unit omission.
-- **Client-Side SPG Pre-Flight Check**: Instant validation against Romania's grid envelope ([`gridBounds.ts`](../webapp/src/utils/gridBounds.ts)) before dispatching network calls.
+- **Smart Delimiter Split & Smart Paste**: Pasting a full 2D or 3D coordinate line (space, comma, semicolon, tab) splits across inputs and automatically triggers calculation. Manual entry requires `Enter` or clicking `Transform`.
+- **Client-Side SPG Pre-Flight Check**: Instant validation against Romania's grid envelope before dispatching network calls.
 - **The Golden Rule & Two-Section Quality Report**:
   - Completely eliminates ad-hoc inline `.error-banner` alerts below coordinate boxes. All transformation diagnostics are unified through the standardized quality reporting card.
   - Divided into two discrete sections: `Coordinates` (Top: `2D` or `3D`) and `Transformation` (Bottom: `✓ Valid`, `⚠ Outside Grid`, `⚠ No Grid Data`, `✕ Invalid Angle`, `✕ Invalid Input`) separated by a discrete dashed divider line (`.quality-report-divider-dashed`) and subtle section headers (`.quality-section-header`).
@@ -134,13 +137,14 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **Textarea Height Persistence**: User-adjusted vertical heights on input and output textareas are cached (`savedInputHeight`, `savedOutputHeight`) and restored across `Transform` calculations.
 - **Custom Scrollbar Hover Detection**: Dynamically switches the mouse cursor to the `default` arrow when hovering over the textarea scrollbar gutter rather than inheriting the text I-beam.
 - **Standardized Two-Section Quality Report**: Positioned directly beneath outputs, displaying `Coordinates` (`Total: [N]`, `2D: [N]`, `3D: [N]`) and `Transformation` (`Valid ([N])`, `Outside Grid ([N])`, `No Grid Data ([N])`, `Invalid Angle ([N])`, `Invalid Input ([N])`).
-- **Silent Native Downloads**: Removed premature synthetic "File Downloaded" toasts on CSV, GeoJSON, and DXF button clicks, delegating feedback to native browser save dialogs.
+- **Silent Native Downloads**: Eliminated premature synthetic "File Downloaded" toasts on CSV, GeoJSON, and DXF button clicks, delegating feedback to native browser save dialogs.
 - **Top-Right Copy Action**: Output header includes a dedicated `Copy Results` button with instant clipboard feedback.
 - **Relocated Download Group**: Export actions (`CSV`, `GeoJSON`, `DXF`) grouped below output under `Download As:`.
 
 ### D. Bulk File Streaming Pipeline (`FileUpload.ts`)
 - **Interactive Queue**: Multi-file dropzone with file list, file size indicators, individual `✕` remove buttons, and manual `Transform Files` trigger.
-- **Raw Preview Elimination**: Replaced 5-line text preview with clean queue metadata and cumulative post-transformation Quality Report cards.
+- **Staged Workflow**: Supports staging multiple files, transforming them, changing global transformation settings (e.g. coordinate order or direction), staging additional files, and transforming the untransformed files using the updated app settings.
+- **Cumulative Map Visualization**: Map displays markers and clusters cumulatively from all processed files in the queue.
 - **Two-Section Quality Report**: Cumulative post-transformation summary divided into `Coordinates` (`Total: [N]`, `2D: [N]`, `3D: [N]`) and `Transformation` (`Valid ([N])`, `Outside Grid ([N])`, `Invalid Input ([N])`) with batch `Download All` trigger.
 - **Line Streaming Robustness**: Auto-detects Point ID column (3 vs 4 tokens), parses DMS angles with sexagesimal radian conversion, outputs unspaced DMS, and handles Windows-1252 / Latin-1 degree symbol fallback decoding.
 - **Downloads**: Individual transformed file downloads plus batch `Download All`.
@@ -174,8 +178,8 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 
 ### F. Client-Side Multi-Format Exporters (`exporters.ts`)
 - **CSV**: Configurable delimiter (Comma, Semicolon, Tab) with clean header metadata, respecting active coordinate order (`NE` vs `EN`) and suppressing coordinates for out-of-grid points.
-- **GeoJSON**: Standard WGS84/ETRS89 `Point` FeatureCollections with coordinate properties.
-- **AutoCAD DXF**: R12 ASCII DXF generating native `POINT` entities for immediate drag-and-drop import into AutoCAD and Civil 3D.
+- **GeoJSON**: Standard WGS84/ETRS89 `Point` FeatureCollections with coordinate properties, cleanly filtering out invalid rows.
+- **AutoCAD DXF**: R12 ASCII DXF generating native `POINT` entities for immediate drag-and-drop import into AutoCAD and Civil 3D, cleanly filtering out invalid rows.
 
 ### G. Header Navigation, Floating Panels & Telemetry Dashboard (`Header.ts`, `GridMetadataPanel.ts`, `GeodeticHelpPanel.ts`, `FeedbackPanel.ts`, `TelemetryDashboard.ts`)
 - **Brand Identity, Logo Reset & Header Navigation (`Header.ts`, `main.ts`)**:
@@ -188,7 +192,7 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **Grid Metadata Floating Panel (`GridMetadataPanel.ts`)**: Non-modal, draggable, and resizable floating panel inspecting active `.spg` binary grid metadata and SHA-256 checksums via `/api/v1/grid/info`.
 - **Geodetic Help & Benchmark Floating Panel (`GeodeticHelpPanel.ts`)**: Non-modal, draggable, and resizable reference guide documenting Romanian datums (Stereo 70, ETRS89, MN75, GRS80), Quasigeoid undulation ($\zeta = h - H$), syntax conventions, and live 9,046-point ANCPI replication benchmarks (`/api/v1/grid/comparison`).
 - **Feedback & Discrepancy Floating Panel (`FeedbackPanel.ts`)**: Non-modal, draggable, and resizable reporting tool with 5 report templates, in-browser math bot verification, and 1-click GitHub Issue / clipboard sharing.
-- **Usage Telemetry Dashboard (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`)**: Full-page analytics view with interactive SVG dual-metric timeline charts, native date clamping (`2023-11-01` to present), interactive Computation Timeline Total toggle (`#comp-toggle-total`), and a theme-reactive $0.1^\circ$ spatial matrix canvas heatmap across Romania.
+- **Usage Telemetry Dashboard (`TelemetryDashboard.ts`, `TimelineChart.ts`, `SpatialMatrixChart.ts`, `LegacyTimelineChart.ts`)**: Full-page analytics view with interactive SVG dual-metric timeline charts, native date clamping (`2023-11-01` to present), interactive Computation Timeline Total toggle (`#comp-toggle-total`), a theme-reactive $0.1^\circ$ spatial matrix canvas heatmap across Romania, and 15 years of legacy TransdatOnline history (2011–2026).
   - **Universal Romanian Comma Decimals**: All percentage values and decimals in the Usage view (KPI cards, Quadrant cards, heatmap tooltips) strictly format with comma `,` in Romanian (e.g. `(24,5%)`, `12,3`) via `formatTelemetryDecimal` and `formatTelemetryPercent`, while transformation coordinates strictly retain dot `.` decimals.
 
 ---
@@ -247,7 +251,7 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
   ```bash
   npm --prefix webapp test
   ```
-  Executes the 80 automated Vitest unit tests covering coordinate parsing (`dmsParser.test.ts`, `pointParser.test.ts`), Romania grid envelope checks (`gridBounds.test.ts`), client-side file generators (`exporters.test.ts`), Romanian decimal formatting vs CAD/GIS coordinate invariants (`numberFormat.test.ts`), accessible UI factory helpers (`renderDropdownMenu` with `active` checkmarks, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`), and the dual-theme `Map Projection Graticule` brand logo (`ui.test.ts`).
+  Executes the 80 automated Vitest unit tests covering coordinate parsing (`dmsParser.test.ts`, `pointParser.test.ts`), Romania grid envelope checks (`gridBounds.test.ts`), client-side file generators (`exporters.test.ts`), Romanian decimal formatting vs CAD/GIS coordinate invariants (`numberFormat.test.ts`), accessible UI factory helpers, and the dual-theme `Map Projection Graticule` brand logo (`ui.test.ts`).
 - **Interactive Test Watch Mode**:
   ```bash
   npm --prefix webapp run test:watch
@@ -260,15 +264,7 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
   # Interactive UI runner mode
   .\test-e2e.ps1 -Ui
   ```
-  Runs the full 25 Playwright E2E test suite (`webapp/e2e/`) verifying browser flows:
-  - Single-point transformation, direction swapping, and sexagesimal DMS symbols (`°`, `'`, `"`).
-  - Two-Section Quality Report card layout (`Coordinates` top, dashed divider, `Transformation` bottom) and eradication of ad-hoc error banners.
-  - Untransformable map click coordinate erasing (clearing both inputs and outputs on out-of-grid or no-data map clicks).
-  - Single-point marker symbology (layer color preservation when outside grid and continuous soft pulsing animation).
-  - Batch text transformation, error row formatting (`PointId, # [reason]`), textarea height persistence, and custom scrollbar hover cursor detection.
-  - Client-side file uploading, export downloads without premature toasts, and drag-and-drop queues.
-  - Telemetry usage analytics, KPI cards, timeline series toggles (including `#comp-toggle-total`), custom color picker popover, and spatial matrix canvas tooltip formatting.
-  - Header health dot status and global offline alert banner with report issue CTA.
+  Runs the full 25 Playwright E2E test suite (`webapp/e2e/`).
 - **Frontend Build Verification**:
   ```bash
   npm --prefix webapp run build
@@ -279,6 +275,3 @@ The web app is then immediately served at `http://127.0.0.1:8000/`.
   pytest tests/test_trans_ro.py tests/test_config.py
   ```
   Ensures core geodetic, ANCPI benchmark numerical precision, and configuration tests pass with zero regressions.
-
-
-

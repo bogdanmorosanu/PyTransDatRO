@@ -55,7 +55,7 @@ A responsive Web GIS client interface built with Vite, TypeScript, Vanilla CSS, 
 - **Reusable UI Factory Functions (`webapp/src/ui/`)**: Accessible component factories (`renderDropdownMenu`, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`) enforcing ARIA attributes and keyboard navigation.
 - **Client-Side Utilities**: DMS parsing, auto-delimited point parsing, Point ID preservation, and instant multi-format exports (CSV, GeoJSON, AutoCAD DXF).
 - **Production Serving**: Hosted via high-performance Nginx reverse proxy serving the Vite static bundle while proxying API endpoints to the backend container.
-- See [docs/web_app.md](web_app.md) for full architectural specifications and [webapp/README.md](../webapp/README.md) for frontend development commands.
+- See [docs/webapp/](webapp/README.md) for full architectural specifications, design system tokens, component archetypes, and actionable inventory, and [webapp/README.md](../webapp/README.md) for frontend development commands.
 
 ## Deployment & Container Architecture (`docs/deployment.md`)
 Production deployments follow an environment-agnostic 2-container topology orchestrated by Docker Compose:

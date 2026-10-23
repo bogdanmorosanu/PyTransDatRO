@@ -15,7 +15,7 @@ This skill serves as the **universal entrypoint** for all development, refactori
 1. **Universal Applicability**:
    - Adapts to any task domain: core geodetic engine, REST API, web application, telemetry/logging, testing/benchmarking, Docker deployment, CI/CD pipelines, or isolated scripts.
 2. **Dynamic Context Priming (Zero Guesswork)**:
-   - Queries living architectural documentation (`docs/*.md`) and [`webapp/design_guide.md`](../../../webapp/design_guide.md) before proposing code edits.
+   - Queries living architectural documentation (`docs/*.md`) and [`docs/webapp/README.md`](../../../docs/webapp/README.md) before proposing code edits.
    - Inspects existing task files in [`.agents/tasks/`](../../tasks/) to understand precedent design decisions and avoid duplicate work.
 3. **Non-Disruptive Service Orchestration**:
    - Tests ports `8000` (FastAPI) and `5173` (Vite) before spawning daemons. Never spawns duplicate processes if servers are already active.
@@ -42,8 +42,11 @@ This skill serves as the **universal entrypoint** for all development, refactori
      - **Core Mathematical Algorithms**: [`docs/core_engine.md`](../../../docs/core_engine.md)
      - **Binary Grid Models & Shifts**: [`docs/grid.md`](../../../docs/grid.md)
      - **REST Endpoints & Schemas**: [`docs/rest_api.md`](../../../docs/rest_api.md)
-     - **Web Application Architecture**: [`docs/web_app.md`](../../../docs/web_app.md)
-     - **UI Design System & Tokens**: [`webapp/design_guide.md`](../../../webapp/design_guide.md)
+     - **Web Application Architecture**: [`docs/webapp/architecture.md`](../../../docs/webapp/architecture.md)
+     - **Web App Master Index & Guide**: [`docs/webapp/README.md`](../../../docs/webapp/README.md)
+     - **UI Design System & Tokens**: [`docs/webapp/design_system.md`](../../../docs/webapp/design_system.md)
+     - **Component Archetypes**: [`docs/webapp/archetypes.md`](../../../docs/webapp/archetypes.md)
+     - **Actionable UI Elements Inventory**: [`docs/webapp/actionable_inventory.md`](../../../docs/webapp/actionable_inventory.md)
      - **Usage Telemetry Subsystem**: [`docs/telemetry.md`](../../../docs/telemetry.md)
      - **Application Logging Infrastructure**: [`docs/log.md`](../../../docs/log.md)
      - **Testing Strategy & Benchmarks**: [`docs/testing.md`](../../../docs/testing.md)
@@ -96,6 +99,6 @@ When a task involves the web API, web frontend, or browser E2E workflows, check 
 Conclude initialization by providing a clean, authoritative 4-bullet briefing:
 
 - **1. Intent & Domain Classification**: Identified task objective, target subsystems (`pytransdatro/`, `api/`, `webapp/`, `tests/`, `docs/`, or infra), and boundary invariants.
-- **2. Documentation & History Primed**: Authoritative documents indexed (e.g. [`docs/web_app.md`](../../../docs/web_app.md), [`webapp/design_guide.md`](../../../webapp/design_guide.md)) and relevant prior tasks reviewed.
+- **2. Documentation & History Primed**: Authoritative documents indexed (e.g. [`docs/webapp/README.md`](../../../docs/webapp/README.md), [`docs/webapp/architecture.md`](../../../docs/webapp/architecture.md)) and relevant prior tasks reviewed.
 - **3. Environment & Runtime Status**: Status of Conda Python (`D:\anaconda3\envs\pytransdat\python.exe`), backend API (`http://127.0.0.1:8000`), and Vite frontend (`http://localhost:5173`).
 - **4. Immediate Action Plan**: Exact next technical step to execute the planned work.

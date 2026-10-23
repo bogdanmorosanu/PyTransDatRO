@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This document provides a comparative architectural and functional bridge between the **Legacy 2012 GWT Web App** ([`transdatonline/`](../../transdatonline)) and the **Modern PyTransDatRO Web Application** specified in [`specs/web_app.md`](../web_app.md) and powered by the REST API documented in [`docs/rest_api.md`](../rest_api.md).
+This document provides a comparative architectural and functional bridge between the **Legacy 2012 GWT Web App** ([`transdatonline/`](../../transdatonline)) and the **Modern PyTransDatRO Web Application** specified in [`docs/webapp/`](../webapp/README.md) and powered by the REST API documented in [`docs/rest_api.md`](../rest_api.md).
 
 It identifies architectural gaps, highlights legacy strengths that must be preserved (e.g. DMS parsing, Romanian `NE` coordinate ordering, diagnostic reporting), rectifies legacy limitations, and provides concrete directives for implementing the modern frontend in `webapp/`.
 
@@ -120,4 +120,4 @@ With the legacy UI and client logic fully documented in:
 * [`05_legacy_client_functionality_and_validation.md`](05_legacy_client_functionality_and_validation.md)
 * [`06_modern_web_app_transition_analysis.md`](06_modern_web_app_transition_analysis.md)
 
-The next step is frontend development inside `webapp/` using Vite + TypeScript + Leaflet following the roadmap established in [`specs/web_app.md`](../web_app.md).
+The next step is frontend development inside `webapp/` using Vite + TypeScript + Leaflet following the roadmap established in [`docs/webapp/`](../webapp/README.md).

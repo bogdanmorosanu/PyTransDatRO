@@ -1,12 +1,12 @@
 ---
 name: task-record
-description: Unified documentation orchestrator that records session outcomes in .agents/tasks/, synchronizes living documentation in docs/, maintains webapp/CHANGELOG.md and webapp/README.md, and verifies quality gates. Subsumes doc-record and webapp-record. Use whenever recording, documenting, or updating task results.
+description: Unified documentation orchestrator that records session outcomes in .agents/tasks/, synchronizes living documentation in docs/ (including docs/webapp/), maintains webapp/README.md, and verifies quality gates. Subsumes doc-record and webapp-record. Use whenever recording, documenting, or updating task results.
 ---
 
 # Unified Task Record Skill (`task-record`)
 
 ## Purpose
-This skill serves as the **unified documentation orchestrator** for the PyTransDatRO repository, subsuming the legacy `doc-record` and `webapp-record` skills into a single cohesive post-task workflow. It inspects all touched codebase layers, updates chronological session task logs, synchronizes authoritative living technical documents in `docs/`, updates the web application changelog and single-source-of-truth README, and verifies quality gates.
+This skill serves as the **unified documentation orchestrator** for the PyTransDatRO repository, subsuming the legacy `doc-record` and `webapp-record` skills into a single cohesive post-task workflow. It inspects all touched codebase layers, updates chronological session task logs, synchronizes authoritative living technical documents in `docs/` (including `docs/webapp/`), updates the web application single-source-of-truth README, and verifies quality gates.
 
 ---
 
@@ -19,8 +19,8 @@ This skill serves as the **unified documentation orchestrator** for the PyTransD
    - Omit conversational back-and-forth, intermediate debugging dead-ends, or iterative exploratory trials.
 3. **Living Documentation Fidelity (No Documentation Rot)**:
    - Authoritative documents in `docs/` define the current architectural reality, algorithms, schemas, and public contracts. They must never fall out of sync with code changes.
-4. **High-Signal Changelog & README Maintenance**:
-   - `webapp/CHANGELOG.md` entries must be concise, technical, and grouped under Keep a Changelog categories (`### Added`, `### Changed`, `### Fixed`, `### Removed`) under `## [Unreleased]`.
+4. **Living Documentation & README Maintenance**:
+   - `webapp/changelog.md` is retired; all features and specifications are maintained directly in the living documentation suite `docs/webapp/` (`README.md`, `design_system.md`, `archetypes.md`, `architecture.md`, `actionable_inventory.md`), while session histories are recorded in `.agents/tasks/`.
    - `webapp/README.md` must accurately reflect current component structures, directory trees, and features.
 5. **Quality Gate Verification**:
    - Always verify that tests pass and bundles compile cleanly before recording or proposing a git commit.
@@ -37,7 +37,7 @@ When inspecting modified files in Step 1, identify which authoritative documents
 | **Core Geodetic Engine** (`pytransdatro/`) | [`docs/core_engine.md`](../../../docs/core_engine.md) | Stereographic formulas, 2D Helmert, bicubic spline interpolation, quasigeoid undulation, dual-CRS bounding boxes, 4-stage pipeline, domain exceptions. |
 | **Grid Management** (`pytransdatro/grids/`, `grids/`) | [`docs/grid.md`](../../../docs/grid.md) | `.spg` binary format specification, header offsets, planar shift subgrids. |
 | **REST API Layer** (`api/`) | [`docs/rest_api.md`](../../../docs/rest_api.md) | Modern endpoints (`/api/v1/*`), Pydantic models, query parameters, error schemas, legacy `/transdatonline` emulation. |
-| **Web Application & UI** (`webapp/src/`, `webapp/`) | [`docs/web_app.md`](../../../docs/web_app.md)<br>[`webapp/design_guide.md`](../../../webapp/design_guide.md) | Web GIS Leaflet architecture, workbench tabs, UI factory helpers, modular CSS tokens, i18n support. |
+| **Web Application & UI** (`webapp/src/`, `webapp/`) | [`docs/webapp/README.md`](../../../docs/webapp/README.md) | Web GIS Leaflet architecture, workbench tabs, UI factory helpers, modular CSS tokens, component archetypes, living actionable inventory. |
 | **Usage Telemetry** (`pytransdatro/telemetry/`, `api/routes/`) | [`docs/telemetry.md`](../../../docs/telemetry.md) | SQLite asynchronous WAL usage logger schema, dynamic window aggregation, coordinate binning. |
 | **Application Logging** (`api/config.py`, `logs/app.log`) | [`docs/log.md`](../../../docs/log.md) | Python `logging` dictConfig setup, rotating file handler, failure fallback dumps. |
 | **Testing & Quality** (`tests/`, `tools/`, `webapp/e2e/`) | [`docs/testing.md`](../../../docs/testing.md) | Test matrix, numerical precision benchmarks, Vitest unit tests, Playwright E2E browser suite. |
@@ -103,7 +103,7 @@ Identify all touched layers:
 Using the **Documentation Mapping Matrix**, determine if any architectural contracts, algorithms, endpoints, or UI specifications changed:
 - If backend routes, models, or query params changed: update [`docs/rest_api.md`](../../../docs/rest_api.md).
 - If core geodetic formulas or boundary envelopes changed: update [`docs/core_engine.md`](../../../docs/core_engine.md).
-- If webapp component hierarchy or client algorithms changed: update [`docs/web_app.md`](../../../docs/web_app.md) and [`webapp/design_guide.md`](../../../webapp/design_guide.md).
+- If webapp component hierarchy, design tokens, archetypes, or client algorithms changed: update the relevant living file in [`docs/webapp/`](../../../docs/webapp/README.md) (`architecture.md`, `design_system.md`, `archetypes.md`, or `actionable_inventory.md`).
 - If test suites or E2E browser runner evolved: update [`docs/testing.md`](../../../docs/testing.md).
 - If deployment, containerization, or environment variables changed: update [`docs/deployment.md`](../../../docs/deployment.md).
 
@@ -111,17 +111,16 @@ Using the **Documentation Mapping Matrix**, determine if any architectural contr
 
 ---
 
-### Step 4: High-Signal Changelog & README Maintenance (If `webapp/` Touched)
+### Step 4: Web Application Living Documentation & README Maintenance (If `webapp/` Touched)
 
 If any files in `webapp/` were modified:
 
-1. **Update [`webapp/CHANGELOG.md`](../../../webapp/CHANGELOG.md)**:
-   - Under the `## [Unreleased]` section, add high-signal bullet points:
-     - `### Added`: New UI components, map layers, factories, tools, export options, or test suites.
-     - `### Changed`: UI layout updates, CSS token refinements, ergonomics improvements, or refactored functions.
-     - `### Fixed`: Bug fixes (e.g. boundary checks, parsing glitches, coordinate formatting).
-     - `### Removed`: Deprecated code or unused assets.
-   - Avoid conversational commentary or intermediate debug logs.
+1. **Synchronize Living Web App Documentation ([`docs/webapp/`](../../../docs/webapp/README.md))**:
+   - Update `docs/webapp/actionable_inventory.md` if actionable UI elements, triggers, or reactive controls changed.
+   - Update `docs/webapp/archetypes.md` if component archetypes, CSS classes, or DOM locators changed.
+   - Update `docs/webapp/design_system.md` if colors, layout dimensions, or theme tokens changed.
+   - Update `docs/webapp/architecture.md` if client SPA topology, GIS layer mechanics, or i18n changed.
+
 
 2. **Update [`webapp/README.md`](../../../webapp/README.md)**:
    - If files/directories were added, moved, or deleted: update Section 2 directory tree.

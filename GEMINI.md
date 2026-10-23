@@ -13,7 +13,7 @@
 - **Binary Grid Files**: Do not modify the loading structure or content of the binary grid files in `grids/`.
 - **Python Environment**: Always use the `pytransdat` conda environment located at `D:\anaconda3\envs\pytransdat` (Python executable: `D:\anaconda3\envs\pytransdat\python.exe`) for running all commands, tests, and scripts in this project.
 - **Relative File Paths & Portability**:
-  - Always use workspace-relative paths in documentation, agent skills, guidelines, scripts, and markdown cross-links (e.g. `docs/architecture.md`, `webapp/design_guide.md`, `tests/test_trans_ro.py`).
+  - Always use workspace-relative paths in documentation, agent skills, guidelines, scripts, and markdown cross-links (e.g. `docs/architecture.md`, `docs/webapp/design_system.md`, `tests/test_trans_ro.py`).
   - In markdown links within nested directories (such as `.agents/skills/<name>/` or `docs/<subfolder>/`), ensure the hyperlink target navigates relative to the file location (e.g. `../../docs/architecture.md`) so that relative links resolve without 404s in editors and GitHub.
   - Never hardcode host-specific or machine-specific absolute file references, paths, or URIs (such as `file:///D:/...`). All repo documentation, agent skills, and task files must remain strictly machine-agnostic and portable.
 
@@ -59,5 +59,5 @@ Follow this disciplined lifecycle across all development, refactoring, and maint
 2. **Audit (`code-audit`)**: Run the `code-audit` skill to ensure zero lint errors, syntax issues, type mismatches, cross-layer boundary breaches, or hardcoded machine-specific absolute file references.
 3. **Verify Precision (`regression-verify`)**: Run the `regression-verify` skill to ensure zero numerical regressions against ANCPI/Romgeo benchmarks, full Python integration suites, and the Vitest parser/UI suite.
 4. **Browser E2E Verification (`e2e-test`)**: Whenever user flows or UI rules are touched, run the `e2e-test` skill to execute the Playwright browser suite (headless via `.\test-e2e.ps1` or interactive via `.\test-e2e.ps1 -Ui`).
-5. **Record Documentation (`task-record`)**: Unified orchestrator subsuming `doc-record` and `webapp-record`. Synchronizes living documentation in `docs/`, logs session outcomes in `.agents/tasks/`, updates `webapp/CHANGELOG.md` under `[Unreleased]`, and updates `webapp/README.md`.
+5. **Record Documentation (`task-record`)**: Unified orchestrator subsuming `doc-record` and `webapp-record`. Synchronizes living documentation in `docs/` (including `docs/webapp/`), logs session outcomes in `.agents/tasks/`, and updates `webapp/README.md`.
 6. **Commit (`task-commit`)**: Use `task-commit` to review diffs, draft a conventional commit message, present a pre-commit report for user review, and execute the git commit upon approval.

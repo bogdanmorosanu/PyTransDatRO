@@ -2,7 +2,7 @@
 
 These rules govern all UI, UX, styling, and map-related development in `webapp/`. All AI agents working on frontend components or web map interactions must strictly adhere to these invariants.
 
-For the full design system specification, see [webapp/design_guide.md](../../webapp/design_guide.md).
+For the full design system specification and component archetypes, see [docs/webapp/design_system.md](../../docs/webapp/design_system.md), [docs/webapp/archetypes.md](../../docs/webapp/archetypes.md), and [docs/webapp/actionable_inventory.md](../../docs/webapp/actionable_inventory.md).
 
 ---
 

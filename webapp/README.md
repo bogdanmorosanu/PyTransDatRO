@@ -53,7 +53,6 @@ When the FastAPI server starts (`python -m uvicorn api.main:app`), it automatica
 
 ```
 webapp/
-├── design_guide.md         # Single source of truth design system & styling manual
 ├── index.html              # HTML entrypoint with preloaded fonts and layout shells
 ├── package.json            # Node dependencies and build scripts
 ├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
@@ -134,7 +133,7 @@ webapp/
 
 2. **GitHub Primer Dual-Theme Palette & Subtle Surface + Border (`#8`) Primary Button**:
    - Built with pure CSS custom properties (`src/style/variables.css`) parameterized by `data-theme="dark|light"`.
-   - Detailed specifications and the 24-item Component Catalogue (`C1`–`C6`) are documented in [design_guide.md](design_guide.md).
+   - Detailed design specifications and the 14 Component Archetypes are documented in [`docs/webapp/design_system.md`](../docs/webapp/design_system.md) and [`docs/webapp/archetypes.md`](../docs/webapp/archetypes.md).
    - **GitHub Primer Neutral Palette**:
      - **Dark Theme (`data-theme="dark"`)**: `--bg-app: #0d1117`, `--bg-surface: #161b22`, `--bg-surface-elevated: #21262d`, `--border-subtle: #21262d`, `--text-main: #e6edf3`, `--btn-primary-bg: #1f2630`, `--btn-primary-border: #48586a`.
      - **Light Theme (`data-theme="light"`)**: `--bg-app: #f6f8fa`, `--bg-surface: #ffffff`, `--bg-surface-elevated: #f3f4f6`, `--border-subtle: #d0d7de`, `--text-main: #1f2328`, `--btn-primary-bg: #eaeef2`, `--btn-primary-border: #8c959f`.
