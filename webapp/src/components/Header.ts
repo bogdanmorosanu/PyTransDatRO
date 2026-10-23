@@ -1,6 +1,7 @@
 import { t, getLanguage, setLanguage, onLanguageChange } from '../i18n';
 import { getLogoInlineSvg, syncFaviconWithTheme } from '../assets/logos';
 import { renderDropdownMenu } from '../ui';
+import { APP_CONFIG } from '../config';
 
 export interface HeaderCallbacks {
   onNavigate: (page: 'studio' | 'telemetry') => void;
@@ -116,15 +117,14 @@ export class Header {
         <a href="/" class="header-brand-link" title="PyTransDatRO Home">
           <span class="brand-logo-wrap" id="header-brand-logo-wrap">${getLogoInlineSvg(36)}</span>
           <div class="brand-text-column">
-            <span class="brand-title-text">${t('app.title')}</span>
+            <span class="brand-title-text">${APP_CONFIG.appName}</span>
             <div class="brand-meta-subrow">
               <span class="brand-stage-badge">${t('app.version')}</span>
-              <button 
-                type="button"
+              <span 
                 class="health-dot ${this.isApiOnline ? 'online' : 'offline'}" 
-                id="header-health-dot-btn"
+                id="header-health-dot"
                 title="${this.isApiOnline ? t('header.apiHealthyTooltip') : t('header.apiOfflineTooltip')}"
-              ></button>
+              ></span>
             </div>
           </div>
         </a>
@@ -173,8 +173,6 @@ export class Header {
       <div class="header-zone-actions">
         <!-- Reusable Help Menu Slot -->
         <div id="header-help-slot"></div>
-
-        <div class="header-divider-v"></div>
 
         <!-- Utilities: Language Selector Menu & Theme Action Button -->
         <div class="header-utilities-dock">
@@ -286,7 +284,6 @@ export class Header {
       id: 'header-lang-details',
       triggerLabel: currentLang.toUpperCase(),
       triggerVariant: 'menu-item',
-      triggerIconSvg: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
       menuWidth: '152px',
       ariaLabel: t('app.langToggle'),
       onOpenChange: (isOpen) => {
@@ -345,16 +342,6 @@ export class Header {
 
     this.element.querySelector('#nav-btn-telemetry')?.addEventListener('click', () => {
       this.callbacks.onNavigate('telemetry');
-    });
-
-    this.element.querySelector('#header-health-dot-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (!this.isApiOnline) {
-        this.callbacks.onOpenFeedback('api_down');
-      } else {
-        this.callbacks.onOpenFeedback('discrepancy');
-      }
     });
 
     this.element.querySelector('#header-theme-btn')?.addEventListener('click', () => {

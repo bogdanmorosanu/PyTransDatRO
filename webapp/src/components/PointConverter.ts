@@ -7,6 +7,10 @@ import { showToast } from '../utils/toast';
 import { isInsideRomaniaGrid } from './MapView';
 import { renderCopyButton } from '../ui';
 
+function escapeHtmlAttr(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export type AngularUnitType = 'degrees' | 'dms' | 'radians';
 
 export interface PointTransformedEvent {
@@ -586,52 +590,10 @@ export class PointConverter {
     }
     const c3Label = isS70 ? t('point.altitudeLabel') : t('point.heightLabel');
 
-    this.container.innerHTML = `
-      <div class="studio-card" role="group" aria-label="${t('point.inputCoordsHint')}">
-        <!-- Input Coordinates Micro-Header -->
-        <div class="section-micro-label">${t('point.inputCoordsHint')}</div>
-
-        <!-- Symmetrical 3-Column Inputs Grid -->
-        <div class="coord-grid-3">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${c1Label}</label>
-            <input type="text" class="form-input mono" id="pt-input-1" aria-label="${c1Label}" value="${this.inputCoo1}" />
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${c2Label}</label>
-            <input type="text" class="form-input mono" id="pt-input-2" aria-label="${c2Label}" value="${this.inputCoo2}" />
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">${c3Label}</label>
-            <input 
-              type="text" 
-              class="form-input mono" 
-              id="pt-input-3" 
-              aria-label="${c3Label}"
-              value="${this.inputCoo3}" 
-              placeholder="${t('point.optionalPlaceholder')}" 
-            />
-          </div>
-        </div>
-
-        <!-- Primary Action Button (no emoji) -->
-        <button class="btn btn-primary" id="pt-calculate-btn" style="width: 100%; margin-top: 14px;">
-          <span>${this.isCalculating ? t('point.calculating') : t('point.transformBtn')}</span>
-        </button>
-      </div>
-
-      <!-- Persistent Output Result Card with Dedicated Metric Box & Quality Report -->
-      ${this.renderResultCard()}
-    `;
-
-    this.attachEventListeners();
-  }
-
-  private renderResultCard(): string {
     const isTargetGeo = this.op === 'Stereo70ToETRS89';
-    let outCol1Val = '—';
-    let outCol2Val = '—';
-    let val3Str = '—';
+    let outCol1Val = '';
+    let outCol2Val = '';
+    let val3Str = '';
     let outCol1Raw = '';
     let outCol2Raw = '';
     let raw3Str = '';
@@ -684,7 +646,7 @@ export class PointConverter {
     }
     const label3 = isTargetGeo ? t('point.heightLabel') : t('point.altitudeLabel');
 
-    let zetaDisplay = '—';
+    let zetaDisplay = '';
     if (this.quasigeoidZeta !== null) {
       zetaDisplay = (this.quasigeoidZeta >= 0 ? '+' : '') + this.quasigeoidZeta.toFixed(3);
     }
@@ -729,19 +691,19 @@ export class PointConverter {
     let transformQualityBadge = '';
     switch (this.qualityStatus) {
       case 'valid':
-        transformQualityBadge = `<span class="status-pill success">✓ ${t('quality.valid')}</span>`;
+        transformQualityBadge = `<span class="status-pill success">${t('quality.valid')}</span>`;
         break;
       case 'invalid_input':
-        transformQualityBadge = `<span class="status-pill danger">✕ ${t('quality.invalidInput')}</span>`;
+        transformQualityBadge = `<span class="status-pill danger">${t('quality.invalidInput')}</span>`;
         break;
       case 'invalid_angle':
-        transformQualityBadge = `<span class="status-pill danger">✕ ${t('quality.invalidAngle')}</span>`;
+        transformQualityBadge = `<span class="status-pill danger">${t('quality.invalidAngle')}</span>`;
         break;
       case 'out_of_grid':
-        transformQualityBadge = `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')}</span>`;
+        transformQualityBadge = `<span class="status-pill warning">${t('quality.outsideGrid')}</span>`;
         break;
       case 'no_data':
-        transformQualityBadge = `<span class="status-pill warning">⚠ ${t('quality.noGridData')}</span>`;
+        transformQualityBadge = `<span class="status-pill warning">${t('quality.noGridData')}</span>`;
         break;
       case 'ready':
       default:
@@ -749,100 +711,133 @@ export class PointConverter {
         break;
     }
 
-    return `
-      <div class="result-card" role="group" aria-label="${t('point.computedCoords')}">
-        <!-- Computed Coordinates Micro-Header with Top-Right Code-Block Style Copy Action -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <div class="section-micro-label">${t('point.computedCoords')}</div>
-          <div id="pt-copy-btn-slot" data-c1="${outCol1Raw}" data-c2="${outCol2Raw}" data-c3="${raw3Str}"></div>
+    this.container.innerHTML = `
+      <!-- Card 1: Input Section -->
+      <div class="studio-card" role="group" aria-label="${t('point.inputCoordsHint')}">
+        <div class="section-micro-label">${t('point.inputCoordsHint')}</div>
+
+        <div class="coord-grid-3">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${c1Label}</label>
+            <input type="text" class="form-input mono" id="pt-input-1" aria-label="${c1Label}" value="${escapeHtmlAttr(this.inputCoo1)}" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${c2Label}</label>
+            <input type="text" class="form-input mono" id="pt-input-2" aria-label="${c2Label}" value="${escapeHtmlAttr(this.inputCoo2)}" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">${c3Label}</label>
+            <input 
+              type="text" 
+              class="form-input mono" 
+              id="pt-input-3" 
+              aria-label="${c3Label}"
+              value="${escapeHtmlAttr(this.inputCoo3)}" 
+              placeholder="${t('point.optionalPlaceholder')}" 
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Separator Button between Input & Output -->
+      <div class="transform-action-row">
+        <button class="btn btn-primary" id="pt-calculate-btn">
+          <span>${this.isCalculating ? t('point.calculating') : t('point.transformBtn')}</span>
+        </button>
+      </div>
+
+      <!-- Card 2: Output Section -->
+      <div class="studio-card result-card" role="group" aria-label="${t('point.outputSectionLabel')}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div class="section-micro-label">${t('point.outputSectionLabel')}</div>
+          <div id="pt-copy-btn-slot" data-c1="${escapeHtmlAttr(outCol1Raw)}" data-c2="${escapeHtmlAttr(outCol2Raw)}" data-c3="${escapeHtmlAttr(raw3Str)}"></div>
         </div>
 
-        <!-- 3-Column Output Row: Pure Numbers Only -->
         <div class="output-grid-3">
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${outCol1Label}</label>
-            <input type="text" readonly class="form-input mono" aria-label="${outCol1Label}" value="${outCol1Val}" />
+            <input type="text" readonly class="form-input mono" aria-label="${outCol1Label}" value="${escapeHtmlAttr(outCol1Val)}" />
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${outCol2Label}</label>
-            <input type="text" readonly class="form-input mono" aria-label="${outCol2Label}" value="${outCol2Val}" />
+            <input type="text" readonly class="form-input mono" aria-label="${outCol2Label}" value="${escapeHtmlAttr(outCol2Val)}" />
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">${label3}</label>
-            <input type="text" readonly class="form-input mono" aria-label="${label3}" value="${val3Str}" />
+            <input type="text" readonly class="form-input mono" aria-label="${label3}" value="${escapeHtmlAttr(val3Str)}" />
           </div>
         </div>
 
-        <!-- Dedicated Quasigeoid Height Field on its Own Row -->
-        <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
-          <label class="form-label">${t('point.quasigeoidLabel')}</label>
-          <input type="text" readonly class="form-input mono metric-field" aria-label="${t('point.quasigeoidLabel')}" value="${zetaDisplay}" />
+        <!-- Quasi-geoid Height Info Archetype -->
+        <div class="output-quasigeoid-row">
+          <span class="info-label">${t('point.quasigeoidLabel')}</span>
+          <span class="info-field-badge">${escapeHtmlAttr(zetaDisplay)}</span>
         </div>
+      </div>
 
-        <!-- Standardized Two-Section Quality Report directly beneath outputs -->
-        <div class="quality-report-card">
-          <!-- Top Section: Coordinates -->
-          <div class="quality-report-section coords-section">
-            <span class="quality-section-header">${t('quality.sectionCoords')}</span>
+      <!-- Card 3: Report Section -->
+      <div class="studio-card report-card" role="group" aria-label="${t('quality.sectionTitle')}">
+        <div class="section-micro-label">${t('quality.sectionTitle')}</div>
+        <div class="quality-report-content" style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="quality-report-row">
+            <span class="quality-label">${t('quality.sectionCoords')}</span>
             <div class="quality-report-badges">
-              <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
+              <span class="status-pill status-pill-neutral">
                 ${is3D ? t('quality.dim3D') : t('quality.dim2D')}
               </span>
             </div>
           </div>
 
-          <!-- Discrete Dashed Separator Line -->
           <div class="quality-report-divider-dashed"></div>
 
-          <!-- Bottom Section: Transformation -->
-          <div class="quality-report-section transform-section">
-            <span class="quality-section-header">${t('quality.sectionTransform')}</span>
+          <div class="quality-report-row">
+            <span class="quality-label">${t('quality.sectionTransform')}</span>
             <div class="quality-report-badges">
               ${transformQualityBadge}
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Decoupled Map Navigation Actions -->
-        <div class="action-footer-right" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; margin-top: 10px;">
-          <button 
-            class="btn btn-outline center-map-btn" 
-            id="pt-center-map-btn" 
-            ${canCenterOnMap ? '' : 'disabled'}
-            data-lat="${mapLat}"
-            data-lon="${mapLon}"
-            data-oog="${isOutOfGrid ? '1' : '0'}"
-            style="padding: 4px 10px; font-size: 11.5px;"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="22" y1="12" x2="18" y2="12"></line>
-              <line x1="6" y1="12" x2="2" y2="12"></line>
-              <line x1="12" y1="6" x2="12" y2="2"></line>
-              <line x1="12" y1="22" x2="12" y2="18"></line>
-            </svg>
-            <span>${t('common.centerOnMap')}</span>
-          </button>
-          <button 
-            class="btn btn-outline zoom-extents-btn" 
-            id="pt-zoom-extents-btn" 
-            ${canCenterOnMap ? '' : 'disabled'}
-            data-lat="${mapLat}"
-            data-lon="${mapLon}"
-            data-oog="${isOutOfGrid ? '1' : '0'}"
-            style="padding: 4px 10px; font-size: 11.5px;"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="11" y1="8" x2="11" y2="14"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-            <span>${t('common.zoomToExtents')}</span>
-          </button>
-        </div>
+      <!-- Decoupled Map Navigation Dock -->
+      <div class="workbench-actions-dock">
+        <button 
+          class="btn btn-outline center-map-btn btn-secondary-action" 
+          id="pt-center-map-btn" 
+          ${canCenterOnMap ? '' : 'disabled'}
+          data-lat="${mapLat}"
+          data-lon="${mapLon}"
+          data-oog="${isOutOfGrid ? '1' : '0'}"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+          </svg>
+          <span>${t('common.centerOnMap')}</span>
+        </button>
+        <button 
+          class="btn btn-outline zoom-extents-btn btn-secondary-action" 
+          id="pt-zoom-extents-btn" 
+          ${canCenterOnMap ? '' : 'disabled'}
+          data-lat="${mapLat}"
+          data-lon="${mapLon}"
+          data-oog="${isOutOfGrid ? '1' : '0'}"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+          <span>${t('common.zoomToExtents')}</span>
+        </button>
       </div>
     `;
+
+    this.attachEventListeners();
   }
 
   private attachEventListeners(): void {

@@ -6,6 +6,8 @@
  */
 
 export interface AppConfig {
+  /** Application display title. Defaults to 'PyTransDatRO'. */
+  appName: string;
   /** Base URL for API requests. Defaults to empty string (same-origin / Vite dev proxy). */
   apiBaseUrl: string;
   /** Default geographic map center: Romania centroid [Latitude, Longitude]. */
@@ -25,6 +27,7 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG: AppConfig = {
+  appName: import.meta.env.VITE_APP_NAME || 'PyTransDatRO',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
   defaultMapCenter: [45.9432, 24.9668],
   defaultMapZoom: 7,

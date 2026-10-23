@@ -11,20 +11,18 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
 
 ### Archetype 1.1: Primary View Tabs
 *Top-level navigation between the main application views inside the 52px header.*
-- **Styling Standard**: Clean uppercase/sentence-case typography (`font-weight: 500`), transparent surface background, and an active 2px bottom underline indicator in GitHub Primer coral (`--tab-indicator-color`). Inactive tabs dim to `--text-muted` and brighten on hover.
+- **Styling Standard**: Prominent sentence-case typography (`font-size: 13.5px`, `font-weight: 500` inactive, `font-weight: 600` active), height `32px` with `border-radius: var(--radius-sm)` (6px). On hover, renders a discrete neutral gray pill background (`--tab-hover-bg`) with a clean 10px vertical gap above the bottom header border. On active, displays an active 2.5px bottom underline indicator in neutral gray (`--tab-indicator-color`: `#d0d7de` Dark / `#1f2328` Light) flush with the header boundary.
 - **Member Instances**:
   - `Transform Tab (#nav-btn-studio)` (Global Header)
   - `Usage Tab (#nav-btn-telemetry)` (Global Header)
 
 ### Archetype 1.2: Secondary View Tabs
-*Sub-view navigation within a primary workspace.*
-- **Styling Standard**: 
-  - *Workbench Modes*: Folder bookmark tabs (`.tab-btn`) that physically dock and merge with the `.studio-card` below with zero background gap (`margin-bottom: -1px`, matching surface background and top border).
-  - *Usage Sub-Pages*: Underlined sub-navigation tabs (`.telemetry-nav-tab-btn`) with smooth transition indicator.
+*Sub-view navigation within primary workspaces (Studio Workbench & Usage Dashboard).*
+- **Styling Standard**: Unified underline navigation tabs across all secondary workspaces. Container height `40px`, button height `28px`, `font-size: 12.5px`, `padding: 0 10px`, `border-radius: var(--radius-sm)`. Inactive tabs show neutral hover pill (`--tab-hover-bg`), active tabs display bold text and an active 2px bottom underline indicator in `--tab-indicator-color` (`#d0d7de` Dark / `#1f2328` Light).
 - **Member Instances**:
-  - `Point Mode Tab (#tab-point)` (Workbench Mode Tabs)
-  - `Text Mode Tab (#tab-text)` (Workbench Mode Tabs)
-  - `Files Mode Tab (#tab-files)` (Workbench Mode Tabs)
+  - `Point Mode Tab (#tab-point)` (Studio Workbench Tabs)
+  - `Text Mode Tab (#tab-text)` (Studio Workbench Tabs)
+  - `Files Mode Tab (#tab-files)` (Studio Workbench Tabs)
   - `Computation Sub-Tab (#tab-timeline-btn)` (Usage Page Sub-Nav)
   - `Spatial Sub-Tab (#tab-spatial-btn)` (Usage Page Sub-Nav)
   - `Legacy Sub-Tab (#tab-legacy-btn)` (Usage Page Sub-Nav)
@@ -34,13 +32,13 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
 ## 2. Selection & Mode Switchers
 
 ### Archetype 2.1: Slide Selectors (Animated Glider / Switch)
-*Mutually exclusive two-state toggles with a sliding indicator and brief switch animation.*
-- **Styling Standard**: Recessed `--bg-surface-input` outer track (`border-radius: var(--radius-sm)`), an elevated neutral `--btn-primary-bg` glider with `1px solid var(--btn-primary-border)`, and a 150ms CSS cubic-bezier slide animation. Inactive options dim to `opacity: 0.65`.
+*Mutually exclusive two-state toggles with an animated sliding indicator and smooth 240ms cubic-bezier transition.*
+- **Styling Standard**: Unified compact 28px height (`height: 28px; padding: 2px; border-radius: var(--radius-sm)`), recessed `--bg-surface-input` outer track, elevated neutral `--btn-primary-bg` glider with `1px solid var(--btn-primary-border)`, and a 240ms CSS cubic-bezier slide animation (`transform: translateX(...)`). Inactive options dim to `--text-dim` (`font-size: 11.5px; font-weight: 500`).
 - **Member Instances**:
-  - `Transformation Direction Selector (.sliding-toggle)` (Shared Config Bar)  
-    *Options: `ETRS89 ➔ Stereo 70` vs `Stereo 70 ➔ ETRS89`*
-  - `Coordinate Order Selector (#shared-order-control)` (Shared Config Bar)  
-    *Options: `NE(H)` vs `EN(H)`*
+  - `Transformation Direction Selector (.sliding-toggle)` (Shared Config Card, Row 1)  
+    *Options: `ETRS89 to Stereo70` vs `Stereo70 to ETRS89`*
+  - `Coordinate Order Selector (#shared-order-control)` (Shared Config Card, Row 2)  
+    *Options: `NE(H) / LatLon(h)` vs `EN(H) / LonLat(h)`*
 
 ### Archetype 2.2: Continuous Segmented Pill Trays (Single-Choice Enclosed Trays)
 *Enclosed pill trays containing mutually exclusive options on a shared recessed track.*
@@ -67,6 +65,13 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Legacy Source Filter ([data-legacy-source])` (Legacy Sub-View) — *`Web App`, `REST API (Service)`*
   - `Legacy Operation Filter ([data-legacy-op])` (Legacy Sub-View) — *`Stereo 70`, `Stereo 30`*
 
+### Archetype 2.4: Boolean Toggle Switch (Sliding Track & Thumb)
+*Compact, accessible on/off toggle switch for binary options within input cards.*
+- **Styling Standard**: Semantic checkbox hidden with `.toggle-switch-input`, styled via `.toggle-switch-track` (30×17px, border radius 9px, `--bg-surface-elevated`) and sliding `.toggle-switch-thumb` (12×12px circular nub, transitions 12px rightward to `--color-primary` when `:checked`), accompanied by `.toggle-switch-label` (11.5px, medium weight).
+- **Member Instances**:
+  - `Ignore Header / First Line Switch (#file-skip-header-toggle)` (Files Input Card) — *Toggles ignoring the header row in uploaded bulk files.*
+
+
 ---
 
 ## 3. Menus & Header Actions
@@ -91,23 +96,30 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
 
 ### Archetype 4.1: Primary Labels
 *Prominent field and section identifiers defining primary controls.*
-- **Styling Standard**: Clean, medium-weight typography (`font-size: 12px–12.5px`, `font-weight: 500`, `color: var(--text-muted)`).
+- **Styling Standard**: Clean, medium-weight typography (`font-size: 12px–12.5px`, `font-weight: 500`, `color: var(--text-muted)`). Trailing colons (`:`) are omitted.
 - **Member Instances**:
-  - `Angular Unit Label (.config-field-label)` (Shared Config Bar) — *"Angular Unit"*
-  - `Coordinate Order Label (.config-field-label)` (Shared Config Bar) — *"Coordinate Order"*
-  - `Angle Format Unit Label (.format-example-label)` (Shared Config Bar) — *"Format Example:"*
+  - `Operation Direction Label (.form-label)` (Shared Config Card) — *"Operation Direction"* / *"Sensul transformării"*
+  - `Angular Unit Label (.form-label)` (Shared Config Card) — *"Angular Unit"* / *"Unitate unghiulară"*
+  - `Coordinate Order Label (.form-label)` (Shared Config Card) — *"Coordinate Order"* / *"Ordinea coordonatelor"*
+  - `Format Example Label (.info-label)` (Shared Config Card) — *"Format Example"* / *"Exemplu format"*
 
 ### Archetype 4.2: Secondary Labels
 *Subordinate labels for secondary metrics or preview readouts.*
 - **Styling Standard**: Sentence-case, neutral label (`font-size: 11.5px`, `color: var(--text-muted)`).
 - **Member Instances**:
   - `Quasigeoid Height Label (.form-label)` (Point Output Card) — *"Quasigeoid Height (ζ = h - H)"*
-  - `Angle Format Example Label / Prefix (.format-example-label)` (Shared Config Bar)
+  - `Format Example Info Label (.info-label)` (Shared Config Card) — *"Format Example"*
 
 ### Archetype 4.3: Element & Component Labels
-*Standard field labels directly identifying inputs, outputs, filter groups, and date bounds.*
-- **Styling Standard**: Consistent uppercase or sentence-case label (`font-size: 11px–12px`, `color: var(--text-muted)`).
+*Standard field labels directly identifying inputs, outputs, selects, filter groups, and date bounds.*
+- **Styling Standard**: Consistent sentence-case or title-case label (`font-size: 11.5px–12px`, `font-weight: 500`, `color: var(--text-muted)`, `margin-bottom: 5px`, `text-transform: none`). Trailing colons (`:`) are strictly omitted.
 - **Member Instances**:
+  - `Operation Direction Label (.form-label)` (Shared Config Card) — *"Operation Direction"*
+  - `Angular Unit Label (.form-label)` (Shared Config Card) — *"Angular Unit"*
+  - `Coordinate Order Label (.form-label)` (Shared Config Card) — *"Coordinate Order"*
+  - `Report Type Label (.form-label)` (Feedback Modal) — *"Report Type"* / *"Tipul semnalării"*
+  - `Detailed Description Label (.form-label)` (Feedback Modal) — *"Detailed Description"* / *"Descriere detaliată"*
+  - `Human Verification Label (.ffp-math-label)` (Feedback Modal) — *"Human Verification:"* / *"Verificare umană:"*
   - `Coordinate 1 Input Label (.form-label)` (Point Mode) — *"Northing (X)"* / *"Latitude (B)"*
   - `Coordinate 2 Input Label (.form-label)` (Point Mode) — *"Easting (Y)"* / *"Longitude (L)"*
   - `Altitude/Height Input Label (.form-label)` (Point Mode) — *"Altitude (H)"* / *"Ellipsoidal Height (h)"*
@@ -121,12 +133,16 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Current / Today Date Label (.limit-subtle)` (Usage Date Limits) — *"Current Date:"* / *"Today:"*
 
 ### Archetype 4.4: Discrete / Subtle Section Labels
-*Faded, low-prominence labels that divide sub-sections without drawing visual attention.*
-- **Styling Standard**: Uppercase, small, muted typography (`font-size: 10px–10.5px`, `letter-spacing: 0.5px`, `color: var(--text-dim)`).
+*Faded, low-prominence landmark labels that organize functional cards without drawing visual attention.*
+- **Styling Standard**: Uppercase, small, muted typography (`font-size: 10.5px`, `font-weight: 600`, `letter-spacing: 0.6px`, `color: var(--text-dim)`, `margin-bottom: 8px`, `line-height: 1.2`).
 - **Member Instances**:
-  - `Coordinates Quality Sub-Section Header (.quality-section-header)` (Point / Batch / Files Reporting) — *"Coordinates"* / *"Coordonate"*
-  - `Transformation Quality Sub-Section Header (.quality-section-header)` (Point / Batch / Files Reporting) — *"Transformation"* / *"Transformare"*
-  - `Download As: Export Header (.download-group-label)` (Text Mode) — *"Download As:"*
+  - `Settings Landmark (.section-micro-label)` (Global Config Card) — *"SETTINGS"* / *"SETĂRI"*
+  - `Input Landmark (.section-micro-label)` (Point & Text Modes) — *"INPUT"* / *"INTRARE"*
+  - `Output Landmark (.section-micro-label)` (Point & Text Modes) — *"OUTPUT"* / *"IEȘIRE"*
+  - `Report Landmark (.section-micro-label)` (Point & Text Modes) — *"REPORT"* / *"RAPORT"*
+  - `Coordinates Quality Header (.quality-label)` (Reporting Card) — *"Coordinates"* / *"Coordonate"* (Sentence case, discrete)
+  - `Transformation Quality Header (.quality-label)` (Reporting Card) — *"Transformation"* / *"Transformare"* (Sentence case, discrete)
+  - `Download as: Export Header (.download-group-label)` (Text Mode) — *"Download as:"* / *"Descarcă ca:"*
 
 ---
 
@@ -134,7 +150,7 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
 
 ### Archetype 5.1: Monospace Text Input Fields
 *User-editable single-line input boxes accepting coordinates.*
-- **Styling Standard**: Monospace font (`JetBrains Mono`), recessed `--bg-surface-input`, `--border-medium` border, `--border-focus` focus ring, auto-selection on focus (`input.select()`).
+- **Styling Standard**: Monospace font (`JetBrains Mono`), compact 30px height (`height: 30px; padding: 4px 10px; font-size: 12.5px`), recessed `--bg-surface-input`, `--border-medium` border, `--border-focus` focus ring, auto-selection on focus (`input.select()`).
 - **Member Instances**:
   - `Coordinate Input 1 (#pt-input-1)` (Point Mode)
   - `Coordinate Input 2 (#pt-input-2)` (Point Mode)
@@ -142,7 +158,7 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
 
 ### Archetype 5.2: Monospace Read-Only Output Fields
 *Non-editable output boxes displaying computed coordinate values with a persistent em-dash `—` when empty.*
-- **Styling Standard**: Monospace typography, non-editable but selectable, elevated surface background (`--bg-surface-elevated`), persistent em-dash `—` when uncalculated.
+- **Styling Standard**: Monospace typography, compact 30px height (`height: 30px; padding: 4px 10px; font-size: 12.5px`), non-editable but selectable, elevated surface background (`--bg-surface-elevated`), persistent em-dash `—` when uncalculated.
 - **Member Instances**:
   - `Coordinate Output 1 (.output-grid-3 input:nth-child(1))` (Point Mode)
   - `Coordinate Output 2 (.output-grid-3 input:nth-child(2))` (Point Mode)
@@ -196,8 +212,8 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Copy Batch Results Button (#batch-copy-results-slot)` (Text Mode)
 
 ### Archetype 6.3: Export & File Action Buttons
-*Secondary action buttons triggering file downloads or exports.*
-- **Styling Standard**: Subtle secondary surface fill (`.btn-secondary`), 12px typography, padding `6px 12px`, direct invocation of native browser Save As dialog without premature toasts.
+*Secondary action buttons triggering file downloads or exports within workbench cards.*
+- **Styling Standard**: Compact secondary action modifier (`.btn.btn-secondary.btn-secondary-action`), height 26px, typography 11.5px, padding `0 9px`, border-radius `--radius-sm` (6px), direct invocation of native browser Save As dialog without premature toasts.
 - **Member Instances**:
   - `Download CSV Button (#batch-export-csv)` (Text Mode)
   - `Download GeoJSON Button (#batch-export-geojson)` (Text Mode)
@@ -213,8 +229,8 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Remove File Item Button (.file-queue-remove)` (Files Mode) — *Compact "✕" icon button per row*
 
 ### Archetype 6.5: Map Navigation Action Buttons
-*Secondary utility buttons triggering Leaflet map panning and boundary fitting.*
-- **Styling Standard**: Outlined button (`.btn-outline`), font size `11.5px`, padding `4px 10px`, accompanied by crosshair or search icon, guarded by Romania bounds.
+*Secondary utility buttons triggering Leaflet map panning and boundary fitting, decoupled from workbench cards into a dedicated bottom dock.*
+- **Styling Standard**: Compact outlined button (`.btn.btn-outline.btn-secondary-action`), height 26px, font size `11.5px`, padding `0 9px`, accompanied by crosshair or search icon, guarded by Romania bounds, positioned in `.workbench-actions-dock`.
 - **Member Instances**:
   - `Center on Map (#pt-center-map-btn, #batch-center-map-btn, #file-center-map-btn)` (Point, Text, Files)
   - `Zoom to Extents (#pt-zoom-extents-btn, #batch-zoom-extents-btn, #file-zoom-extents-btn)` (Point, Text, Files)
@@ -226,14 +242,23 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Computation Total Overlay Toggle (#comp-toggle-total)` (Computation Sub-View)
   - `Legacy Total Overlay Toggle (#legacy-toggle-total)` (Legacy Sub-View)
 
+### Archetype 6.7: Dialog & Modal Action Buttons
+*Compact action triggers inside modal dialog footers, floating utility drawers, and card dialogs.*
+- **Styling Standard**: Compact button modifier (`.btn-sm`), height `30px`, padding `0 12px`, font size `12px`, `font-weight: 500`, border radius `--radius-sm` (6px).
+- **Member Instances**:
+  - `Submit Feedback Button (#fb-submit-btn)` (Feedback Modal) — *.btn.btn-primary.btn-sm*
+  - `Close Feedback Button (#fb-cancel-btn)` (Feedback Modal) — *.btn.btn-secondary.btn-sm*
+  - `Close Report Modal Button (#modal-close-btn)` (Batch Report Modal) — *.btn.btn-primary.btn-sm*
+
 ---
 
 ## 7. Quality Reporting & Feedback Labels
 
-### Archetype 7.1: Quality Info Labels
-*Neutral, informational pills indicating point counts and dimensional traits.*
-- **Styling Standard**: Elevated background (`--bg-surface-elevated`), neutral border (`--border-medium`), text color `--text-muted`, corner radius `--radius-xs` (4px).
+### Archetype 7.1: Quality Info Labels & Informational Badges
+*Neutral, informational pills indicating point counts, dimensional traits, and calculated geodetic metrics.*
+- **Styling Standard**: Elevated background (`--bg-surface-elevated` or `--bg-surface-input`), neutral border (`--border-medium`), text color `--text-muted`, corner radius `--radius-sm` (6px) or `--radius-xs` (4px).
 - **Member Instances**:
+  - `Quasigeoid Height Badge (.info-field-badge)` (Point Mode) — *Monospace chip "+34.218 m"*
   - `Total Points Count (.quality-report-badges .status-pill)` (Batch / Files)
   - `2D Coordinates Pill / Count (.quality-report-badges .status-pill)` (Point / Batch / Files)
   - `3D Coordinates Pill / Count (.quality-report-badges .status-pill)` (Point / Batch / Files)

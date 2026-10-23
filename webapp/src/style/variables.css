@@ -47,7 +47,7 @@
   --bg-surface: #14171c;
   --bg-surface-elevated: #1c2026;
   --bg-surface-input: #0b0d10;
-  --bg-surface-readonly: #111418;
+  --bg-surface-readonly: #181d24;
   --bg-surface-hover: #252a32;
   --bg-glass: rgba(20, 23, 28, 0.92);
   --glass-bg: var(--bg-glass);
@@ -72,7 +72,8 @@
   --color-primary-hover: #90a6bd;
   --color-primary-light: #a3b7cc;
   --color-primary-glow: rgba(124, 147, 171, 0.2);
-  --tab-indicator-color: #7c93ab;
+  --tab-hover-bg: rgba(177, 186, 196, 0.12);
+  --tab-indicator-color: #d0d7de;
 
   /* Technical Metric Token (Quasigeoid Height ζ = h - H) */
   --color-metric-text: #56b6c2;
@@ -112,7 +113,7 @@
   --bg-surface: #ffffff;
   --bg-surface-elevated: #f3f4f6;
   --bg-surface-input: #ffffff;
-  --bg-surface-readonly: #f6f8fa;
+  --bg-surface-readonly: #eaeef2;
   --bg-surface-hover: #eaeef2;
   --bg-glass: rgba(255, 255, 255, 0.92);
   --glass-bg: var(--bg-glass);
@@ -137,7 +138,8 @@
   --color-primary-hover: #424a53;
   --color-primary-light: #6e7781;
   --color-primary-glow: rgba(87, 96, 106, 0.15);
-  --tab-indicator-color: #57606a;
+  --tab-hover-bg: rgba(208, 215, 222, 0.38);
+  --tab-indicator-color: #1f2328;
 
   /* Technical Metric Token (Quasigeoid Height ζ = h - H) */
   --color-metric-text: #0e7490;

@@ -114,6 +114,19 @@ All visual styling is governed by semantic CSS custom properties in `webapp/src/
    - `--radius-sm: 6px` (segmented buttons, dropdown items)
    - `--radius-md: 6px` (coordinate inputs, outputs, action buttons)
    - `--radius-lg: 8px` (studio cards, floating panels, map docks)
+4. **Global Configuration Section Card (`.shared-config-bar`)**:
+   - Framed elevated card (`margin: 12px 16px 10px; padding: 10px 14px 10px; border-radius: var(--radius-lg); background-color: var(--bg-surface-elevated); border: 1px solid var(--border-medium);`) containing the discrete `SETTINGS` landmark, optimized into 3 compact horizontal rows (`grid-template-columns: 125px 1fr`):
+     - **Row 1**: `Operation Direction` label $\to$ 28px sliding toggle (`ETRS89 to Stereo70` vs `Stereo70 to ETRS89`).
+     - **Row 2**: `Coordinate Order` label $\to$ 28px sliding toggle (`NE(H) / LatLon(h)` vs `EN(H) / LonLat(h)`).
+     - **Row 3**: `Angular Unit` label $\to$ compact dropdown (`.config-unit-select`, 95px) $\to$ adjacent `Example` label and copyable coordinate badge.
+5. **Three-Card Workbench Architecture (`PointConverter.ts`, `BatchConverter.ts`, `FileUpload.ts`)**:
+   - Organizes the converters into 3 dedicated section cards (`.studio-card`), a central active separator button, and a decoupled bottom action dock:
+     - **Card 1: Input (`INPUT`)**: Point input grid, multi-line batch text area, or drag-and-drop file dropzone with "Ignore header / first line" toggle (white background in light mode, pitch black in dark mode).
+     - **Active Separator**: Full-width primary `Transform` action button (`.transform-action-row`, 34px height) bridging input data entry with calculated results.
+     - **Card 2: Output (`OUTPUT`)**: Readonly outputs (grey background in both light and dark themes) with top-right copy action, Quasigeoid Height info chip (`.info-field-badge`), export buttons (`CSV`, `GeoJSON`, `DXF`), or transformed file downloads (`.file-download-btn`, `Download All`).
+     - **Card 3: Report (`REPORT`)**: Validation status card featuring sentence-case discrete labels (`Coordinates`, `Transformation`), grey non-editable 2D/3D status pills (`.status-pill-neutral`), and semantic quality indicators without icon symbols.
+     - **Bottom Actions Dock (`.workbench-actions-dock`)**: `Center on Map` and `Zoom to Extents` secondary outlined buttons (26px height, `.btn-secondary-action`) anchored at the bottom of the workbench pane.
+
 
 ### 3.3 Angle Formatting Display Rules
 - **Unspaced DMS**: `DD°MM'SS.SSSSS"` (e.g., `46°00'00.00000"`), with zero whitespace after `°` or `'`.
@@ -129,22 +142,28 @@ The top navigation bar (`52px` fixed height) serves as the unified application c
 
 1. **Single-Line Compactness (`height: 52px`)**:
    - Preserves a strict `52px` single-line profile across desktop viewports, organized into Left (Brand + Repository Attribution + Primary View Tabs) and Right (Help Menu + Language Selector Menu + Theme Toggle) clusters.
-2. **Brand Identity & Metadata Subrow Alignment**:
-   - The brand logo (`36px × 36px` inline SVG inside `.brand-logo-wrap`) sits next to a stacked text column where the lower metadata subrow (`v1.0.0-beta` badge on the left, `7.5px` semantic `.health-dot` on the right) spans `width: 100%; justify-content: space-between;` to match the exact width of `PyTransDatRO`.
+2. **Brand Identity & Centralized Naming**:
+   - The application title is centrally governed by `APP_CONFIG.appName` (`VITE_APP_NAME` fallback to `PyTransDatRO`) and synchronized with the browser tab `document.title`.
+   - The brand logo (`36px × 36px` inline SVG inside `.brand-logo-wrap`) sits next to a stacked text column where the lower metadata subrow (`v1.0.0-beta` badge on the left, `7.5px` semantic `.health-dot` on the right) spans `width: 100%; justify-content: space-between;` to match the exact width of the title.
+   - The `.health-dot` is a **status-only** indicator with native `title` hover tooltips (green for healthy, red for offline) with no click handler; live API outage reporting is decoupled to the global warning banner.
 3. **2-Line Repository Attribution (`powered by` / `PyTransDatRO`)**:
    - Located in the **left header zone** immediately to the right of the brand block, separated by a `1px solid var(--border-subtle)` left divider, pointing to GitHub:
      - **Line 1 (`.repo-link-prefix`)**: `powered by` (lowercase) in smaller, muted typography (`9.5px`, `color: var(--text-dim)`).
      - **Line 2 (`.repo-link-name`)**: `PyTransDatRO` in `12px` semi-bold (`font-weight: 600`, `color: var(--text-muted)`).
-4. **External Link Indicator Rule (Menu Items Only)**:
+4. **Primary View Tabs (`Transform` & `Usage`)**:
+   - Top-level application navigation (`.header-tab-btn`) styled at `13.5px`, height `32px`, `font-weight: 500` (inactive) / `font-weight: 600` (active).
+   - On hover, displays a discrete neutral gray pill background (`--tab-hover-bg`: `rgba(177, 186, 196, 0.12)` in dark mode, `rgba(208, 215, 222, 0.38)` in light mode) with a clean 10px vertical gap above the bottom header line, mirroring GitHub's UnderlineNav.
+   - On active, renders a crisp neutral gray `2.5px` bottom indicator line (`--tab-indicator-color`: `#d0d7de` in dark mode, `#1f2328` in light mode) flush with the header boundary.
+5. **External Link Indicator Rule (Menu Items Only)**:
    - The oblique external link arrow (`↗` SVG icon) applies **strictly to external items inside dropdown menus** (such as ROMPOS portal, RomGEO desktop, etc.).
    - Top-level header brand and attribution links (`powered by PyTransDatRO`) **never** display the oblique `↗` arrow, keeping the primary header chrome clean and uncluttered.
-5. **Help Menu Structure & `RomGEO` Capitalization**:
+6. **Help Menu Structure & `RomGEO` Capitalization**:
    - Contains PyTransDatRO guides/diagnostics and official ANCPI/ROMPOS resource links.
    - All references to the official ANCPI transformation suite and API use capital **`GEO`** (**`RomGEO`**).
-6. **Distinction Between Status-Displaying Menus (`Language`) and Immediate-Action Buttons (`Theme Toggle`)**:
-   - **Language Selector Dropdown Menu (`#header-lang-details`)**: Displays current active state (`RO` or `EN`) via disclosure Dropdown Menu (`renderDropdownMenu`) with globe icon and active checkmarks (`✓`).
-   - **Theme Toggle Button (`#header-theme-btn`)**: Immediate single-click icon button (`.btn-icon`) flipping dark/light mode according to the sun/moon icon shown.
-7. **Brand Logo Reset vs. Brand Title Navigation**:
+7. **Action Cluster & Language Selector Menu (`#header-lang-details`)**:
+   - The right action cluster flows naturally: `[Help ▾] [RO ▾] [Theme ⊙]` without artificial vertical dividers separating the menus.
+   - The language selector uses a clean text-only trigger (`RO ▾` / `EN ▾`), eliminating decorative globe icons or national flags, maintaining visual quietness.
+8. **Brand Logo Reset vs. Brand Title Navigation**:
    - **Brand Title (`.brand-title-text`)**: Standard SPA route activation preserving active coordinate inputs.
    - **Brand Logo (`#header-brand-logo-wrap`)**: Explicit first-load reset action purging all inputs, outputs, batch text, file queues, map markers, and resetting to Romania extents.
 

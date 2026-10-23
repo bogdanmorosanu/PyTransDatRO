@@ -603,7 +603,7 @@ html[data-theme="light"] .chart-crosshair {
   letter-spacing: -0.3px;
 }
 
-/* GitHub-Style Underline Section Navigation Tabs */
+/* GitHub-Style Underline Section Navigation Tabs (Secondary Tabs - Archetype 1.2) */
 .telemetry-nav-tabs {
   display: flex;
   align-items: center;
@@ -614,20 +614,22 @@ html[data-theme="light"] .chart-crosshair {
 .telemetry-nav-tab-btn {
   background: transparent;
   border: none;
-  height: 100%;
-  padding: 0 14px;
-  font-size: 13.5px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  border-radius: var(--radius-sm);
   position: relative;
-  transition: color 0.15s ease;
+  transition: all var(--transition-fast);
 }
 
 .telemetry-nav-tab-btn:hover {
   color: var(--text-main);
+  background-color: var(--tab-hover-bg);
 }
 
 .telemetry-nav-tab-btn.active {
@@ -637,17 +639,18 @@ html[data-theme="light"] .chart-crosshair {
 
 .telemetry-tab-indicator {
   position: absolute;
-  bottom: 0;
-  left: 10px;
-  right: 10px;
+  bottom: -6px;
+  left: 6px;
+  right: 6px;
   height: 2px;
   background-color: transparent;
   border-radius: 2px 2px 0 0;
   transition: background-color 0.2s ease;
+  pointer-events: none;
 }
 
 .telemetry-nav-tab-btn.active .telemetry-tab-indicator {
-  background-color: var(--tab-indicator-color, var(--color-primary-light));
+  background-color: var(--tab-indicator-color);
 }
 
 .telemetry-page-content {

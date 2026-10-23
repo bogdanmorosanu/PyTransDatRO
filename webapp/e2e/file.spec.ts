@@ -22,7 +22,7 @@ test('file upload transforms a CSV and the downloaded file is 1-to-1 with the in
   });
   await expect(page.locator('.file-queue-name')).toHaveText('points.csv');
 
-  await page.getByRole('button', { name: 'Transform Files', exact: true }).click();
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
   await expect(page.locator('.file-status-badge.completed')).toBeVisible();
   await expect(page.getByText(/Valid \(3\)/i)).toBeVisible();
 

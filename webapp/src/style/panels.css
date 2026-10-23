@@ -650,10 +650,17 @@
 }
 
 .ffp-math-input {
-  width: 65px !important;
-  padding: 4px 6px !important;
-  font-size: 13px !important;
+  width: 96px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
   text-align: center;
+  -moz-appearance: textfield;
+}
+
+.ffp-math-input::-webkit-outer-spin-button,
+.ffp-math-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .ffp-aux-actions {

@@ -12,20 +12,35 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Base Text Inputs & Textareas */
 .form-input {
   width: 100%;
-  padding: 9px 12px;
   background-color: var(--bg-surface-input);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-main);
-  font-size: 13px;
+  font-size: 12.5px;
   transition: all var(--transition-fast);
   box-sizing: border-box;
+}
+
+input.form-input {
+  height: 30px;
+  padding: 4px 10px;
+  line-height: 1.3;
+}
+
+textarea.form-input {
+  height: auto;
+  min-height: 130px;
+  padding: 8px 10px;
+  line-height: 1.45;
 }
 
 .form-input:focus {
@@ -65,28 +80,49 @@
   box-shadow: 0 0 0 2px var(--color-primary-glow);
 }
 
-/* Sliding Direction Toggle (Top of Shared Config Bar) */
+.form-select-sm {
+  height: 30px;
+  padding: 3px 22px 3px 8px;
+  font-size: 12px;
+}
+
+.config-unit-select {
+  height: 28px;
+  width: 95px;
+  min-width: 95px;
+  max-width: 105px;
+  padding: 0 20px 0 8px;
+  font-size: 11.5px;
+  line-height: 26px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+/* Sliding Direction & Order Toggles (Shared Config Bar - Archetype 2.1) */
 .sliding-toggle {
   position: relative;
   display: flex;
   background-color: var(--bg-surface-input);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  padding: 3px;
+  border-radius: var(--radius-sm);
+  padding: 2px;
   user-select: none;
   width: 100%;
+  height: 28px;
   box-sizing: border-box;
 }
 
 .sliding-toggle-glider {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
   background-color: var(--btn-primary-bg);
   border: 1px solid var(--btn-primary-border);
-  border-radius: var(--radius-md);
+  border-radius: calc(var(--radius-sm) - 1px);
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
@@ -101,13 +137,22 @@
   transform: translateX(100%);
 }
 
+.sliding-toggle[data-order="NE"] .sliding-toggle-glider {
+  transform: translateX(0);
+}
+
+.sliding-toggle[data-order="EN"] .sliding-toggle-glider {
+  transform: translateX(100%);
+}
+
 .sliding-toggle-btn {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 2px 8px;
+  font-size: 11.5px;
   font-weight: 500;
+  line-height: 1.2;
   color: var(--text-dim);
   cursor: pointer;
   text-align: center;
@@ -115,6 +160,9 @@
   z-index: 2;
   transition: color var(--transition-fast);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sliding-toggle-btn:hover {
@@ -305,3 +353,72 @@
   border-color: var(--color-primary);
   background-color: var(--color-primary-glow);
 }
+
+/* Toggle Switch Component (Archetype 2.3) */
+.toggle-switch-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.toggle-switch-container:hover {
+  color: var(--text-main);
+}
+
+.toggle-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.toggle-switch-track {
+  width: 30px;
+  height: 17px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 9px;
+  position: relative;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.toggle-switch-thumb {
+  position: absolute;
+  top: 1.5px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--text-dim);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color var(--transition-fast);
+}
+
+.toggle-switch-input:checked + .toggle-switch-track {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.toggle-switch-input:checked + .toggle-switch-track .toggle-switch-thumb {
+  transform: translateX(12px);
+  background-color: #ffffff;
+}
+
+.toggle-switch-input:focus-visible + .toggle-switch-track {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+.toggle-switch-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+

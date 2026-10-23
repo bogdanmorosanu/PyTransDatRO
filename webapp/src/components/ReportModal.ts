@@ -60,7 +60,7 @@ export class ReportModal {
           }
         </div>
         <div class="modal-footer">
-          <button class="btn btn-primary" id="modal-close-btn">${t('report.closeBtn')}</button>
+          <button class="btn btn-primary btn-sm" id="modal-close-btn">${t('report.closeBtn')}</button>
         </div>
       </div>
     `;

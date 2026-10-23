@@ -14,7 +14,7 @@ import { syncFaviconWithTheme } from './assets/logos';
 import { Header } from './components/Header';
 import { PointConverter, type AngularUnitType } from './components/PointConverter';
 import { MapView } from './components/MapView';
-import { E2E_ENABLED } from './config';
+import { APP_CONFIG, E2E_ENABLED } from './config';
 import { BatchConverter } from './components/BatchConverter';
 import { FileUpload } from './components/FileUpload';
 import { GeodeticHelpPanel } from './components/GeodeticHelpPanel';
@@ -25,7 +25,7 @@ import { VolumeWarningModal } from './components/VolumeWarningModal';
 import { apiClient, type TransformationOp } from './utils/apiClient';
 import type { CoordinateOrder } from './utils/pointParser';
 import { showToast } from './utils/toast';
-import { renderSelect, renderSegmentedControl, renderCopyBadge } from './ui';
+import { renderSelect, renderCopyBadge } from './ui';
 
 type ActiveTab = 'point' | 'batch' | 'file';
 type AppPage = 'studio' | 'telemetry';
@@ -58,6 +58,7 @@ class App {
   private volumeWarningModal = new VolumeWarningModal();
 
   constructor() {
+    document.title = APP_CONFIG.appName;
     this.rootElement = document.getElementById('app-root')!;
     this.readInitialQueryParams();
     this.initTheme();
@@ -291,7 +292,17 @@ class App {
   private setDirection(op: TransformationOp): void {
     if (this.currentOp === op) return;
     this.currentOp = op;
-    this.renderSharedConfigBar();
+    const isEtrs = op === 'ETRS89ToStereo70';
+    const slider = this.sharedConfigBar.querySelector('.sliding-toggle[data-direction]');
+    if (slider) {
+      slider.setAttribute('data-direction', isEtrs ? 'etrs' : 's70');
+      slider.querySelectorAll('.sliding-toggle-btn').forEach((btn) => {
+        const btnOp = btn.getAttribute('data-op');
+        const active = btnOp === op;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-checked', String(active));
+      });
+    }
     this.pointConverter.setDirection(op);
     this.batchConverter.setDirection(op);
     this.fileUpload.setDirection(op);
@@ -300,17 +311,43 @@ class App {
   private setAngularUnit(unit: AngularUnitType): void {
     if (this.currentAngularUnit === unit) return;
     this.currentAngularUnit = unit;
-    this.renderSharedConfigBar();
+    this.updateFormatExampleBadge();
     this.pointConverter.setAngularUnit(unit);
     this.batchConverter.setAngularUnit(unit);
     this.fileUpload.setAngularUnit(unit);
     this.mapView.setAngularUnit(unit);
   }
 
+  private updateFormatExampleBadge(): void {
+    let sampleText = '45.84123450';
+    if (this.currentAngularUnit === 'dms') {
+      sampleText = '45°50\'28.44420"';
+    } else if (this.currentAngularUnit === 'radians') {
+      sampleText = '0.7997813210';
+    }
+    const currentBadge = this.sharedConfigBar.querySelector('#angle-format-example-badge');
+    const newBadge = renderCopyBadge({
+      id: 'angle-format-example-badge',
+      text: sampleText,
+      tooltip: t('point.clickToSelect'),
+      onCopied: () => showToast(t('point.copiedToast'), 'success'),
+    });
+    currentBadge?.replaceWith(newBadge);
+  }
+
   private setCoordinateOrder(order: CoordinateOrder): void {
     if (this.currentOrder === order) return;
     this.currentOrder = order;
-    this.renderSharedConfigBar();
+    const orderSlider = this.sharedConfigBar.querySelector('#shared-order-control');
+    if (orderSlider) {
+      orderSlider.setAttribute('data-order', order);
+      orderSlider.querySelectorAll('.sliding-toggle-btn').forEach((btn) => {
+        const btnOrder = btn.getAttribute('data-order-val');
+        const active = btnOrder === order;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-checked', String(active));
+      });
+    }
     this.pointConverter.setCoordinateOrder(order);
     this.batchConverter.setCoordinateOrder(order);
     this.fileUpload.setCoordinateOrder(order);
@@ -327,49 +364,63 @@ class App {
     }
 
     this.sharedConfigBar.innerHTML = `
-      <!-- Tier 1: Sliding Direction Toggle (ETRS89 ➔ Stereo 70 first, Stereo 70 ➔ ETRS89 second) -->
-      <div class="sliding-toggle" data-direction="${isEtrs ? 'etrs' : 's70'}" role="radiogroup" aria-label="${t('point.directionLabel')}">
-        <div class="sliding-toggle-glider"></div>
-        <button type="button" class="sliding-toggle-btn ${isEtrs ? 'active' : ''}" data-op="ETRS89ToStereo70" role="radio" aria-checked="${isEtrs}">
-          ${t('point.opETRSToS70')}
-        </button>
-        <button type="button" class="sliding-toggle-btn ${!isEtrs ? 'active' : ''}" data-op="Stereo70ToETRS89" role="radio" aria-checked="${!isEtrs}">
-          ${t('point.opS70ToETRS')}
-        </button>
+      <!-- Discrete Section Landmark (Archetype 5) -->
+      <div class="section-micro-label">${t('config.sectionTitle')}</div>
+
+      <!-- Row 1: Sliding Direction Toggle (ETRS89 to Stereo70, Stereo70 to ETRS89) -->
+      <div class="config-row">
+        <label class="form-label">${t('point.directionLabel')}</label>
+        <div class="sliding-toggle" data-direction="${isEtrs ? 'etrs' : 's70'}" role="radiogroup" aria-label="${t('point.directionLabel')}">
+          <div class="sliding-toggle-glider"></div>
+          <button type="button" class="sliding-toggle-btn ${isEtrs ? 'active' : ''}" data-op="ETRS89ToStereo70" role="radio" aria-checked="${isEtrs}">
+            ${t('point.opETRSToS70')}
+          </button>
+          <button type="button" class="sliding-toggle-btn ${!isEtrs ? 'active' : ''}" data-op="Stereo70ToETRS89" role="radio" aria-checked="${!isEtrs}">
+            ${t('point.opS70ToETRS')}
+          </button>
+        </div>
       </div>
 
-      <!-- Tier 2: 50/50 Split: Angular Unit | Coordinate Order -->
-      <div class="shared-config-row">
-        <div class="config-field-group">
-          <span class="config-field-label">${t('point.unitLabel')}</span>
+      <!-- Row 2: Coordinate Order Sliding Toggle -->
+      <div class="config-row">
+        <label class="form-label">${t('common.coordOrder')}</label>
+        <div class="sliding-toggle" id="shared-order-control" data-order="${this.currentOrder}" role="radiogroup" aria-label="${t('common.coordOrder')}">
+          <div class="sliding-toggle-glider"></div>
+          <button type="button" class="sliding-toggle-btn ${this.currentOrder === 'NE' ? 'active' : ''}" data-order-val="NE" role="radio" aria-checked="${this.currentOrder === 'NE'}">
+            NE(H) / LatLon(h)
+          </button>
+          <button type="button" class="sliding-toggle-btn ${this.currentOrder === 'EN' ? 'active' : ''}" data-order-val="EN" role="radio" aria-checked="${this.currentOrder === 'EN'}">
+            EN(H) / LonLat(h)
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 3: Angular Unit + Example -->
+      <div class="config-row">
+        <label class="form-label">${t('point.unitLabel')}</label>
+        <div class="config-unit-cluster">
           <div id="angular-unit-slot"></div>
+          <div class="config-example-subgroup">
+            <span class="info-label">${t('point.exampleLabel')}</span>
+            <div id="format-example-slot"></div>
+          </div>
         </div>
-
-        <div class="coord-order-picker">
-          <span class="config-field-label">${t('common.coordOrder')}</span>
-          <div id="coord-order-slot"></div>
-        </div>
-      </div>
-
-      <!-- Tier 3: Angle Format Example with Isolated Copyable Badge -->
-      <div class="format-example-row">
-        <span class="format-example-label">${t('point.exampleFormatLabel')}</span>
-        <div id="format-example-slot"></div>
       </div>
     `;
 
     // Direction Toggle Listeners
-    this.sharedConfigBar.querySelectorAll('.sliding-toggle-btn').forEach((btn) => {
+    this.sharedConfigBar.querySelectorAll('.sliding-toggle[data-direction] .sliding-toggle-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const op = btn.getAttribute('data-op') as TransformationOp;
         if (op) this.setDirection(op);
       });
     });
 
-    // Tier 2: Reusable renderSelect
+    // Row 3: Reusable renderSelect for Angular Unit
     const select = renderSelect<AngularUnitType>({
       id: 'angular-unit-select',
       ariaLabel: t('point.unitLabel'),
+      className: 'config-unit-select',
       selectedValue: this.currentAngularUnit,
       options: [
         { value: 'degrees', label: t('point.unitDeg') },
@@ -380,19 +431,13 @@ class App {
     });
     this.sharedConfigBar.querySelector('#angular-unit-slot')?.replaceWith(select);
 
-    // Tier 2: Reusable renderSegmentedControl
-    const orderControl = renderSegmentedControl<CoordinateOrder>({
-      id: 'shared-order-control',
-      ariaLabel: t('common.coordOrder'),
-      activeValue: this.currentOrder,
-      style: { fontSize: '11px' },
-      options: [
-        { value: 'NE', label: 'NE(H)', id: 'shared-order-ne' },
-        { value: 'EN', label: 'EN(H)', id: 'shared-order-en' },
-      ],
-      onChange: (order) => this.setCoordinateOrder(order),
+    // Tier 2: Coordinate Order Sliding Toggle Listeners
+    this.sharedConfigBar.querySelectorAll('#shared-order-control .sliding-toggle-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const order = btn.getAttribute('data-order-val') as CoordinateOrder;
+        if (order) this.setCoordinateOrder(order);
+      });
     });
-    this.sharedConfigBar.querySelector('#coord-order-slot')?.replaceWith(orderControl);
 
     // Tier 3: Reusable renderCopyBadge
     const copyBadge = renderCopyBadge({
@@ -406,15 +451,17 @@ class App {
 
   private renderTabs(): void {
     this.tabsBar.innerHTML = `
-      <span class="tabs-prefix">${t('tabs.prefix')}</span>
       <button class="tab-btn ${this.activeTab === 'point' ? 'active' : ''}" id="tab-point" data-tab="point">
         <span>${t('tabs.point')}</span>
+        <span class="tab-indicator"></span>
       </button>
       <button class="tab-btn ${this.activeTab === 'batch' ? 'active' : ''}" id="tab-text" data-tab="batch">
         <span>${t('tabs.batch')}</span>
+        <span class="tab-indicator"></span>
       </button>
       <button class="tab-btn ${this.activeTab === 'file' ? 'active' : ''}" id="tab-files" data-tab="file">
         <span>${t('tabs.file')}</span>
+        <span class="tab-indicator"></span>
       </button>
     `;
 

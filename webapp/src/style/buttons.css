@@ -82,6 +82,32 @@
   cursor: not-allowed;
 }
 
+/* Compact Button Modifier (Dialogs, Modals - Archetype 6.7) */
+.btn-sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  gap: 6px;
+}
+
+/* Secondary Workbench Action Buttons (Download As, Map Navigation - Archetypes 6.2 & 6.5) */
+.btn-secondary-action {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 24px;
+  border-radius: var(--radius-sm);
+  gap: 5px;
+}
+
+.btn-secondary-action svg {
+  width: 12px;
+  height: 12px;
+}
+
 /* Icon-Only Button */
 .btn-icon {
   padding: 8px;

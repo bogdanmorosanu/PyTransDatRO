@@ -38,6 +38,7 @@ export class FileUpload {
   private op: TransformationOp = 'ETRS89ToStereo70';
   private angularUnit: AngularUnitType = 'degrees';
   private order: CoordinateOrder = 'NE';
+  private skipHeader: boolean = false;
 
   private fileQueue: QueuedFileItem[] = [];
   private isProcessing: boolean = false;
@@ -73,6 +74,16 @@ export class FileUpload {
 
   public getCoordinateOrder(): CoordinateOrder {
     return this.order;
+  }
+
+  public setSkipHeader(skip: boolean): void {
+    if (this.skipHeader === skip) return;
+    this.skipHeader = skip;
+    this.render();
+  }
+
+  public getSkipHeader(): boolean {
+    return this.skipHeader;
   }
 
   public clearQueue(): void {
@@ -372,6 +383,8 @@ export class FileUpload {
 
   private render(): void {
     const hasFiles = this.fileQueue.length > 0;
+    const pendingFiles = this.fileQueue.filter((f) => f.status === 'pending' || f.status === 'processing');
+    const outputFiles = this.fileQueue.filter((f) => f.status === 'completed' || f.status === 'error');
     const completedCount = this.fileQueue.filter((f) => f.status === 'completed').length;
     const cumulativePoints = this.fileQueue.flatMap((f) => f.points || []);
 
@@ -383,22 +396,24 @@ export class FileUpload {
     const totalPoints = totalValid + totalOutGrid + totalErrors;
 
     this.container.innerHTML = `
-      <div class="studio-card">
-        ${
-          hasFiles
-            ? `
-          <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-            <button class="btn btn-outline" id="file-clear-queue-btn" style="padding: 3px 8px; font-size: 11px;">
-              ✕ ${t('file.clearQueue')}
+      <!-- Card 1: Input Section -->
+      <div class="studio-card" role="group" aria-label="${t('file.inputLabel')}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div class="section-micro-label">${t('file.inputLabel')}</div>
+          ${
+            hasFiles
+              ? `
+            <button class="btn btn-outline btn-secondary-action" id="file-clear-queue-btn">
+              ${t('file.clearQueue')}
             </button>
-          </div>
-        `
-            : ''
-        }
+          `
+              : ''
+          }
+        </div>
 
         <!-- 1. Drag and Drop Dropzone -->
         <div id="file-dropzone" class="file-dropzone">
-          <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 4px; color: var(--text-main);">
+          <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text-main);">
             ${t('file.dropzoneTitle')}
           </div>
           <div style="color: var(--text-muted); font-size: 11.5px;">
@@ -407,15 +422,26 @@ export class FileUpload {
           <input type="file" id="file-input-hidden" aria-label="${t('file.dropzoneTitle')}" multiple accept=".csv,.txt,.xyz,.dat" style="display: none;" />
         </div>
 
-        <!-- 2. Queued Files List with File Details and Per-File Quality Metrics -->
+        <!-- Options Row: Skip Header Toggle -->
+        <div class="file-options-row" style="margin-top: 10px; display: flex; align-items: center; justify-content: flex-start;">
+          <label class="toggle-switch-container" for="file-skip-header-toggle">
+            <input type="checkbox" id="file-skip-header-toggle" class="toggle-switch-input" ${this.skipHeader ? 'checked' : ''} />
+            <span class="toggle-switch-track">
+              <span class="toggle-switch-thumb"></span>
+            </span>
+            <span class="toggle-switch-label">${t('file.ignoreHeader')}</span>
+          </label>
+        </div>
+
+        <!-- Queued Input Files List -->
         ${
-          hasFiles
+          pendingFiles.length > 0
             ? `
           <div class="file-queue">
-            <div style="font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px;">
-              ${t('file.queueTitle')} (${this.fileQueue.length})
+            <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px;">
+              ${t('file.queueTitle')} (${pendingFiles.length})
             </div>
-            ${this.fileQueue
+            ${pendingFiles
               .map((item) => {
                 const sizeKb = formatTelemetryDecimal(item.file.size / 1024, 1);
                 let badgeClass = 'pending';
@@ -423,39 +449,97 @@ export class FileUpload {
                 if (item.status === 'processing') {
                   badgeClass = 'processing';
                   statusLabel = t('file.statusProcessing');
-                } else if (item.status === 'completed') {
-                  badgeClass = 'completed';
-                  statusLabel = t('file.statusCompleted');
-                } else if (item.status === 'error') {
-                  badgeClass = 'error';
-                  statusLabel = t('file.statusError');
-                }
-
-                let metaDetails = `${sizeKb} KB`;
-                if (item.status === 'completed' && item.validRows !== undefined) {
-                  metaDetails += ` • ${t('quality.validCoords')}: ${item.validRows}`;
-                  if (item.outOfGridRows && item.outOfGridRows > 0) {
-                    metaDetails += ` • ⚠ ${t('quality.outsideGrid')}: ${item.outOfGridRows}`;
-                  }
-                  if (item.errorRows && item.errorRows > 0) {
-                    metaDetails += ` • ✕ ${item.errorRows} errors`;
-                  }
-                } else if (item.status === 'error' && item.errorMsg) {
-                  metaDetails += ` • ${item.errorMsg}`;
                 }
 
                 return `
                   <div class="file-queue-item" data-id="${item.id}">
                     <div class="file-queue-info">
                       <div class="file-queue-name" title="${item.file.name}">${item.file.name}</div>
-                      <div class="file-queue-meta">${metaDetails}</div>
+                      <div class="file-queue-meta">${sizeKb} KB</div>
+                    </div>
+                    <div class="file-queue-actions">
+                      <span class="file-status-badge ${badgeClass}">${statusLabel}</span>
+                      <button class="btn-icon file-queue-remove" data-id="${item.id}" title="${t('file.removeItem')}" aria-label="${t('file.removeItem')}">
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        `
+            : ''
+        }
+      </div>
+
+      <!-- Active Separator Button between Input & Output -->
+      <div class="transform-action-row">
+        <button 
+          class="btn btn-primary" 
+          id="file-start-btn" 
+          ${pendingFiles.length === 0 || this.isProcessing ? 'disabled' : ''}
+        >
+          <span>${this.isProcessing ? t('file.streamingProgress') : t('file.transformBtn')}</span>
+        </button>
+      </div>
+
+      <!-- Card 2: Output Section -->
+      <div class="studio-card result-card" role="group" aria-label="${t('file.outputLabel')}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div class="section-micro-label">${t('file.outputLabel')}</div>
+          ${
+            outputFiles.length > 0
+              ? `
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button class="btn btn-outline btn-secondary-action" id="file-clear-output-btn">
+                <span>${t('file.clearOutput')}</span>
+              </button>
+              ${
+                completedCount > 1
+                  ? `
+                <button class="btn btn-secondary btn-secondary-action" id="file-download-all-btn">
+                  <span>${t('file.downloadAll')}</span>
+                </button>
+              `
+                  : ''
+              }
+            </div>
+          `
+              : ''
+          }
+        </div>
+
+        ${
+          outputFiles.length === 0
+            ? `
+          <div class="file-empty-state">
+            ${t('file.noTransformedFiles')}
+          </div>
+        `
+            : `
+          <div class="file-queue">
+            ${outputFiles
+              .map((item) => {
+                let badgeClass = 'completed';
+                let statusLabel = t('file.statusCompleted');
+                if (item.status === 'error') {
+                  badgeClass = 'error';
+                  statusLabel = t('file.statusError');
+                }
+
+                return `
+                  <div class="file-queue-item" data-id="${item.id}">
+                    <div class="file-queue-info">
+                      <div class="file-queue-name" title="${item.downloadName || item.file.name}">${item.file.name}</div>
+                      ${item.status === 'error' && item.errorMsg ? `<div class="file-queue-meta">${item.errorMsg}</div>` : ''}
                     </div>
                     <div class="file-queue-actions">
                       <span class="file-status-badge ${badgeClass}">${statusLabel}</span>
                       ${
                         item.status === 'completed'
                           ? `
-                        <button class="btn btn-outline file-download-btn" data-id="${item.id}" style="padding: 3px 8px; font-size: 11px;">
+                        <button class="btn btn-secondary btn-secondary-action file-download-btn" data-id="${item.id}">
                           ${t('file.downloadBtn')}
                         </button>
                       `
@@ -471,112 +555,90 @@ export class FileUpload {
               .join('')}
           </div>
         `
-            : ''
         }
+      </div>
 
-        <!-- 3. Primary Action Button -->
+      <!-- Card 3: Report Section -->
+      <div class="studio-card report-card" role="group" aria-label="${t('quality.sectionTitle')}">
+        <div class="section-micro-label">${t('quality.sectionTitle')}</div>
+        <div class="quality-report-content" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Top Row: Coordinates -->
+          <div class="quality-report-row">
+            <span class="quality-label">${t('quality.sectionCoords')}</span>
+            <div class="quality-report-badges">
+              <span class="status-pill status-pill-neutral">
+                ${t('quality.total')} (${totalPoints})
+              </span>
+              <span class="status-pill status-pill-neutral">
+                ${t('quality.dim2D')} (${total2D})
+              </span>
+              <span class="status-pill status-pill-neutral">
+                ${t('quality.dim3D')} (${total3D})
+              </span>
+            </div>
+          </div>
+
+          <!-- Discrete Dashed Separator Line -->
+          <div class="quality-report-divider-dashed"></div>
+
+          <!-- Bottom Row: Transformation -->
+          <div class="quality-report-row">
+            <span class="quality-label">${t('quality.sectionTransform')}</span>
+            <div class="quality-report-badges">
+              ${
+                totalValid > 0
+                  ? `<span class="status-pill success">${t('quality.valid')} (${totalValid})</span>`
+                  : ''
+              }
+              ${
+                totalOutGrid > 0
+                  ? `<span class="status-pill warning">${t('quality.outsideGrid')} (${totalOutGrid})</span>`
+                  : ''
+              }
+              ${
+                totalErrors > 0
+                  ? `<span class="status-pill danger">${t('quality.invalidInput')} (${totalErrors})</span>`
+                  : ''
+              }
+              ${
+                completedCount === 0 && totalErrors === 0
+                  ? `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`
+                  : ''
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decoupled Map Navigation Dock -->
+      <div class="workbench-actions-dock">
         <button 
-          class="btn btn-primary" 
-          id="file-start-btn" 
-          style="width: 100%; margin-top: 14px;" 
-          ${!hasFiles || this.isProcessing ? 'disabled' : ''}
+          class="btn btn-outline center-map-btn btn-secondary-action" 
+          id="file-center-map-btn" 
+          ${cumulativePoints.length === 0 ? 'disabled' : ''} 
         >
-          <span>${this.isProcessing ? t('file.streamingProgress') : t('file.transformBtn')}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+          </svg>
+          <span>${t('common.centerOnMap')}</span>
         </button>
-
-        <!-- 4. Cumulative Quality Report & Download Actions -->
-        ${
-          completedCount > 0
-            ? `
-          <div class="quality-report-card" style="margin-top: 14px;">
-            <!-- Top Section: Coordinates -->
-            <div class="quality-report-section coords-section">
-              <span class="quality-section-header">${t('quality.sectionCoords')}</span>
-              <div class="quality-report-badges">
-                <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
-                  ${t('quality.total')}: ${totalPoints}
-                </span>
-                <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
-                  ${t('quality.dim2D')}: ${total2D}
-                </span>
-                <span class="status-pill" style="background-color: var(--bg-surface-elevated); color: var(--text-muted); border: 1px solid var(--border-medium);">
-                  ${t('quality.dim3D')}: ${total3D}
-                </span>
-              </div>
-            </div>
-
-            <!-- Discrete Dashed Separator Line -->
-            <div class="quality-report-divider-dashed"></div>
-
-            <!-- Bottom Section: Transformation -->
-            <div class="quality-report-section transform-section">
-              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <span class="quality-section-header">${t('quality.sectionTransform')}</span>
-                ${
-                  completedCount > 1
-                    ? `
-                  <button class="btn btn-secondary" id="file-download-all-btn" style="padding: 3px 8px; font-size: 11px;">
-                    <span>${t('file.downloadAll')}</span>
-                  </button>
-                `
-                    : ''
-                }
-              </div>
-              <div class="quality-report-badges">
-                ${
-                  totalValid > 0
-                    ? `<span class="status-pill success">✓ ${t('quality.valid')} (${totalValid})</span>`
-                    : ''
-                }
-                ${
-                  totalOutGrid > 0
-                    ? `<span class="status-pill warning">⚠ ${t('quality.outsideGrid')} (${totalOutGrid})</span>`
-                    : ''
-                }
-                ${
-                  totalErrors > 0
-                    ? `<span class="status-pill danger">✕ ${t('quality.invalidInput')} (${totalErrors})</span>`
-                    : ''
-                }
-              </div>
-            </div>
-          </div>
-
-          <!-- 5. Bottom-Right Navigation Actions -->
-          <div class="action-footer-right" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; margin-top: 10px;">
-            <button 
-              class="btn btn-outline center-map-btn" 
-              id="file-center-map-btn" 
-              ${cumulativePoints.length === 0 ? 'disabled' : ''} 
-              style="padding: 4px 10px; font-size: 11.5px;"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="22" y1="12" x2="18" y2="12"></line>
-                <line x1="6" y1="12" x2="2" y2="12"></line>
-                <line x1="12" y1="6" x2="12" y2="2"></line>
-                <line x1="12" y1="22" x2="12" y2="18"></line>
-              </svg>
-              <span>${t('common.centerOnMap')}</span>
-            </button>
-            <button 
-              class="btn btn-outline zoom-extents-btn" 
-              id="file-zoom-extents-btn" 
-              ${cumulativePoints.length === 0 ? 'disabled' : ''} 
-              style="padding: 4px 10px; font-size: 11.5px;"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                <line x1="11" y1="8" x2="11" y2="14"></line>
-                <line x1="8" y1="11" x2="14" y2="11"></line>
-              </svg>
-              <span>${t('common.zoomToExtents')}</span>
-            </button>
-          </div>
-        `
-            : ''
-        }
+        <button 
+          class="btn btn-outline zoom-extents-btn btn-secondary-action" 
+          id="file-zoom-extents-btn" 
+          ${cumulativePoints.length === 0 ? 'disabled' : ''} 
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+          <span>${t('common.zoomToExtents')}</span>
+        </button>
       </div>
     `;
 
@@ -615,6 +677,13 @@ export class FileUpload {
       });
     }
 
+    const skipHeaderToggle = this.container.querySelector('#file-skip-header-toggle') as HTMLInputElement | null;
+    if (skipHeaderToggle) {
+      skipHeaderToggle.addEventListener('change', (e) => {
+        this.skipHeader = (e.target as HTMLInputElement).checked;
+      });
+    }
+
     this.container.querySelector('#file-clear-queue-btn')?.addEventListener('click', () => {
       this.fileQueue = [];
       this.callbacks?.onClearFiles?.();
@@ -627,6 +696,10 @@ export class FileUpload {
 
     this.container.querySelector('#file-download-all-btn')?.addEventListener('click', () => {
       this.downloadAll();
+    });
+
+    this.container.querySelector('#file-clear-output-btn')?.addEventListener('click', () => {
+      // Reserved for user implementation
     });
 
     // Center on map from completed files

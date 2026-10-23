@@ -268,8 +268,8 @@ export class FeedbackPanel {
 
         <!-- Report Type Selector -->
         <div class="form-group" style="margin-bottom: 14px;">
-          <label class="form-label uppercase-label">${t('feedback.typeLabel')}</label>
-          <select class="form-input" id="fb-type-select">
+          <label class="form-label">${t('feedback.typeLabel')}</label>
+          <select class="form-select form-select-sm" id="fb-type-select">
             <option value="discrepancy" ${this.currentType === 'discrepancy' ? 'selected' : ''}>${t('feedback.typeDiscrepancy')}</option>
             <option value="grid_update" ${this.currentType === 'grid_update' ? 'selected' : ''}>${t('feedback.typeGridUpdate')}</option>
             <option value="bug" ${this.currentType === 'bug' ? 'selected' : ''}>${t('feedback.typeBug')}</option>
@@ -281,7 +281,7 @@ export class FeedbackPanel {
         <!-- Detailed Description / Template Area -->
         <div class="form-group" style="margin-bottom: 12px; flex: 1; display: flex; flex-direction: column;">
           <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px;">
-            <label class="form-label uppercase-label" style="margin-bottom: 0;">${t('feedback.messageLabel')}</label>
+            <label class="form-label" style="margin-bottom: 0;">${t('feedback.messageLabel')}</label>
             <span class="ffp-template-hint">${t('feedback.templateHint')}</span>
           </div>
           <textarea class="form-input mono ffp-textarea" id="fb-message-input" rows="8"></textarea>
@@ -316,8 +316,8 @@ export class FeedbackPanel {
 
       <!-- Footer -->
       <div class="ffp-footer">
-        <button class="btn btn-secondary" id="fb-cancel-btn">Close</button>
-        <button class="btn btn-primary" id="fb-submit-btn">${t('feedback.submitBtn')}</button>
+        <button class="btn btn-secondary btn-sm" id="fb-cancel-btn">${t('common.close')}</button>
+        <button class="btn btn-primary btn-sm" id="fb-submit-btn">${t('feedback.submitBtn')}</button>
       </div>
 
       <!-- Resizer Handle -->
