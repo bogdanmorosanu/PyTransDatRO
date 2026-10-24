@@ -268,7 +268,7 @@ class SqliteUsageLogger:
                     ),
                     (
                         "spatial",
-                        30,
+                        -1,
                         "2023-01-01",
                         "2023-01-01",
                         None,
@@ -306,6 +306,7 @@ class SqliteUsageLogger:
                 operation INTEGER NOT NULL,
                 is_3d INTEGER NOT NULL,
                 source INTEGER NOT NULL DEFAULT 0,
+                count_calls INTEGER NOT NULL DEFAULT 1,
                 count INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY (period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
             );
@@ -313,6 +314,17 @@ class SqliteUsageLogger:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_spatial_usage_period ON spatial_usage(period_start);"
         )
+
+        # Auto-migration: ensure count_calls column exists on spatial_usage
+        cursor.execute("PRAGMA table_info(spatial_usage)")
+        spatial_cols = {col[1] for col in cursor.fetchall()}
+        if "count_calls" not in spatial_cols:
+            try:
+                conn.execute(
+                    "ALTER TABLE spatial_usage ADD COLUMN count_calls INTEGER NOT NULL DEFAULT 1;"
+                )
+            except sqlite3.OperationalError:
+                pass
 
         # Automatic migration from legacy schema (daily_stats -> computation_usage, usage -> spatial_usage)
         self._migrate_legacy_tables_if_needed(conn)
@@ -366,10 +378,12 @@ class SqliteUsageLogger:
                 cursor.executemany(
                     """
                     INSERT INTO spatial_usage
-                        (period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count_calls, count)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                     ON CONFLICT(period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
-                    DO UPDATE SET count = count + excluded.count;
+                    DO UPDATE SET
+                        count_calls = count_calls + excluded.count_calls,
+                        count = count + excluded.count;
                 """,
                     migrated_rows,
                 )
@@ -423,28 +437,128 @@ class SqliteUsageLogger:
         if "computation" not in configs:
             configs["computation"] = (1, "2023-01-01")
         if "spatial" not in configs:
-            configs["spatial"] = (30, "2023-01-01")
+            configs["spatial"] = (-1, "2023-01-01")
 
         return configs
 
     def _calculate_period_window(self, date_obj, window_days, anchor_date_str):
-        if window_days <= 1:
-            date_str = date_obj.strftime("%Y-%m-%d")
-            return date_str, date_str
+        if window_days == -2:
+            # Calendar Year
+            y = date_obj.year
+            return f"{y:04d}-01-01", f"{y:04d}-12-31"
 
-        # If window_days is ~1 month (>= 28 days), align to calendar month boundaries
-        if window_days >= 28:
+        if window_days == -1 or window_days == 30:
+            # Calendar Month (-1 sentinel or legacy 30)
             y, m = date_obj.year, date_obj.month
             last_day = calendar.monthrange(y, m)[1]
             return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}"
 
-        # Otherwise align based on window_days starting from anchor_date
+        if window_days <= 1:
+            date_str = date_obj.strftime("%Y-%m-%d")
+            return date_str, date_str
+
+        # Mathematical N-day steps from anchor_date
         anchor = datetime.date.fromisoformat(anchor_date_str)
         delta_days = (date_obj - anchor).days
         bucket_index = delta_days // window_days
         period_start = anchor + datetime.timedelta(days=bucket_index * window_days)
         period_end = period_start + datetime.timedelta(days=window_days - 1)
         return period_start.strftime("%Y-%m-%d"), period_end.strftime("%Y-%m-%d")
+
+    @classmethod
+    def update_window_config(
+        cls,
+        conn: sqlite3.Connection,
+        metric_type: str,
+        window_days: int,
+        valid_from: Optional[str] = None,
+        anchor_date: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> dict:
+        """Transitions telemetry window configuration cleanly starting from valid_from.
+
+        To prevent data loss and period overlap:
+        - If valid_from is omitted, defaults to tomorrow.
+        - Clamps any active open period's period_end in `{metric_type}_usage` to yesterday (valid_from - 1 day).
+        - Closes the previous active telemetry_config row with valid_to = yesterday.
+        - Inserts the new configuration starting on valid_from.
+        """
+        today = datetime.date.today()
+        if valid_from is None:
+            valid_from_date = today + datetime.timedelta(days=1)
+            valid_from_str = valid_from_date.strftime("%Y-%m-%d")
+        else:
+            valid_from_date = datetime.date.fromisoformat(valid_from)
+            valid_from_str = valid_from
+
+        cutoff_date = valid_from_date - datetime.timedelta(days=1)
+        cutoff_str = cutoff_date.strftime("%Y-%m-%d")
+
+        if anchor_date is None:
+            anchor_date = valid_from_str
+
+        table_name = f"{metric_type}_usage"
+
+        with conn:
+            # 1. Clamp open periods ending after cutoff_str that started on or before cutoff_str
+            conn.execute(
+                f"""
+                UPDATE {table_name}
+                SET period_end = ?
+                WHERE period_end > ? AND period_start <= ?;
+                """,
+                (cutoff_str, cutoff_str, cutoff_str),
+            )
+
+            # 2. Close previous active config(s)
+            conn.execute(
+                """
+                UPDATE telemetry_config
+                SET valid_to = ?
+                WHERE metric_type = ? AND (valid_to IS NULL OR valid_to >= ?);
+                """,
+                (cutoff_str, metric_type, cutoff_str),
+            )
+
+            # 3. Insert new config
+            desc = (
+                description
+                or f"{metric_type} interval {window_days} days starting {valid_from_str}"
+            )
+            cursor = conn.execute(
+                """
+                INSERT INTO telemetry_config (metric_type, window_days, anchor_date, valid_from, valid_to, description)
+                VALUES (?, ?, ?, ?, NULL, ?);
+                """,
+                (metric_type, window_days, anchor_date, valid_from_str, desc),
+            )
+            new_id = cursor.lastrowid
+
+        return {
+            "id": new_id,
+            "metric_type": metric_type,
+            "window_days": window_days,
+            "anchor_date": anchor_date,
+            "valid_from": valid_from_str,
+            "cutoff_date": cutoff_str,
+        }
+
+    def update_config(
+        self,
+        metric_type: str,
+        window_days: int,
+        valid_from: Optional[str] = None,
+        anchor_date: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> dict:
+        """Instance helper to update window config via the logger's database."""
+        conn = self._get_db_connection()
+        try:
+            return self.update_window_config(
+                conn, metric_type, window_days, valid_from, anchor_date, description
+            )
+        finally:
+            conn.close()
 
     def _process_batch(self, conn, batch, today_date):
         today_str = today_date.strftime("%Y-%m-%d")
@@ -455,13 +569,13 @@ class SqliteUsageLogger:
             today_date, comp_window_days, comp_anchor
         )
 
-        spatial_window_days, spatial_anchor = configs.get("spatial", (30, "2023-01-01"))
+        spatial_window_days, spatial_anchor = configs.get("spatial", (-1, "2023-01-01"))
         spatial_start, spatial_end = self._calculate_period_window(
             today_date, spatial_window_days, spatial_anchor
         )
 
         computation_stats = {}  # (comp_start, comp_end, op, is_3d, src) -> [calls, points]
-        spatial_counts = {}  # (spatial_start, spatial_end, lat_d, lat_g, lon_d, lon_g, op, is_3d, src) -> count
+        spatial_stats = {}  # (spatial_start, spatial_end, lat_d, lat_g, lon_d, lon_g, op, is_3d, src) -> [calls, points]
 
         for operation, lats, lons, is_3d, source in batch:
             try:
@@ -522,16 +636,23 @@ class SqliteUsageLogger:
             computation_stats[comp_key][0] += 1
             computation_stats[comp_key][1] += len(valid_spatial_cells)
 
+            # Accumulate spatial usage: each distinct cell touched in this call gets 1 call, plus point counts
+            distinct_cells = set(valid_spatial_cells)
+            for sk in distinct_cells:
+                if sk not in spatial_stats:
+                    spatial_stats[sk] = [0, 0]  # [calls, points]
+                spatial_stats[sk][0] += 1
+
             for sk in valid_spatial_cells:
-                spatial_counts[sk] = spatial_counts.get(sk, 0) + 1
+                spatial_stats[sk][1] += 1
 
         comp_params = [
             (k[0], k[1], k[2], k[3], k[4], v[0], v[1]) for k, v in computation_stats.items()
         ]
 
         spatial_params = [
-            (k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], k[8], count)
-            for k, count in spatial_counts.items()
+            (k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], k[8], v[0], v[1])
+            for k, v in spatial_stats.items()
         ]
 
         comp_query = """
@@ -544,10 +665,12 @@ class SqliteUsageLogger:
         """
 
         spatial_query = """
-        INSERT INTO spatial_usage (period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO spatial_usage (period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count_calls, count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
-        DO UPDATE SET count = count + excluded.count;
+        DO UPDATE SET
+            count_calls = count_calls + excluded.count_calls,
+            count = count + excluded.count;
         """
 
         batch_total_points = sum(v[1] for v in computation_stats.values())

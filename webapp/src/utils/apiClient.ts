@@ -105,6 +105,8 @@ export interface TimelineSummary {
   avg_points_per_call: number;
   from_date: string | null;
   to_date: string | null;
+  effective_from_date?: string | null;
+  effective_to_date?: string | null;
   days_count: number | null;
   period_count?: number | null;
 }
@@ -173,6 +175,8 @@ export interface SpatialMatrixSummary {
   metric: 'points' | 'calls';
   from_date?: string | null;
   to_date?: string | null;
+  effective_from_date?: string | null;
+  effective_to_date?: string | null;
   quadrants: QuadrantSummary;
 }
 

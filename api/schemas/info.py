@@ -66,6 +66,8 @@ class TimelineSummary(BaseModel):
     avg_points_per_call: float
     from_date: Optional[str] = None
     to_date: Optional[str] = None
+    effective_from_date: Optional[str] = None
+    effective_to_date: Optional[str] = None
     days_count: Optional[int] = None
     period_count: Optional[int] = None
 
@@ -143,6 +145,8 @@ class SpatialMatrixSummary(BaseModel):
     metric: str
     from_date: Optional[str] = None
     to_date: Optional[str] = None
+    effective_from_date: Optional[str] = None
+    effective_to_date: Optional[str] = None
     quadrants: QuadrantSummary
 
 

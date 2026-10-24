@@ -29,6 +29,8 @@ test.describe('Usage Computation Subpage', () => {
     await expect(dateLimits.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
     await expect(dateLimits.locator('.info-label').nth(1)).toHaveText('Current Date');
     await expect(dateLimits.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+    await expect(dateLimits.locator('.info-label').nth(2)).toHaveText('Active Period');
+    await expect(dateLimits.locator('.info-field-readonly').nth(2)).toHaveText(/^\d{4}-\d{2}-\d{2}\s*→\s*\d{4}-\d{2}-\d{2}$/);
 
     // 5. Sources and Metric Enclosed Multi-Select Segmented Trays
     const multiSelectTrays = page.locator('.telemetry-btn-toggle-group.multi-select');

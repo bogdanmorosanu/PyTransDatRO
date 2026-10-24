@@ -407,6 +407,10 @@ export class TelemetryDashboard {
       })
       .join('');
 
+    const compEffectiveFrom = this.timelineData?.summary?.effective_from_date ?? this.timelineData?.summary?.from_date ?? this.customStartDate;
+    const compEffectiveTo = this.timelineData?.summary?.effective_to_date ?? this.timelineData?.summary?.to_date ?? this.customEndDate;
+    const compEffectiveSpan = compEffectiveFrom && compEffectiveTo ? `${compEffectiveFrom} → ${compEffectiveTo}` : `${this.customStartDate} → ${this.customEndDate}`;
+
     return `
       <!-- KPI Banner: Neutral Theme Colors, Clean Info Presentation -->
       <div class="telemetry-kpi-banner">
@@ -481,6 +485,10 @@ export class TelemetryDashboard {
             <div class="telemetry-info-subgroup">
               <span class="info-label">${t('stats.currentDate')}</span>
               <span class="info-field-readonly">${this.maxHistoryDate}</span>
+            </div>
+            <div class="telemetry-info-subgroup" id="comp-effective-period-group">
+              <span class="info-label">${t('stats.effectivePeriod')}</span>
+              <span class="info-field-readonly active-period-value">${compEffectiveSpan}</span>
             </div>
           </div>
         </div>
@@ -871,6 +879,10 @@ export class TelemetryDashboard {
       })
       .join('');
 
+    const spEffectiveFrom = this.spatialData?.summary?.effective_from_date ?? this.spatialData?.summary?.from_date ?? this.spatialCustomStartDate;
+    const spEffectiveTo = this.spatialData?.summary?.effective_to_date ?? this.spatialData?.summary?.to_date ?? this.spatialCustomEndDate;
+    const spatialEffectiveSpan = spEffectiveFrom && spEffectiveTo ? `${spEffectiveFrom} → ${spEffectiveTo}` : `${this.spatialCustomStartDate} → ${this.spatialCustomEndDate}`;
+
     return `
       <!-- Overall Stats Area: 2 Archetype 8.1 Standalone KPI Cards -->
       <div class="telemetry-kpi-banner two-cards">
@@ -978,6 +990,10 @@ export class TelemetryDashboard {
             <div class="telemetry-info-subgroup">
               <span class="info-label">${t('stats.currentDate')}</span>
               <span class="info-field-readonly">${this.maxHistoryDate}</span>
+            </div>
+            <div class="telemetry-info-subgroup" id="spatial-effective-period-group">
+              <span class="info-label">${t('stats.effectivePeriod')}</span>
+              <span class="info-field-readonly active-period-value">${spatialEffectiveSpan}</span>
             </div>
           </div>
         </div>

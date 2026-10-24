@@ -36,7 +36,7 @@ def test_telemetry_batching_and_binning(tmp_path):
 
     # Verify spatial_usage table (spatial ~1 km bins with date range)
     cursor.execute("""
-        SELECT period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count
+        SELECT period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count, count_calls
         FROM spatial_usage
     """)
     rows = cursor.fetchall()
@@ -52,7 +52,8 @@ def test_telemetry_batching_and_binning(tmp_path):
     assert row[6] == 1  # operation: 1 (st70_to_etrs89)
     assert row[7] == 0  # is_3d
     assert row[8] == 2  # source
-    assert row[9] == 10  # count
+    assert row[9] == 10  # count (points)
+    assert row[10] == 10  # count_calls
 
     # Verify computation_usage table
     cursor.execute("""
@@ -89,7 +90,7 @@ def test_telemetry_batching_and_binning(tmp_path):
     cursor.execute("SELECT metric_type, window_days FROM telemetry_config ORDER BY metric_type")
     configs = cursor.fetchall()
     assert ("computation", 1) in configs
-    assert ("spatial", 30) in configs
+    assert ("spatial", -1) in configs
 
     conn.close()
 
@@ -860,3 +861,157 @@ def test_telemetry_worker_reconnection_failure_fallback_logged(tmp_path, caplog,
         assert "Disk unmounted" in record["reason"]
         assert len(record["raw_batch"]) >= 1
         logger.close()
+
+
+def test_telemetry_window_sentinel_calculations():
+    """Verifies -2 (year), -1 (month), 1 (daily), and N-day window calculations."""
+    logger = SqliteUsageLogger.__new__(SqliteUsageLogger)
+
+    # 1. Calendar Year (-2)
+    dt1 = datetime.date(2025, 4, 15)
+    s, e = logger._calculate_period_window(dt1, -2, "2023-01-01")
+    assert s == "2025-01-01"
+    assert e == "2025-12-31"
+
+    # 2. Calendar Month (-1)
+    dt2 = datetime.date(2024, 2, 10)  # leap year
+    s, e = logger._calculate_period_window(dt2, -1, "2023-01-01")
+    assert s == "2024-02-01"
+    assert e == "2024-02-29"
+
+    # 3. Daily (<= 1)
+    dt3 = datetime.date(2026, 10, 24)
+    s, e = logger._calculate_period_window(dt3, 1, "2023-01-01")
+    assert s == "2026-10-24"
+    assert e == "2026-10-24"
+
+    # 4. Mathematical N-day step (10 days from 2026-01-01)
+    # Day 0 to 9: 2026-01-01 to 2026-01-10
+    s, e = logger._calculate_period_window(datetime.date(2026, 1, 5), 10, "2026-01-01")
+    assert s == "2026-01-01"
+    assert e == "2026-01-10"
+
+    # Day 15: 2026-01-11 to 2026-01-20
+    s, e = logger._calculate_period_window(datetime.date(2026, 1, 16), 10, "2026-01-01")
+    assert s == "2026-01-11"
+    assert e == "2026-01-20"
+
+
+def test_telemetry_window_config_transition(tmp_path):
+    """Verifies update_window_config clamps open periods and advances cleanly with no overlap."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    conn = logger._get_db_connection()
+
+    # Pre-populate an open monthly period row ending at end of month
+    today = datetime.date.today()
+    tomorrow = today + datetime.timedelta(days=1)
+    month_start = today.strftime("%Y-%m-01")
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    month_end = f"{today.year:04d}-{today.month:02d}-{last_day:02d}"
+
+    conn.execute(
+        """
+        INSERT INTO spatial_usage (period_start, period_end, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source, count_calls, count)
+        VALUES (?, ?, 45, 10, 25, 20, 1, 0, 1, 5, 50);
+        """,
+        (month_start, month_end),
+    )
+    conn.commit()
+
+    # Transition spatial to 7-day windows starting tomorrow
+    result = SqliteUsageLogger.update_window_config(
+        conn,
+        metric_type="spatial",
+        window_days=7,
+        valid_from=tomorrow.strftime("%Y-%m-%d"),
+        description="Switching to 7-day intervals",
+    )
+
+    assert result["valid_from"] == tomorrow.strftime("%Y-%m-%d")
+    assert result["cutoff_date"] == today.strftime("%Y-%m-%d")
+
+    # Verify that the open spatial_usage row's period_end was clamped to today
+    cursor = conn.cursor()
+    cursor.execute("SELECT period_start, period_end FROM spatial_usage")
+    row = cursor.fetchone()
+    assert row[0] == month_start
+    assert row[1] == today.strftime("%Y-%m-%d")  # Clamped to today!
+
+    # Verify telemetry_config has the old config closed and the new config active
+    cursor.execute(
+        "SELECT window_days, valid_from, valid_to FROM telemetry_config WHERE metric_type = 'spatial' ORDER BY id ASC"
+    )
+    configs = cursor.fetchall()
+    assert len(configs) == 2
+    # Old config: valid_to clamped to today
+    assert configs[0][2] == today.strftime("%Y-%m-%d")
+    # New config: starts tomorrow, valid_to is None
+    assert configs[1][0] == 7
+    assert configs[1][1] == tomorrow.strftime("%Y-%m-%d")
+    assert configs[1][2] is None
+
+    conn.close()
+    logger.close()
+
+
+def test_telemetry_spatial_call_and_point_counts(tmp_path):
+    """Verifies that 1 call with multiple points spanning cells increments calls and points properly."""
+    log_dir = tmp_path / "logs"
+    logger = SqliteUsageLogger(log_dir=str(log_dir))
+    tr = TransRO(telemetry_logger=logger)
+
+    # Call 1: 3 points in Cell A (45.0, 25.0) and 2 points in Cell B (46.0, 26.0)
+    lats = [
+        math.radians(45.001),
+        math.radians(45.002),
+        math.radians(45.003),
+        math.radians(46.001),
+        math.radians(46.002),
+    ]
+    lons = [
+        math.radians(25.001),
+        math.radians(25.002),
+        math.radians(25.003),
+        math.radians(26.001),
+        math.radians(26.002),
+    ]
+
+    tr.etrs89_to_st70(lats, lons, source=1)
+
+    # Call 2: 1 point in Cell A (45.0, 25.0)
+    tr.etrs89_to_st70(math.radians(45.004), math.radians(25.004), source=1)
+
+    logger.close()
+
+    db_path = log_dir / "usage.db"
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+
+    # Query spatial_usage
+    cursor.execute("""
+        SELECT lat_deg, lon_deg, count_calls, count
+        FROM spatial_usage
+        ORDER BY lat_deg ASC
+    """)
+    rows = cursor.fetchall()
+    assert len(rows) == 2
+
+    # Cell A (lat=45, lon=25): touched by Call 1 (3 points) and Call 2 (1 point) -> 2 calls, 4 points
+    assert rows[0] == (45, 25, 2, 4)
+
+    # Cell B (lat=46, lon=26): touched only by Call 1 (2 points) -> 1 call, 2 points
+    assert rows[1] == (46, 26, 1, 2)
+
+    # Query computation_usage: should have 2 calls and 6 points total
+    cursor.execute("SELECT SUM(count_calls), SUM(count_points) FROM computation_usage")
+    comp_calls, comp_points = cursor.fetchone()
+    assert comp_calls == 2
+    assert comp_points == 6
+
+    # Verify points parity: sum of points in spatial_usage == sum of points in computation_usage
+    cursor.execute("SELECT SUM(count) FROM spatial_usage")
+    spatial_points = cursor.fetchone()[0]
+    assert spatial_points == comp_points == 6
+
+    conn.close()

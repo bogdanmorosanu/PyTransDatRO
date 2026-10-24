@@ -384,6 +384,7 @@ Detalii eroare observate:
     sliderToday: 'Data Curentă ({date})',
     earliestAvailable: 'Prima înregistrare',
     currentDate: 'Data curentă',
+    effectivePeriod: 'Perioadă activă',
     archiveStart: 'Start arhivă',
     archiveEnd: 'Sfârșit arhivă',
     pointsPerCall: 'Puncte / Apel',

@@ -1134,3 +1134,31 @@ def test_telemetry_endpoints_with_seeded_sqlite_db(client, tmp_path):
         assert res_sm_calls.json()["summary"]["quadrants"]["NW"]["percentage"] == 25.0
     finally:
         app.dependency_overrides.pop(get_db_path, None)
+
+
+def test_telemetry_effective_date_snapping_and_parity(client):
+    """Verifies effective date snapping on monthly/multi-day buckets and points parity."""
+    # 1. Query a 7-day mid-month window in March 2025 (where spatial is monthly: 2025-03-01 to 2025-03-31)
+    res_sm = client.get("/api/v1/telemetry/spatial-matrix?from_date=2025-03-10&to_date=2025-03-17")
+    assert res_sm.status_code == 200
+    d_sm = res_sm.json()
+    assert d_sm["summary"]["from_date"] == "2025-03-10"
+    assert d_sm["summary"]["to_date"] == "2025-03-17"
+    assert d_sm["summary"]["effective_from_date"] == "2025-03-01"
+    assert d_sm["summary"]["effective_to_date"] == "2025-03-31"
+
+    # 2. Query timeline for the same exact full month
+    res_tl = client.get("/api/v1/telemetry/timeline?from_date=2025-03-01&to_date=2025-03-31")
+    assert res_tl.status_code == 200
+    d_tl = res_tl.json()
+    assert d_tl["summary"]["effective_from_date"] == "2025-03-01"
+    assert d_tl["summary"]["effective_to_date"] == "2025-03-31"
+
+    # 3. Verify points parity: for the full month of March 2025, total_points must match
+    month_sm = client.get(
+        "/api/v1/telemetry/spatial-matrix?from_date=2025-03-01&to_date=2025-03-31&metric=points"
+    )
+    assert month_sm.status_code == 200
+    month_sm_data = month_sm.json()
+
+    assert month_sm_data["summary"]["total_metric_value"] == d_tl["summary"]["total_points"]

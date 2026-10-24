@@ -62,9 +62,17 @@ CREATE TABLE IF NOT EXISTS telemetry_config (
     description TEXT
 );
 ```
+Window granularity is defined using mathematical day steps or standardized calendar sentinel values:
+- **`window_days > 0`**: Exact mathematical $N$-day step (e.g. `1` for daily, `7` for weekly, `10` for 10-day step) calculated from `anchor_date`:
+  $$\text{step} = (\text{cur\_date} - \text{anchor\_date}).\text{days} \pmod N$$
+  $$\text{period\_start} = \text{cur\_date} - \text{timedelta}(\text{days}=\text{step})$$
+  $$\text{period\_end} = \text{period\_start} + \text{timedelta}(\text{days}=N-1)$$
+- **`window_days = -1`**: Calendar month sentinel. Bins from the 1st of the month to the last day of that specific calendar month (e.g. `2026-02-01` $\to$ `2026-02-28`).
+- **`window_days = -2`**: Calendar year sentinel. Bins from Jan 1 to Dec 31 of that calendar year (e.g. `2026-01-01` $\to$ `2026-12-31`).
+
 Default entries:
 - `computation`: `window_days = 1` (daily volume metrics).
-- `spatial`: `window_days = 30` (monthly approximated spatial heatmaps, or configurable to 7, 5, etc.).
+- `spatial`: `window_days = -1` (calendar month spatial heatmaps).
 
 ### 2.4 Computation Volume Metrics Table (`computation_usage`)
 Tracks operational volume (invocations and transformed coordinates) per time window, operation, dimensionality, and source:
@@ -100,11 +108,15 @@ CREATE TABLE IF NOT EXISTS spatial_usage (
     operation INTEGER NOT NULL,
     is_3d INTEGER NOT NULL,
     source INTEGER NOT NULL DEFAULT 0,
+    count_calls INTEGER NOT NULL DEFAULT 1,
     count INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
 );
 CREATE INDEX IF NOT EXISTS idx_spatial_usage_period ON spatial_usage(period_start);
 ```
+
+- **`count_calls`**: Number of transformation function/API calls that touched this geographic cell during the window.
+- **`count`**: Total number of coordinate points processed in this cell during the window.
 
 #### Coordinate Splitting (Degrees & Grads)
 To minimize disk space, coordinates are converted to degrees, rounded to 2 decimal places (~1 km resolution), and split into integer degrees and hundredths (grads):
@@ -123,11 +135,31 @@ The REST API endpoint `GET /api/v1/telemetry/spatial-matrix` dynamically aggrega
 > **Self-Describing Windows**:
 > By storing both `period_start` and `period_end` directly in the record, each row remains self-contained. Even if window granularity is adjusted from 30 days to 7 days or 5 days, historical rows preserve their exact duration and can be queried or normalized without ambiguity.
 
-### In-Place Aggregation (UPSERT)
-Any additional transformation occurring in an already visited 1 km cell during the same active window increments `count` in-place:
+### 3.1 Seamless Window Transitions (`update_window_config`)
+When operational requirements dictate changing window granularity (e.g. switching from monthly `-1` to 10-day steps or daily logging):
+- `SqliteUsageLogger.update_window_config(metric_type, window_days)` cleanly clamps the active configuration's `valid_to` and any open period's `period_end` to today's date (`today`).
+- The new window rule begins tomorrow (`tomorrow = today + 1 day`), with `anchor_date = tomorrow` and `valid_from = tomorrow`.
+- This ensures **zero interval overlap**, **zero historical data rewrite**, and **zero unrecorded data loss**.
+
+### 3.2 Period Snapping & Interval Overlap Querying
+When the REST API or Web Map UI queries a custom date range `[from_date, to_date]`:
+- Database filtering employs strict interval overlap:
+  ```sql
+  WHERE period_end >= :from_date AND period_start <= :to_date
+  ```
+- Any period bucket overlapping the requested range is matched.
+- The backend queries the exact boundary bounds:
+  $$\text{effective\_from\_date} = \min(\text{period\_start}) \quad (\le \text{from\_date})$$
+  $$\text{effective\_to\_date} = \max(\text{period\_end}) \quad (\ge \text{to\_date})$$
+- The API responses (`TimelineSummary`, `SpatialMatrixSummary`) expose `effective_from_date` and `effective_to_date`. The frontend displays an **Active Period** badge indicating the exact temporal span represented by the metrics.
+
+### 3.3 In-Place Aggregation (UPSERT)
+Any additional transformation occurring in an already visited 1 km cell during the same active window increments both coordinate points and invocation calls in-place:
 ```sql
 ON CONFLICT(period_start, lat_deg, lat_grad, lon_deg, lon_grad, operation, is_3d, source)
-DO UPDATE SET count = count + excluded.count;
+DO UPDATE SET 
+    count = count + excluded.count,
+    count_calls = count_calls + excluded.count_calls;
 ```
 
 ---

@@ -384,6 +384,7 @@ Observed Error Details:
     sliderToday: 'Current Date ({date})',
     earliestAvailable: 'Earliest Available',
     currentDate: 'Current Date',
+    effectivePeriod: 'Active Period',
     archiveStart: 'Archive Start',
     archiveEnd: 'Archive End',
     pointsPerCall: 'Points / Call',
