@@ -124,34 +124,34 @@ export class GridMetadataPanel {
       <!-- Draggable Header -->
       <div class="fgp-header" id="fgp-drag-handle">
         <div class="fgp-title-cluster">
-          <svg class="fgp-header-icon" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M2 4h12M2 8h12M2 12h12M4 2v12M8 2v12M12 2v12"/>
-          </svg>
           <span class="fgp-title">${t('gridMetadata.title')}</span>
         </div>
         <div class="fgp-header-actions">
-          <button class="btn-icon fgp-icon-btn" id="fgp-minimize-btn" title="Minimize/Maximize">
+          <button class="btn-icon fgp-icon-btn" id="fgp-minimize-btn" title="${this.isMinimized ? t('common.restore') : t('common.minimize')}">
             ${this.isMinimized ? '□' : '—'}
           </button>
-          <button class="btn-icon fgp-icon-btn" id="fgp-close-btn" title="${t('common.close') || 'Close'}">✕</button>
+          <button class="btn-icon fgp-icon-btn" id="fgp-close-btn" title="${t('common.close')}">✕</button>
         </div>
       </div>
 
       <!-- Main Body Container -->
       <div class="fgp-content" style="${this.isMinimized ? 'display: none;' : ''}">
         <!-- Authoritative Origin Notice -->
-        <div class="fgp-notice">
-          <div class="fgp-notice-main">
-            <span>
-              ${t('gridMetadata.sourceNotice')}
-            </span>
-          </div>
+        <div class="fhp-callout-box fgp-callout-box">
+          <span class="fhp-callout-title">${t('gridMetadata.originTitle')}</span>
+          <p class="fhp-callout-body">${t('gridMetadata.sourceNotice')}</p>
           ${
             shaStr
               ? `
-            <div class="fgp-notice-meta">
-              <span><strong>${t('gridMetadata.sizeLabel') || 'Size:'}</strong> ${sizeStr}</span>
-              <span><strong>${t('gridMetadata.sha256Label') || 'SHA-256:'}</strong> <code class="mono fgp-hash" title="${shaStr}">${shaStr.slice(0, 16)}...</code></span>
+            <div class="fgp-meta-chips-row">
+              <div class="fgp-meta-chip-item">
+                <span class="fgp-meta-label">${t('gridMetadata.sizeLabel')}</span>
+                <code class="fhp-metric-chip mono">${sizeStr}</code>
+              </div>
+              <div class="fgp-meta-chip-item">
+                <span class="fgp-meta-label">${t('gridMetadata.sha256Label')}</span>
+                <code class="fhp-metric-chip mono" title="${shaStr}">${shaStr.slice(0, 16)}...</code>
+              </div>
             </div>
           `
               : ''

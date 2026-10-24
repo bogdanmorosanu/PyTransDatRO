@@ -84,14 +84,11 @@ export class GeodeticHelpPanel {
       this.element.innerHTML = `
         <div class="fgp-header" id="fhp-drag-handle">
           <div class="fgp-title-cluster">
-            <svg class="fgp-header-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5.5 5.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3v.5M8 13.5h.01"/>
-            </svg>
             <span class="fgp-title">${t('geodeticHelp.title')}</span>
           </div>
           <div class="fgp-header-actions">
-            <button class="btn-icon fgp-icon-btn" id="fhp-minimize-btn" title="Restore">□</button>
-            <button class="btn-icon fgp-icon-btn" id="fhp-close-btn" title="Close">✕</button>
+            <button class="btn-icon fgp-icon-btn" id="fhp-minimize-btn" title="${t('geodeticHelp.restore')}">□</button>
+            <button class="btn-icon fgp-icon-btn" id="fhp-close-btn" title="${t('geodeticHelp.close')}">✕</button>
           </div>
         </div>
       `;
@@ -103,9 +100,6 @@ export class GeodeticHelpPanel {
     this.element.innerHTML = `
       <div class="fgp-header" id="fhp-drag-handle">
         <div class="fgp-title-cluster">
-          <svg class="fgp-header-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5.5 5.5a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3v.5M8 13.5h.01"/>
-          </svg>
           <span class="fgp-title">${t('geodeticHelp.title')}</span>
         </div>
         <div class="fgp-header-actions">
@@ -117,13 +111,15 @@ export class GeodeticHelpPanel {
       <div class="fhp-body" id="fhp-body-content">
         <!-- Card 1: About & Non-Official Disclaimer -->
         <div class="fhp-card">
-          <div class="fhp-card-title">${t('geodeticHelp.aboutTitle')}</div>
-          <p style="margin: 0; color: var(--text-main); font-size: 12px;">
+          <div class="fhp-card-header">
+            <div class="fhp-card-title">${t('geodeticHelp.aboutTitle')}</div>
+          </div>
+          <p class="fhp-topic-desc">
             ${t('geodeticHelp.aboutP1')}
           </p>
-          <div class="fhp-disclaimer-box">
-            <strong style="color: var(--text-main);">${t('geodeticHelp.disclaimerLabel')}</strong>
-            ${t('geodeticHelp.disclaimerText')}
+          <div class="fhp-callout-box">
+            <span class="fhp-callout-title">${t('geodeticHelp.disclaimerLabel')}</span>
+            <p class="fhp-callout-body">${t('geodeticHelp.disclaimerText')}</p>
           </div>
         </div>
 
@@ -134,48 +130,59 @@ export class GeodeticHelpPanel {
 
         <!-- Card 3: Reference Systems & Datums -->
         <div class="fhp-card">
-          <div class="fhp-card-title">${t('geodeticHelp.datumsTitle')}</div>
+          <div class="fhp-card-header">
+            <div class="fhp-card-title">${t('geodeticHelp.datumsTitle')}</div>
+          </div>
           
-          <div class="fhp-item-row">
-            <strong>${t('geodeticHelp.stereo70Label')}</strong>
-            <p>${t('geodeticHelp.stereo70Desc')}</p>
+          <div class="fhp-topic-item">
+            <span class="fhp-topic-heading">${t('geodeticHelp.stereo70Label')}</span>
+            <p class="fhp-topic-desc">${t('geodeticHelp.stereo70Desc')}</p>
           </div>
 
-          <div class="fhp-item-row">
-            <strong>${t('geodeticHelp.etrs89Label')}</strong>
-            <p>${t('geodeticHelp.etrs89Desc')}</p>
+          <div class="fhp-topic-item">
+            <span class="fhp-topic-heading">${t('geodeticHelp.etrs89Label')}</span>
+            <p class="fhp-topic-desc">${t('geodeticHelp.etrs89Desc')}</p>
           </div>
 
-          <div class="fhp-item-row">
-            <strong>${t('geodeticHelp.altimetryLabel')}</strong>
-            <p>${t('geodeticHelp.altimetryDesc')}</p>
+          <div class="fhp-topic-item">
+            <span class="fhp-topic-heading">${t('geodeticHelp.altimetryLabel')}</span>
+            <p class="fhp-topic-desc">${t('geodeticHelp.altimetryDesc')}</p>
           </div>
         </div>
 
         <!-- Card 4: Formats & Conventions -->
         <div class="fhp-card">
-          <div class="fhp-card-title">${t('geodeticHelp.formatsTitle')}</div>
-
-          <div class="fhp-item-row">
-            <strong>${t('geodeticHelp.angleUnitsLabel')}</strong>
-            <p style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
-              <span>• <code class="fhp-code">${t('geodeticHelp.angleDms')}</code></span>
-              <span>• <code class="fhp-code">${t('geodeticHelp.angleDeg')}</code></span>
-              <span>• <code class="fhp-code">${t('geodeticHelp.angleRad')}</code></span>
-            </p>
-            <p style="color: var(--text-muted); font-size: 11px; margin-top: 3px;">
-              ${t('geodeticHelp.angleNote')}
-            </p>
+          <div class="fhp-card-header">
+            <div class="fhp-card-title">${t('geodeticHelp.formatsTitle')}</div>
           </div>
 
-          <div class="fhp-item-row">
-            <strong>${t('geodeticHelp.orderLabel')}</strong>
-            <p>${t('geodeticHelp.orderDesc')}</p>
+          <div class="fhp-topic-item">
+            <span class="fhp-topic-heading">${t('geodeticHelp.angleUnitsLabel')}</span>
+            <div class="fhp-format-list">
+              <div class="fhp-format-row">
+                <span class="fhp-format-label">${t('geodeticHelp.angleDmsLabel')}</span>
+                <code class="fhp-format-chip">${t('geodeticHelp.angleDmsVal')}</code>
+              </div>
+              <div class="fhp-format-row">
+                <span class="fhp-format-label">${t('geodeticHelp.angleDegLabel')}</span>
+                <code class="fhp-format-chip">${t('geodeticHelp.angleDegVal')}</code>
+              </div>
+              <div class="fhp-format-row">
+                <span class="fhp-format-label">${t('geodeticHelp.angleRadLabel')}</span>
+                <code class="fhp-format-chip">${t('geodeticHelp.angleRadVal')}</code>
+              </div>
+            </div>
+            <p class="fhp-topic-desc">${t('geodeticHelp.angleNote')}</p>
           </div>
 
-          <div class="fhp-item-row">
-            <strong>${t('geodeticHelp.detectionLabel')}</strong>
-            <p>${t('geodeticHelp.detectionDesc')}</p>
+          <div class="fhp-topic-item">
+            <span class="fhp-topic-heading">${t('geodeticHelp.orderLabel')}</span>
+            <p class="fhp-topic-desc">${t('geodeticHelp.orderDesc')}</p>
+          </div>
+
+          <div class="fhp-topic-item">
+            <span class="fhp-topic-heading">${t('geodeticHelp.detectionLabel')}</span>
+            <p class="fhp-topic-desc">${t('geodeticHelp.detectionDesc')}</p>
           </div>
         </div>
       </div>
@@ -200,8 +207,10 @@ export class GeodeticHelpPanel {
 
     if (this.isLoadingComparison && !this.comparisonData) {
       return `
-        <div class="fhp-card-title">${title}</div>
-        <div class="fgp-status-box" style="padding: 16px;">
+        <div class="fhp-card-header">
+          <div class="fhp-card-title">${title}</div>
+        </div>
+        <div class="fgp-status-box">
           <div class="fgp-spinner"></div>
           <span>${t('geodeticHelp.loadingBenchmark')}</span>
         </div>
@@ -216,56 +225,77 @@ export class GeodeticHelpPanel {
       return isRo ? s.replace('.', ',') : s;
     };
 
-    const maxS70LatLon = st70ToEtrs
-      ? `ΔLat/Lon ≤ ${fmt(Math.max(st70ToEtrs.max_abs_error.latitude_sec || 0, st70ToEtrs.max_abs_error.longitude_sec || 0), 6)}" / ΔH: ${fmt(st70ToEtrs.max_abs_error.elevation_m * 1000, 1)} mm`
-      : (isRo ? 'ΔLat/Lon ≤ 0,000010" / ΔH: 0,5 mm' : 'ΔLat/Lon ≤ 0.000010" / ΔH: 0.5 mm');
+    // S70 -> ETRS: planimetric in arcseconds ("), elevation in mm
+    const maxS70Plan = st70ToEtrs
+      ? `${fmt(Math.max(st70ToEtrs.max_abs_error.latitude_sec || 0, st70ToEtrs.max_abs_error.longitude_sec || 0), 6)}"`
+      : (isRo ? '0,000010"' : '0.000010"');
+    const meanS70Plan = st70ToEtrs
+      ? `${fmt(Math.max(st70ToEtrs.mean_abs_error.latitude_sec || 0, st70ToEtrs.mean_abs_error.longitude_sec || 0), 6)}"`
+      : (isRo ? '0,000005"' : '0.000005"');
+    const maxS70Elev = st70ToEtrs
+      ? `${fmt(st70ToEtrs.max_abs_error.elevation_m * 1000, 1)} mm`
+      : (isRo ? '0,5 mm' : '0.5 mm');
+    const meanS70Elev = st70ToEtrs
+      ? `${fmt(st70ToEtrs.mean_abs_error.elevation_m * 1000, 2)} mm`
+      : (isRo ? '0,25 mm' : '0.25 mm');
 
-    const meanS70LatLon = st70ToEtrs
-      ? `~${fmt(0.000005, 6)}" / ${fmt(st70ToEtrs.mean_abs_error.elevation_m * 1000, 2)} mm`
-      : (isRo ? '~0,000005" / 0,25 mm' : '~0.000005" / 0.25 mm');
-
-    const maxEtrsEN = etrsToSt70
-      ? `ΔE/N ≤ ${fmt(Math.max(etrsToSt70.max_abs_error.easting_m || 0, etrsToSt70.max_abs_error.northing_m || 0) * 1000, 2)} mm / ΔH: ${fmt(etrsToSt70.max_abs_error.elevation_m * 1000, 1)} mm`
-      : (isRo ? 'ΔE/N ≤ 0,34 mm / ΔH: 0,5 mm' : 'ΔE/N ≤ 0.34 mm / ΔH: 0.5 mm');
-
-    const meanEtrsEN = etrsToSt70
-      ? `~${fmt(Math.max(etrsToSt70.mean_abs_error.easting_m || 0, etrsToSt70.mean_abs_error.northing_m || 0) * 1000, 2)} mm / ${fmt(etrsToSt70.mean_abs_error.elevation_m * 1000, 2)} mm`
-      : (isRo ? '~0,08 mm / 0,25 mm' : '~0.08 mm / 0.25 mm');
+    // ETRS -> S70: planimetric in mm, elevation in mm
+    const maxEtrsPlan = etrsToSt70
+      ? `${fmt(Math.max(etrsToSt70.max_abs_error.easting_m || 0, etrsToSt70.max_abs_error.northing_m || 0) * 1000, 2)} mm`
+      : (isRo ? '0,34 mm' : '0.34 mm');
+    const meanEtrsPlan = etrsToSt70
+      ? `${fmt(Math.max(etrsToSt70.mean_abs_error.easting_m || 0, etrsToSt70.mean_abs_error.northing_m || 0) * 1000, 2)} mm`
+      : (isRo ? '0,08 mm' : '0.08 mm');
+    const maxEtrsElev = etrsToSt70
+      ? `${fmt(etrsToSt70.max_abs_error.elevation_m * 1000, 1)} mm`
+      : (isRo ? '0,5 mm' : '0.5 mm');
+    const meanEtrsElev = etrsToSt70
+      ? `${fmt(etrsToSt70.mean_abs_error.elevation_m * 1000, 2)} mm`
+      : (isRo ? '0,25 mm' : '0.25 mm');
 
     const st70Status = st70ToEtrs?.status || 'PASS';
     const etrsStatus = etrsToSt70?.status || 'PASS';
 
     return `
-      <div class="fhp-card-title">${title}</div>
-      <p style="margin: 0; color: var(--text-muted); font-size: 11.5px;">${subtitle}</p>
+      <div class="fhp-card-header">
+        <div class="fhp-card-title">${title}</div>
+        <div class="fhp-card-subtitle">${subtitle}</div>
+      </div>
 
       <table class="fhp-benchmark-table">
         <thead>
           <tr>
             <th>${t('geodeticHelp.colDirection')}</th>
-            <th>${t('geodeticHelp.colMaxError')}</th>
-            <th>${t('geodeticHelp.colMeanError')}</th>
+            <th>${t('geodeticHelp.colPlanMax')}</th>
+            <th>${t('geodeticHelp.colPlanMean')}</th>
+            <th>${t('geodeticHelp.colElevMax')}</th>
+            <th>${t('geodeticHelp.colElevMean')}</th>
             <th>${t('geodeticHelp.colStatus')}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><strong>${t('geodeticHelp.dirS70ToETRS')}</strong></td>
-            <td><code class="fhp-code">${maxS70LatLon}</code></td>
-            <td style="color: var(--text-muted);">${meanS70LatLon}</td>
-            <td><span class="fhp-status-badge ${st70Status.toLowerCase()}">${st70Status}</span></td>
+            <td><code class="fhp-metric-chip">${maxS70Plan}</code></td>
+            <td><code class="fhp-metric-chip subtle">${meanS70Plan}</code></td>
+            <td><code class="fhp-metric-chip">${maxS70Elev}</code></td>
+            <td><code class="fhp-metric-chip subtle">${meanS70Elev}</code></td>
+            <td><span class="status-pill success">${st70Status}</span></td>
           </tr>
           <tr>
             <td><strong>${t('geodeticHelp.dirETRSToS70')}</strong></td>
-            <td><code class="fhp-code">${maxEtrsEN}</code></td>
-            <td style="color: var(--text-muted);">${meanEtrsEN}</td>
-            <td><span class="fhp-status-badge ${etrsStatus.toLowerCase()}">${etrsStatus}</span></td>
+            <td><code class="fhp-metric-chip">${maxEtrsPlan}</code></td>
+            <td><code class="fhp-metric-chip subtle">${meanEtrsPlan}</code></td>
+            <td><code class="fhp-metric-chip">${maxEtrsElev}</code></td>
+            <td><code class="fhp-metric-chip subtle">${meanEtrsElev}</code></td>
+            <td><span class="status-pill success">${etrsStatus}</span></td>
           </tr>
         </tbody>
       </table>
 
-      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; border-top: 1px solid var(--border-subtle); padding-top: 6px;">
-        ${t('geodeticHelp.benchmarkCriteriaNote')}
+      <div class="fhp-callout-box">
+        <span class="fhp-callout-title">${t('geodeticHelp.criteriaLabel')}</span>
+        <p class="fhp-callout-body">${t('geodeticHelp.benchmarkCriteriaNote')}</p>
       </div>
     `;
   }

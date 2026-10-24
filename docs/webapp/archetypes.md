@@ -78,9 +78,9 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
 
 ### Archetype 3.1: Header Flyout / Disclosure Menus
 *Clickable disclosure buttons in the header displaying a chevron and opening a dropdown card.*
-- **Styling Standard**: HTML5 `<details><summary>` disclosure wrapper (`.nav-menu-trigger`), rotating chevron (`▾`), elevated dropdown card with subtle border, and keyboard navigation (`Escape` closes menu).
+- **Styling Standard**: HTML5 `<details><summary>` disclosure wrapper (`.nav-menu-trigger`), rotating chevron (`▾`), elevated dropdown card with subtle border, and keyboard navigation (`Escape` closes menu). All action and navigation items within the Help menu dropdown are purely typographical (icon-free) to preserve visual calm and consistency with external links.
 - **Member Instances**:
-  - `Help Menu (#header-help-details)` (Global Header) — *Icon + "Help" + chevron `▾`*
+  - `Help Menu (#header-help-details)` (Global Header) — *"Help"* + chevron `▾` (purely typographical item ecosystem)
   - `Language Selector Menu (#header-lang-details)` (Global Header) — *Globe icon + active language ("RO" / "EN") + chevron `▾` with checkmarked radio options*
 
 ### Archetype 3.2: Header Icon Action Buttons
@@ -119,7 +119,9 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Coordinate Order Label (.form-label)` (Shared Config Card) — *"Coordinate Order"*
   - `Report Type Label (.form-label)` (Feedback Modal) — *"Report Type"* / *"Tipul semnalării"*
   - `Detailed Description Label (.form-label)` (Feedback Modal) — *"Detailed Description"* / *"Descriere detaliată"*
-  - `Human Verification Label (.ffp-math-label)` (Feedback Modal) — *"Human Verification:"* / *"Verificare umană:"*
+  - `Human Verification Label (.ffp-math-label)` (Feedback Modal) — *"Human Verification"* / *"Verificare Umană"*
+  - `Grid Metadata Size Label (.fgp-meta-label)` (Grid Metadata Panel) — *"Size"* / *"Mărime"*
+  - `Grid Metadata SHA-256 Label (.fgp-meta-label)` (Grid Metadata Panel) — *"SHA-256"*
   - `Coordinate 1 Input Label (.form-label)` (Point Mode) — *"Northing (X)"* / *"Latitude (B)"*
   - `Coordinate 2 Input Label (.form-label)` (Point Mode) — *"Easting (Y)"* / *"Longitude (L)"*
   - `Altitude/Height Input Label (.form-label)` (Point Mode) — *"Altitude (H)"* / *"Ellipsoidal Height (h)"*
@@ -143,6 +145,17 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Coordinates Quality Header (.quality-label)` (Reporting Card) — *"Coordinates"* / *"Coordonate"* (Sentence case, discrete)
   - `Transformation Quality Header (.quality-label)` (Reporting Card) — *"Transformation"* / *"Transformare"* (Sentence case, discrete)
   - `Download as: Export Header (.download-group-label)` (Text Mode) — *"Download as:"* / *"Descarcă ca:"*
+
+### Archetype 4.5: Content Topic Headings & Explanatory Blocks (Tier 2 Subheadings)
+*Structured topic headings paired with descriptive body text inside documentation and information cards.*
+- **Styling Standard**: Two-tier explanatory hierarchy. Subheading (`.fhp-topic-heading`): `font-size: 11.5px`, `font-weight: 600`, `color: var(--text-main)`, subordinate to the 13.5px Section Header. Successive topic items are divided by a subtle dashed line (`border-top: 1px dashed var(--border-subtle); padding-top: 8px`). Body (`.fhp-topic-desc`): `font-size: 11.5px`, `line-height: 1.5`, `color: var(--text-muted)`. **The Golden Rule**: Trailing colons (`:`) are strictly omitted from all headings.
+- **Member Instances**:
+  - `Stereo 70 Topic Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Stereo 70 (Dealul Piscului 1970 · EPSG:31700)"*
+  - `ETRS89 Topic Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"ETRS89 (GRS80 · EPSG:4258)"*
+  - `Altimetry Topic Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Altimetry & Quasigeoid (Black Sea 1975)"*
+  - `Angular Formats Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Angular Formats (ETRS89)"*
+  - `Coordinate Order Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Coordinate Order"*
+  - `Dimensionality Auto-Detection Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Dimensionality Auto-Detection (2D / 3D)"*
 
 ---
 
@@ -183,6 +196,12 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
     *Selectable historical boundary date (e.g., `2023-11-01`).*
   - `Current / Today Date Value (.limit-date-val)` (Usage Dashboard)  
     *Selectable current boundary date (e.g., `2026-10-22`).*
+  - `Benchmark Residual Metric Chips (.fhp-metric-chip)` (Geodetic Help Panel)  
+    *Monospace read-only info chips displaying numerical planimetric arcseconds / mm and elevation mm without inequality clutter.*
+  - `Angle Units Format Preview Chips (.fhp-format-chip)` (Geodetic Help Panel)  
+    *Selectable coordinate format chips (e.g. `46°00'00.00000"`, `46.00000000`, `0.8028514559`).*
+  - `Grid File Info Chips (.fgp-meta-chips-row .fhp-metric-chip)` (Grid Metadata Panel)  
+    *Selectable / copyable file size and SHA-256 hash chips without colons.*
 
 ### Archetype 5.5: Native Themed Date Pickers
 *Themed calendar date inputs with consistent borders, calendar icons, and boundary clamping.*
@@ -317,3 +336,27 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Quadrant NE Card (.quadrant-card.ne)` (Spatial Sub-View)
   - `Quadrant SW Card (.quadrant-card.sw)` (Spatial Sub-View)
   - `Quadrant SE Card (.quadrant-card.se)` (Spatial Sub-View)
+
+---
+
+## 9. Content Sections & Notice Blocks
+
+### Archetype 9.1: Section Content Cards
+*Elevated modular cards grouping related informational topics, benchmarks, or reference documentation.*
+- **Styling Standard**: Elevated background (`--bg-surface-elevated`), 1px subtle border (`--border-subtle`), rounded corners (`--radius-md`), standard internal padding (`14px 16px`), flex-column layout with gap `10px`. Features an authoritative Tier 1 sentence-case title (`font-size: 13.5px`, `font-weight: 600`, `--text-main`) with a solid divider underline (`border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px`) that anchors all subheadings below it, and optional subtitle (`font-size: 11.5px`, `--text-muted`).
+- **Member Instances**:
+  - `About & Disclaimer Card (.fhp-card)` (Geodetic Help Panel)
+  - `Official Engine Replication Benchmark Card (.fhp-card)` (Geodetic Help Panel)
+  - `Reference Systems & Datums Card (.fhp-card)` (Geodetic Help Panel)
+  - `Formats & Input Conventions Card (.fhp-card)` (Geodetic Help Panel)
+  - `Report & Feedback Card (.fhp-card.ffp-card)` (Feedback Panel) — *Title: "Report & Feedback" with solid underline divider*
+  - `Human Verification Card (.fhp-card.ffp-verify-card)` (Feedback Panel) — *Title: "Human Verification" with solid underline divider*
+
+### Archetype 9.2: Notice & Callout Boxes
+*Embedded secondary callout boxes for disclaimers, acceptance criteria, notes, or operational remarks.*
+- **Styling Standard**: Recessed background (`--bg-surface-input`), 1px medium border (`--border-medium`), border radius `--radius-sm` (6px), padding `10px 12px`, flex-column layout. Features a bold sentence-case title (`font-size: 11.5px`, `font-weight: 600`, `--text-main`, strictly no trailing colon) and body text (`font-size: 11.5px`, line-height `1.45`, `--text-muted`).
+- **Member Instances**:
+  - `About Section Disclaimer Box (.fhp-callout-box)` (Geodetic Help Panel) — *Title: "Disclaimer"*
+  - `Benchmark Acceptance Criteria Box (.fhp-callout-box)` (Geodetic Help Panel) — *Title: "Acceptance Criteria"*
+  - `Binary Grid Origin Callout Box (.fhp-callout-box.fgp-callout-box)` (Grid Metadata Panel) — *Title: "Binary Grid Origin"*
+  - `Feedback Description Template Callout Box (.fhp-callout-box.ffp-template-callout)` (Feedback Panel) — *Title: "Detailed Description"*
