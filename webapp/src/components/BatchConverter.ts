@@ -415,15 +415,14 @@ export class BatchConverter {
       <!-- Card 1: Input Section -->
       <div class="studio-card" role="group" aria-label="${t('batch.inputLabel')}">
         <div class="section-micro-label">${t('batch.inputLabel')}</div>
-        <div class="form-group" style="margin-bottom: 0;">
+        <div class="form-group margin-bottom-none">
           <textarea 
-            class="form-input mono" 
+            class="form-input mono batch-textarea" 
             id="batch-input-area" 
             aria-label="${t('batch.inputLabel')}"
             rows="6" 
             placeholder="${this.getDynamicPlaceholder()}"
             ${this.isProcessing ? 'disabled readonly' : ''}
-            style="resize: vertical; font-size: 12px; line-height: 1.4;"
           >${this.inputText}</textarea>
         </div>
       </div>
@@ -437,25 +436,24 @@ export class BatchConverter {
 
       <!-- Card 2: Output Section -->
       <div class="studio-card result-card" role="group" aria-label="${t('batch.outputLabel')}">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div class="flex-between-center margin-bottom-sm">
           <div class="section-micro-label">${t('batch.outputLabel')}</div>
           <div id="batch-copy-results-slot"></div>
         </div>
-        <div class="form-group" style="margin-bottom: 0;">
+        <div class="form-group margin-bottom-none">
           <textarea 
-            class="form-input mono" 
+            class="form-input mono batch-textarea batch-textarea-readonly" 
             id="batch-output-area" 
             aria-label="${t('batch.outputLabel')}"
             rows="6" 
             readonly 
-            style="resize: vertical; font-size: 12px; line-height: 1.4; background-color: var(--bg-surface-readonly);"
           >${this.outputText}</textarea>
         </div>
 
         <!-- Export Buttons inside Output Card -->
         <div class="download-group">
           <span class="download-group-label">${t('batch.downloadAs')}</span>
-          <div style="display: flex; gap: 6px;">
+          <div class="flex-row-gap-sm">
             <button class="btn btn-secondary btn-secondary-action" id="batch-export-csv" ${this.lastTransformedItems.length === 0 ? 'disabled' : ''}>
               ${t('batch.downloadCSV')}
             </button>
@@ -472,7 +470,7 @@ export class BatchConverter {
       <!-- Card 3: Report Section -->
       <div class="studio-card report-card" role="group" aria-label="${t('quality.sectionTitle')}">
         <div class="section-micro-label">${t('quality.sectionTitle')}</div>
-        <div class="quality-report-content" style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="quality-report-content flex-column-gap-sm">
           <!-- Top Row: Coordinates -->
           <div class="quality-report-row">
             <span class="quality-label">${t('quality.sectionCoords')}</span>
@@ -523,7 +521,7 @@ export class BatchConverter {
               }
               ${
                 !this.lastSummary
-                  ? `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`
+                  ? `<span class="status-pill neutral">${t('quality.readyToTransform')}</span>`
                   : ''
               }
             </div>

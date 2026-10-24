@@ -408,7 +408,7 @@ textarea.form-input {
 
 .toggle-switch-input:checked + .toggle-switch-track .toggle-switch-thumb {
   transform: translateX(12px);
-  background-color: #ffffff;
+  background-color: var(--toggle-thumb-checked, #ffffff);
 }
 
 .toggle-switch-input:focus-visible + .toggle-switch-track {
@@ -420,5 +420,43 @@ textarea.form-input {
   font-size: 11.5px;
   font-weight: 500;
   line-height: 1.2;
+}
+
+/* Batch Processing & Dropzone Utilities */
+.batch-textarea {
+  resize: vertical;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.batch-textarea-readonly {
+  background-color: var(--bg-surface-readonly) !important;
+}
+
+.dropzone-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: var(--text-main);
+}
+
+.dropzone-desc {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.dropzone-queue-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.file-options-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 

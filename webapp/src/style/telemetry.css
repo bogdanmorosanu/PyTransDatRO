@@ -124,7 +124,7 @@
 }
 
 .telemetry-kpi-val.cyan {
-  color: #38bdf8;
+  color: var(--color-metric-text);
 }
 
 .telemetry-kpi-val.emerald {
@@ -133,6 +133,11 @@
 
 .telemetry-kpi-val.muted {
   color: var(--text-main);
+}
+
+.telemetry-kpi-val.date-kpi {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .telemetry-kpi-label {
@@ -441,7 +446,7 @@ html[data-theme="light"] .legend-swatch-option {
 }
 
 .legend-box.cyan {
-  background-color: #38bdf8;
+  background-color: var(--color-metric-text);
 }
 
 .timeline-chart-wrapper {
@@ -493,7 +498,7 @@ html[data-theme="light"] .legend-swatch-option {
 }
 
 .chart-axis-text.accent-cyan {
-  fill: #38bdf8;
+  fill: var(--color-metric-text);
 }
 
 .chart-bar {
@@ -507,26 +512,22 @@ html[data-theme="light"] .legend-swatch-option {
 }
 
 .chart-points-line {
-  stroke: #38bdf8;
+  stroke: var(--color-metric-text);
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .chart-crosshair {
-  stroke: #f8fafc;
+  stroke: var(--text-main);
   stroke-width: 1.2;
   stroke-dasharray: 2 2;
   pointer-events: none;
 }
 
-html[data-theme="light"] .chart-crosshair {
-  stroke: #090d16;
-}
-
 .chart-crosshair-dot {
-  fill: #38bdf8;
-  stroke: #ffffff;
+  fill: var(--color-metric-text);
+  stroke: var(--bg-surface);
   stroke-width: 2;
   pointer-events: none;
 }
@@ -578,7 +579,7 @@ html[data-theme="light"] .chart-crosshair {
 }
 
 .tooltip-dot.blue { background-color: var(--color-primary-light); }
-.tooltip-dot.cyan { background-color: #38bdf8; }
+.tooltip-dot.cyan { background-color: var(--color-metric-text); }
 
 .tooltip-breakdown {
   margin-top: 6px;
@@ -852,6 +853,11 @@ html[data-theme="light"] .chart-crosshair {
   padding: 4px 10px;
   border-radius: var(--radius-xs);
   opacity: 0.78;
+}
+
+.telemetry-toggle-btn.compact {
+  padding: 2px 8px;
+  font-size: 11px;
 }
 
 .telemetry-toggle-btn.individual::before {
@@ -1209,7 +1215,7 @@ html[data-theme="light"] .telemetry-date-input {
 }
 
 .legend-indicator.dashed {
-  border: 1px dashed #64748b;
+  border: 1px dashed var(--border-dashed);
 }
 
 /* Full Page Chart Viewport */
@@ -1501,19 +1507,19 @@ html[data-theme="light"] .step-swatch.ghost {
 }
 
 .step-swatch.level-1 {
-  background-color: #1e3a5f;
+  background-color: var(--heatmap-step-1);
 }
 
 .step-swatch.level-2 {
-  background-color: #0284c7;
+  background-color: var(--heatmap-step-2);
 }
 
 .step-swatch.level-3 {
-  background-color: #38bdf8;
+  background-color: var(--heatmap-step-3);
 }
 
 .step-swatch.level-4 {
-  background-color: #a5f3fc;
+  background-color: var(--heatmap-step-4);
   box-shadow: 0 0 6px rgba(165, 243, 252, 0.4);
 }
 

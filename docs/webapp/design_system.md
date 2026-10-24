@@ -45,22 +45,36 @@ PyTransDatRO has a dedicated, singular mission: **accurate, reliable coordinate 
 
 All visual styling is governed by semantic CSS custom properties in `webapp/src/style/variables.css` across Dark (`data-theme="dark"`) and Light (`data-theme="light"`) modes.
 
-### 2.1 Core Surface, Border & Typography Tokens
+### 2.1 The Canonical Thematic Color Palette Matrix
 
-| Token | Dark Theme (`data-theme="dark"`) | Light Theme (`data-theme="light"`) | Architectural Role |
-| :--- | :--- | :--- | :--- |
-| `--bg-app` | `#0d1117` | `#f6f8fa` | Application canvas background. |
-| `--bg-surface` | `#161b22` | `#ffffff` | Primary cards, header bar, and left workbench panel. |
-| `--bg-surface-elevated` | `#21262d` | `#f3f4f6` | Elevated controls, segmented trays, and secondary buttons. |
-| `--bg-surface-input` | `#090c10` | `#f6f8fa` | Recessed coordinate inputs, batch textareas, and inactive toggle trays. |
-| `--bg-surface-hover` | `#30363d` | `#eaeef2` | Hover states on interactive buttons and menu items. |
-| `--border-subtle` | `#21262d` | `#d0d7de` | Card borders, section dividers, and inactive toggle borders. |
-| `--border-medium` | `#30363d` | `#afb8c1` | Input borders, elevated control outlines, and active toggle borders. |
-| `--border-focus` | `#58a6ff` | `#0969da` | Keyboard and input focus ring accent. |
-| `--text-main` | `#e6edf3` | `#1f2328` | Primary typography, active toggle labels, and coordinate values. |
-| `--text-muted` | `#8b949e` | `#59636e` | Secondary labels and inactive segmented options. |
-| `--text-dim` | `#6e7681` | `#6e7781` | Micro-section headers and disabled/inactive filter text. |
-| `--tab-indicator-color` | `#f78166` | `#fd8c73` | GitHub Primer coral active tab underline indicator. |
+All visual styling is governed by semantic CSS custom properties in `webapp/src/style/variables.css` across Dark (`data-theme="dark"`) and Light (`data-theme="light"`) modes. To uphold our **simplicity directive** without compromising contrast or usability, all visual elements draw strictly from this defined palette:
+
+| Token Category | Semantic Token | Dark Theme (`data-theme="dark"`) | Light Theme (`data-theme="light"`) | Usability / Architectural Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **Surfaces (Tiers 0–4)** | `--bg-app` | `#0e1013` (Carbon) | `#f6f8fa` (Daylight) | Application root canvas background. |
+| | `--bg-surface` | `#14171c` (Graphite) | `#ffffff` (Pure White) | Primary card surfaces, header bar, workbench panel. |
+| | `--bg-surface-elevated`| `#1c2026` (Slate) | `#f3f4f6` (Light Gray) | Elevated content cards, drawer cards, secondary buttons. |
+| | `--bg-surface-input` | `#0b0d10` (Dark Inset) | `#ffffff` (Inset White) | Inset coordinate inputs, batch textareas, notice boxes. |
+| | `--bg-surface-readonly`| `#181d24` (Subtle Inset)| `#eaeef2` (Muted Daylight)| Non-editable output boxes, copy badges. |
+| | `--bg-surface-hover` | `#252a32` | `#eaeef2` | Interactive button & menu item hover state. |
+| **Borders (Tiers 1–4)** | `--border-subtle` | `#22272e` | `#d8dee4` | Card outlines, solid section dividers, inactive boundaries. |
+| | `--border-medium` | `#30363d` | `#d0d7de` | Input boundaries, elevated control outlines, drawer borders. |
+| | `--border-focus` | `#7c93ab` | `#57606a` | Keyboard navigation `:focus-visible` ring. |
+| | `--border-dashed` | `#30363d` | `#afb8c1` | Topic separation dashed lines, total curve indicators. |
+| **Typography (Tiers 1–3)**| `--text-main` | `#e6edf3` | `#1f2328` | Primary readable text, coordinate values, active tab text. |
+| | `--text-muted` | `#8b949e` | `#57606a` | Standard field labels (`.form-label`), inactive options. |
+| | `--text-dim` | `#6e7681` | `#6e7781` | Subordinate labels (`.info-label`), micro-headers. |
+| **Primary CTA Button** | `--btn-primary-bg` | `#1f2630` | `#eaeef2` | Option #8 Subtle Surface primary action fill. |
+| | `--btn-primary-border`| `#48586a` | `#8c959f` | Option #8 Subtle Surface structural border. |
+| | `--btn-primary-text` | `#e6edf3` | `#1f2328` | Option #8 High-contrast readable button label. |
+| | `--btn-primary-hover`| `#28313e` | `#dde3ea` | Option #8 Interactive hover surface. |
+| **Isolated Metric** | `--color-metric-text`| `#56b6c2` (Cyan/Teal) | `#0e7490` (Deep Teal) | **Quasigeoid Height ($\zeta$)** physical spatial measurement. |
+| | `--color-metric-border`| `rgba(86, 182, 194, 0.32)` | `rgba(14, 116, 144, 0.28)` | Quasigeoid height readout border. |
+| | `--color-metric-bg` | `rgba(86, 182, 194, 0.08)` | `rgba(14, 116, 144, 0.06)` | Quasigeoid height readout background. |
+| **System Status** | `--color-success` | `#10b981` (Green) | `#10b981` (Green) | In-grid validity, API online health. |
+| | `--color-warning` | `#f59e0b` (Amber) | `#f59e0b` (Amber) | Out-of-grid notice, large point volume warning. |
+| | `--color-danger` | `#ef4444` (Red) | `#ef4444` (Red) | Input syntax errors, network communication failures. |
+| **Spatial Heatmap** | `--heatmap-step-1..4`| `#1e3a5f` .. `#a5f3fc` | `#0969da` .. `#80ccff` | Spatial choropleth matrix heat scale (isolated to map/chart). |
 
 ### 2.2 Primary Action Button Tokens (`Subtle Surface + Border`)
 

@@ -228,13 +228,13 @@ export class FeedbackPanel {
 
     if (this.isMinimized) {
       this.element.innerHTML = `
-        <div class="fgp-header" id="ffp-drag-handle">
-          <div class="fgp-title-cluster">
-            <span class="fgp-title">${t('feedback.title')}</span>
+        <div class="drawer-header fgp-header" id="ffp-drag-handle">
+          <div class="drawer-title-cluster fgp-title-cluster">
+            <span class="drawer-title fgp-title">${t('feedback.title')}</span>
           </div>
-          <div class="fgp-header-actions">
-            <button class="btn-icon fgp-icon-btn" id="ffp-minimize-btn" title="${t('common.restore')}">□</button>
-            <button class="btn-icon fgp-icon-btn" id="ffp-close-btn" title="${t('common.close')}">✕</button>
+          <div class="drawer-header-actions fgp-header-actions">
+            <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="ffp-minimize-btn" title="${t('common.restore')}">□</button>
+            <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="ffp-close-btn" title="${t('common.close')}">✕</button>
           </div>
         </div>
       `;
@@ -245,23 +245,23 @@ export class FeedbackPanel {
 
     this.element.innerHTML = `
       <!-- Draggable Header -->
-      <div class="fgp-header" id="ffp-drag-handle">
-        <div class="fgp-title-cluster">
-          <span class="fgp-title">${t('feedback.title')}</span>
+      <div class="drawer-header fgp-header" id="ffp-drag-handle">
+        <div class="drawer-title-cluster fgp-title-cluster">
+          <span class="drawer-title fgp-title">${t('feedback.title')}</span>
         </div>
-        <div class="fgp-header-actions">
-          <button class="btn-icon fgp-icon-btn" id="ffp-minimize-btn" title="${t('common.minimize')}">─</button>
-          <button class="btn-icon fgp-icon-btn" id="ffp-close-btn" title="${t('common.close')}">✕</button>
+        <div class="drawer-header-actions fgp-header-actions">
+          <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="ffp-minimize-btn" title="${t('common.minimize')}">─</button>
+          <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="ffp-close-btn" title="${t('common.close')}">✕</button>
         </div>
       </div>
 
       <!-- Main Body -->
-      <div class="ffp-body">
+      <div class="drawer-body ffp-body">
         <!-- Section 1: Feedback Content Card -->
-        <div class="fhp-card ffp-card">
-          <div class="fhp-card-header">
-            <div class="fhp-card-title">${t('feedback.title')}</div>
-            <div class="fhp-card-subtitle">${t('feedback.desc')}</div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <div class="content-card-title">${t('feedback.title')}</div>
+            <div class="content-card-subtitle">${t('feedback.desc')}</div>
           </div>
 
           <!-- Report Type Selector -->
@@ -278,9 +278,9 @@ export class FeedbackPanel {
 
           <!-- Detailed Description / Template Area -->
           <div class="form-group ffp-message-group">
-            <div class="fhp-callout-box ffp-template-callout">
-              <span class="fhp-callout-title">${t('feedback.messageLabel')}</span>
-              <p class="fhp-callout-body">${t('feedback.templateHint')}</p>
+            <div class="callout-box">
+              <span class="callout-title">${t('feedback.messageLabel')}</span>
+              <p class="callout-body">${t('feedback.templateHint')}</p>
             </div>
             <textarea class="form-input mono ffp-textarea" id="fb-message-input" rows="7"></textarea>
           </div>
@@ -300,10 +300,10 @@ export class FeedbackPanel {
         </div>
 
         <!-- Section 2: Human Verification Card -->
-        <div class="fhp-card ffp-verify-card">
-          <div class="fhp-card-header">
-            <div class="fhp-card-title">${t('feedback.mathLabel')}</div>
-            <div class="fhp-card-subtitle">${t('feedback.verificationSubtitle')}</div>
+        <div class="content-card">
+          <div class="content-card-header">
+            <div class="content-card-title">${t('feedback.mathLabel')}</div>
+            <div class="content-card-subtitle">${t('feedback.verificationSubtitle')}</div>
           </div>
 
           <!-- Zero-friction Bot Verification Row -->

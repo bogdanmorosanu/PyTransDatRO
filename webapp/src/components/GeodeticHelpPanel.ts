@@ -82,13 +82,13 @@ export class GeodeticHelpPanel {
 
     if (this.isMinimized) {
       this.element.innerHTML = `
-        <div class="fgp-header" id="fhp-drag-handle">
-          <div class="fgp-title-cluster">
-            <span class="fgp-title">${t('geodeticHelp.title')}</span>
+        <div class="drawer-header fgp-header" id="fhp-drag-handle">
+          <div class="drawer-title-cluster fgp-title-cluster">
+            <span class="drawer-title fgp-title">${t('geodeticHelp.title')}</span>
           </div>
-          <div class="fgp-header-actions">
-            <button class="btn-icon fgp-icon-btn" id="fhp-minimize-btn" title="${t('geodeticHelp.restore')}">□</button>
-            <button class="btn-icon fgp-icon-btn" id="fhp-close-btn" title="${t('geodeticHelp.close')}">✕</button>
+          <div class="drawer-header-actions fgp-header-actions">
+            <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="fhp-minimize-btn" title="${t('geodeticHelp.restore')}">□</button>
+            <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="fhp-close-btn" title="${t('geodeticHelp.close')}">✕</button>
           </div>
         </div>
       `;
@@ -98,40 +98,40 @@ export class GeodeticHelpPanel {
     }
 
     this.element.innerHTML = `
-      <div class="fgp-header" id="fhp-drag-handle">
-        <div class="fgp-title-cluster">
-          <span class="fgp-title">${t('geodeticHelp.title')}</span>
+      <div class="drawer-header fgp-header" id="fhp-drag-handle">
+        <div class="drawer-title-cluster fgp-title-cluster">
+          <span class="drawer-title fgp-title">${t('geodeticHelp.title')}</span>
         </div>
-        <div class="fgp-header-actions">
-          <button class="btn-icon fgp-icon-btn" id="fhp-minimize-btn" title="${t('geodeticHelp.minimize')}">─</button>
-          <button class="btn-icon fgp-icon-btn" id="fhp-close-btn" title="${t('geodeticHelp.close')}">✕</button>
+        <div class="drawer-header-actions fgp-header-actions">
+          <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="fhp-minimize-btn" title="${t('geodeticHelp.minimize')}">─</button>
+          <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="fhp-close-btn" title="${t('geodeticHelp.close')}">✕</button>
         </div>
       </div>
 
-      <div class="fhp-body" id="fhp-body-content">
+      <div class="drawer-body fhp-body" id="fhp-body-content">
         <!-- Card 1: About & Non-Official Disclaimer -->
-        <div class="fhp-card">
-          <div class="fhp-card-header">
-            <div class="fhp-card-title">${t('geodeticHelp.aboutTitle')}</div>
+        <div class="content-card fhp-card">
+          <div class="content-card-header fhp-card-header">
+            <div class="content-card-title fhp-card-title">${t('geodeticHelp.aboutTitle')}</div>
           </div>
           <p class="fhp-topic-desc">
             ${t('geodeticHelp.aboutP1')}
           </p>
-          <div class="fhp-callout-box">
-            <span class="fhp-callout-title">${t('geodeticHelp.disclaimerLabel')}</span>
-            <p class="fhp-callout-body">${t('geodeticHelp.disclaimerText')}</p>
+          <div class="callout-box fhp-callout-box">
+            <span class="callout-title fhp-callout-title">${t('geodeticHelp.disclaimerLabel')}</span>
+            <p class="callout-body fhp-callout-body">${t('geodeticHelp.disclaimerText')}</p>
           </div>
         </div>
 
         <!-- Card 2: Benchmark Comparison against ANCPI Official Engine -->
-        <div class="fhp-card" id="fhp-benchmark-slot">
+        <div class="content-card fhp-card" id="fhp-benchmark-slot">
           ${this.getBenchmarkCardHtml()}
         </div>
 
         <!-- Card 3: Reference Systems & Datums -->
-        <div class="fhp-card">
-          <div class="fhp-card-header">
-            <div class="fhp-card-title">${t('geodeticHelp.datumsTitle')}</div>
+        <div class="content-card fhp-card">
+          <div class="content-card-header fhp-card-header">
+            <div class="content-card-title fhp-card-title">${t('geodeticHelp.datumsTitle')}</div>
           </div>
           
           <div class="fhp-topic-item">
@@ -151,9 +151,9 @@ export class GeodeticHelpPanel {
         </div>
 
         <!-- Card 4: Formats & Conventions -->
-        <div class="fhp-card">
-          <div class="fhp-card-header">
-            <div class="fhp-card-title">${t('geodeticHelp.formatsTitle')}</div>
+        <div class="content-card fhp-card">
+          <div class="content-card-header fhp-card-header">
+            <div class="content-card-title fhp-card-title">${t('geodeticHelp.formatsTitle')}</div>
           </div>
 
           <div class="fhp-topic-item">
@@ -207,8 +207,8 @@ export class GeodeticHelpPanel {
 
     if (this.isLoadingComparison && !this.comparisonData) {
       return `
-        <div class="fhp-card-header">
-          <div class="fhp-card-title">${title}</div>
+        <div class="content-card-header fhp-card-header">
+          <div class="content-card-title fhp-card-title">${title}</div>
         </div>
         <div class="fgp-status-box">
           <div class="fgp-spinner"></div>
@@ -257,9 +257,9 @@ export class GeodeticHelpPanel {
     const etrsStatus = etrsToSt70?.status || 'PASS';
 
     return `
-      <div class="fhp-card-header">
-        <div class="fhp-card-title">${title}</div>
-        <div class="fhp-card-subtitle">${subtitle}</div>
+      <div class="content-card-header fhp-card-header">
+        <div class="content-card-title fhp-card-title">${title}</div>
+        <div class="content-card-subtitle fhp-card-subtitle">${subtitle}</div>
       </div>
 
       <table class="fhp-benchmark-table">
@@ -293,9 +293,9 @@ export class GeodeticHelpPanel {
         </tbody>
       </table>
 
-      <div class="fhp-callout-box">
-        <span class="fhp-callout-title">${t('geodeticHelp.criteriaLabel')}</span>
-        <p class="fhp-callout-body">${t('geodeticHelp.benchmarkCriteriaNote')}</p>
+      <div class="callout-box fhp-callout-box">
+        <span class="callout-title fhp-callout-title">${t('geodeticHelp.criteriaLabel')}</span>
+        <p class="callout-body fhp-callout-body">${t('geodeticHelp.benchmarkCriteriaNote')}</p>
       </div>
     `;
   }

@@ -61,9 +61,11 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
 - **Member Instances**:
   - `Computation Source Filter ([data-source-name])` (Computation Sub-View) — *`Web App`, `REST API`, `Desktop / CLI`*
   - `Computation Metric Filter (#comp-metric-points-btn, #comp-metric-calls-btn)` (Computation Sub-View) — *`Points`, `Calls` (Multi-select)*
+  - `Computation Total Overlay Toggle (#comp-toggle-total)` (Computation Sub-View) — *Toggle button with dashed total line sample*
   - `Spatial Source Filter ([data-spatial-source-name])` (Spatial Sub-View) — *`Web App`, `REST API`, `Desktop / CLI`*
   - `Legacy Source Filter ([data-legacy-source])` (Legacy Sub-View) — *`Web App`, `REST API (Service)`*
   - `Legacy Operation Filter ([data-legacy-op])` (Legacy Sub-View) — *`Stereo 70`, `Stereo 30`*
+  - `Legacy Total Overlay Toggle (#legacy-toggle-total)` (Legacy Sub-View) — *Toggle button with dashed total line sample*
 
 ### Archetype 2.4: Boolean Toggle Switch (Sliding Track & Thumb)
 *Compact, accessible on/off toggle switch for binary options within input cards.*
@@ -94,34 +96,13 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
 
 ## 4. Typography: Labels & Section Headers
 
-### Archetype 4.1: Primary Labels
-*Prominent field and section identifiers defining primary controls.*
-- **Styling Standard**: Clean, medium-weight typography (`font-size: 12px–12.5px`, `font-weight: 500`, `color: var(--text-muted)`). Trailing colons (`:`) are omitted.
+### Archetype 4.1: Standard Field & Control Labels
+*Standard field labels directly identifying inputs, outputs, selects, and filter group decks.*
+- **Styling Standard**: Consistent sentence-case or title-case label (`font-size: 11.5px–12.5px`, `font-weight: 500`, `color: var(--text-muted)`, `margin-bottom: 5px`, `text-transform: none`). Trailing colons (`:`) are strictly omitted.
 - **Member Instances**:
   - `Operation Direction Label (.form-label)` (Shared Config Card) — *"Operation Direction"* / *"Sensul transformării"*
   - `Angular Unit Label (.form-label)` (Shared Config Card) — *"Angular Unit"* / *"Unitate unghiulară"*
   - `Coordinate Order Label (.form-label)` (Shared Config Card) — *"Coordinate Order"* / *"Ordinea coordonatelor"*
-  - `Format Example Label (.info-label)` (Shared Config Card) — *"Format Example"* / *"Exemplu format"*
-
-### Archetype 4.2: Secondary Labels
-*Subordinate labels for secondary metrics or preview readouts.*
-- **Styling Standard**: Sentence-case, neutral label (`font-size: 11.5px`, `color: var(--text-muted)`).
-- **Member Instances**:
-  - `Quasigeoid Height Label (.form-label)` (Point Output Card) — *"Quasigeoid Height (ζ = h - H)"*
-  - `Format Example Info Label (.info-label)` (Shared Config Card) — *"Format Example"*
-
-### Archetype 4.3: Element & Component Labels
-*Standard field labels directly identifying inputs, outputs, selects, filter groups, and date bounds.*
-- **Styling Standard**: Consistent sentence-case or title-case label (`font-size: 11.5px–12px`, `font-weight: 500`, `color: var(--text-muted)`, `margin-bottom: 5px`, `text-transform: none`). Trailing colons (`:`) are strictly omitted.
-- **Member Instances**:
-  - `Operation Direction Label (.form-label)` (Shared Config Card) — *"Operation Direction"*
-  - `Angular Unit Label (.form-label)` (Shared Config Card) — *"Angular Unit"*
-  - `Coordinate Order Label (.form-label)` (Shared Config Card) — *"Coordinate Order"*
-  - `Report Type Label (.form-label)` (Feedback Modal) — *"Report Type"* / *"Tipul semnalării"*
-  - `Detailed Description Label (.form-label)` (Feedback Modal) — *"Detailed Description"* / *"Descriere detaliată"*
-  - `Human Verification Label (.ffp-math-label)` (Feedback Modal) — *"Human Verification"* / *"Verificare Umană"*
-  - `Grid Metadata Size Label (.fgp-meta-label)` (Grid Metadata Panel) — *"Size"* / *"Mărime"*
-  - `Grid Metadata SHA-256 Label (.fgp-meta-label)` (Grid Metadata Panel) — *"SHA-256"*
   - `Coordinate 1 Input Label (.form-label)` (Point Mode) — *"Northing (X)"* / *"Latitude (B)"*
   - `Coordinate 2 Input Label (.form-label)` (Point Mode) — *"Easting (Y)"* / *"Longitude (L)"*
   - `Altitude/Height Input Label (.form-label)` (Point Mode) — *"Altitude (H)"* / *"Ellipsoidal Height (h)"*
@@ -130,14 +111,23 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
   - `Altitude/Height Output Label (.form-label)` (Point Mode) — *"Ellipsoidal Height (h)"* / *"Altitude (H)"*
   - `Batch Input Label (.form-label)` (Text Mode) — *"Input coordinates (multi-line)"*
   - `Batch Output Label (.form-label)` (Text Mode) — *"Transformed coordinates"*
-  - `Telemetry Facet Group Labels (.form-label)` (Usage Dashboard) — *"Sources"*, *"Metrics"* (multi-select Computation) / *"Metric"* (single-select Spatial), *"Operations"*
+  - `Telemetry Facet Group Labels (.form-label)` (Usage Dashboard) — *"Sources"*, *"Metrics"* (Computation) / *"Metric"* (Spatial), *"Operations"*
+  - `Active Period Main Label (.form-label.telemetry-active-main-label)` (Usage Active Period) — *"Active Period"*
+  - `Report Type Label (.form-label)` (Feedback Drawer) — *"Report Type"* / *"Tipul semnalării"*
+  - `Grid Metadata Labels (.fgp-meta-label)` (Grid Metadata Drawer) — *"Size"*, *"SHA-256"*
+
+### Archetype 4.2: Sub-Labels & Contextual Bounds
+*Subordinate, discrete labels for preview readouts, boundary dates, and metric qualifiers.*
+- **Styling Standard**: Sentence-case, neutral label (`font-size: 11.5px`, `font-weight: 500`, `color: var(--text-dim)` or `--text-muted`).
+- **Member Instances**:
+  - `Format Example Label (.info-label)` (Shared Config Card) — *"Format Example"* / *"Exemplu format"*
+  - `Quasigeoid Height Label (.info-label)` (Point Output Card) — *"Quasigeoid Height (ζ = h - H)"*
   - `Earliest Available Date Label (.info-label)` (Usage Date Limits) — *"Earliest Available"*
   - `Current / Today Date Label (.info-label)` (Usage Date Limits) — *"Current Date"*
-  - `Active Period Main Label (.form-label.telemetry-active-main-label)` (Usage Active Period) — *"Active Period"*
   - `Active Period Start & End Sub-Labels (.info-label)` (Usage Active Period) — *"Start"*, *"End"*
 
-### Archetype 4.4: Discrete / Subtle Section Labels
-*Faded, low-prominence landmark labels that organize functional cards without drawing visual attention.*
+### Archetype 4.3: Discrete Section Landmarks
+*Faded, low-prominence uppercase landmark labels that organize functional cards without drawing visual attention.*
 - **Styling Standard**: Uppercase, small, muted typography (`font-size: 10.5px`, `font-weight: 600`, `letter-spacing: 0.6px`, `color: var(--text-dim)`, `margin-bottom: 8px`, `line-height: 1.2`).
 - **Member Instances**:
   - `Settings Landmark (.section-micro-label)` (Global Config Card) — *"SETTINGS"* / *"SETĂRI"*
@@ -148,9 +138,9 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
   - `Transformation Quality Header (.quality-label)` (Reporting Card) — *"Transformation"* / *"Transformare"* (Sentence case, discrete)
   - `Download as: Export Header (.download-group-label)` (Text Mode) — *"Download as:"* / *"Descarcă ca:"*
 
-### Archetype 4.5: Content Topic Headings & Explanatory Blocks (Tier 2 Subheadings)
+### Archetype 4.4: Content Topic Headings & Explanatory Blocks (Tier 2 Subheadings)
 *Structured topic headings paired with descriptive body text inside documentation and information cards.*
-- **Styling Standard**: Two-tier explanatory hierarchy. Subheading (`.fhp-topic-heading`): `font-size: 11.5px`, `font-weight: 600`, `color: var(--text-main)`, subordinate to the 13.5px Section Header. Successive topic items are divided by a subtle dashed line (`border-top: 1px dashed var(--border-subtle); padding-top: 8px`). Body (`.fhp-topic-desc`): `font-size: 11.5px`, `line-height: 1.5`, `color: var(--text-muted)`. **The Golden Rule**: Trailing colons (`:`) are strictly omitted from all headings.
+- **Styling Standard**: Two-tier explanatory hierarchy. Subheading (`.content-card-title`, `.topic-heading`, `.fhp-topic-heading`): `font-size: 11.5px`, `font-weight: 600`, `color: var(--text-main)`, subordinate to the 13.5px Section Header. Successive topic items are divided by a subtle dashed line (`border-top: 1px dashed var(--border-dashed); padding-top: 8px`). Body (`.topic-desc`, `.fhp-topic-desc`): `font-size: 11.5px`, `line-height: 1.5`, `color: var(--text-muted)`. **The Golden Rule**: Trailing colons (`:`) are strictly omitted from all headings.
 - **Member Instances**:
   - `Stereo 70 Topic Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Stereo 70 (Dealul Piscului 1970 · EPSG:31700)"*
   - `ETRS89 Topic Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"ETRS89 (GRS80 · EPSG:4258)"*
@@ -159,7 +149,7 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
   - `Coordinate Order Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Coordinate Order"*
   - `Dimensionality Auto-Detection Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Dimensionality Auto-Detection (2D / 3D)"*
 
-### Archetype 4.6: Informational Contextual Tooltip Indicators
+### Archetype 4.5: Informational Contextual Tooltip Indicators
 *Discrete, non-actionable hoverable icons providing contextual domain guidance or explanations without button semantics.*
 - **Styling Standard**: GitHub-style hoverable SVG indicator (`.info-help-indicator`). Rendered as an accessible inline element (`<span class="info-help-indicator" tabindex="0">`) with `cursor: help`, transparent background, zero border, and muted color (`--text-dim` or `--text-muted`) that smoothly transitions to `--text-main` on hover/focus. Pairs with an embedded theme-reactive contextual tooltip bubble (`.info-tooltip-bubble`, `role="tooltip"`) that strictly honors Dark/Light mode (`background-color: var(--bg-surface)`, `color: var(--text-main)`, `border: 1px solid var(--border-medium)`, `box-shadow: var(--shadow-md)`), avoiding native OS black box tooltip popovers on light backgrounds.
 - **Member Instances**:
@@ -233,81 +223,47 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
   - `Batch Transform Button (#batch-transform-btn)` (Text Mode) — *"Transform" / "Calculating..."*
   - `Files Transform Button (#file-start-btn)` (Files Mode) — *"Transform Files" / "Streaming progress..."*
 
-### Archetype 6.2: Code-Block Copy Action Buttons
-*Discrete top-right icon buttons with instant checkmark feedback to copy computed values to clipboard.*
-- **Styling Standard**: Small icon button (`.copy-code-btn`, `.btn-icon`), subtle border, instant checkmark feedback (`✓ Copied`), zero layout shift.
+### Archetype 6.2: Secondary & Utility Action Buttons
+*Secondary buttons triggering auxiliary actions, exports, list operations, map navigation, and modal confirmations.*
+- **Styling Standard**: Compact secondary action buttons (`.btn.btn-secondary`, `.btn.btn-outline`, `.btn-secondary-action`, `.btn-sm`), height 26px–30px, typography 11.5px–12px, padding `0 9px` to `0 12px`, border-radius `--radius-sm` (6px).
+- **Member Instances**:
+  - `Batch Export Buttons (#batch-export-csv, #batch-export-geojson, #batch-export-dxf)` (Text Mode)
+  - `File Download Buttons (.file-download-btn, #file-download-all-btn)` (Files Mode)
+  - `Clear Queue & Output Buttons (#file-clear-queue-btn, #file-clear-output-btn)` (Files Mode)
+  - `Map Navigation Dock Buttons (#pt-center-map-btn, #batch-center-map-btn, #file-center-map-btn, #pt-zoom-extents-btn, etc.)` (Point, Text, Files)
+  - `Modal Footer Buttons (#modal-close-btn, #fb-submit-btn, #fb-cancel-btn)` (Modals & Drawers)
+  - `Feedback Auxiliary Buttons (#fb-reset-template-btn, #fb-copy-btn, #fb-github-btn)` (Feedback Drawer)
+
+### Archetype 6.3: Icon Action & Copy Buttons
+*Compact icon-only triggers for copy-to-clipboard actions, drawer window controls, and list item removal.*
+- **Styling Standard**: Discrete icon button (`.btn-icon`, `.copy-code-btn`, `.drawer-icon-btn`), height 24px–32px, transparent background brightening on hover, instant checkmark feedback (`✓ Copied`) for copy actions without layout shift.
 - **Member Instances**:
   - `Copy Point Coordinates Button (#pt-copy-code-btn)` (Point Mode)
   - `Copy Batch Results Button (#batch-copy-results-slot)` (Text Mode)
-
-### Archetype 6.3: Export & File Action Buttons
-*Secondary action buttons triggering file downloads or exports within workbench cards.*
-- **Styling Standard**: Compact secondary action modifier (`.btn.btn-secondary.btn-secondary-action`), height 26px, typography 11.5px, padding `0 9px`, border-radius `--radius-sm` (6px), direct invocation of native browser Save As dialog without premature toasts.
-- **Member Instances**:
-  - `Download CSV Button (#batch-export-csv)` (Text Mode)
-  - `Download GeoJSON Button (#batch-export-geojson)` (Text Mode)
-  - `Download DXF Button (#batch-export-dxf)` (Text Mode)
-  - `Individual File Download Button (.file-download-btn)` (Files Mode)
-  - `Download All Completed Button (#file-download-all-btn)` (Files Mode)
-
-### Archetype 6.4: Queue & List Item Action Buttons
-*Utility buttons managing items in a list or staging queue.*
-- **Styling Standard**: Subtle outline button (`.btn-outline`) or compact `✕` remove icon (`.btn-icon`).
-- **Member Instances**:
-  - `Clear Queue Button (#file-clear-queue-btn)` (Files Mode) — *Outlined button "✕ Clear Queue"*
-  - `Remove File Item Button (.file-queue-remove)` (Files Mode) — *Compact "✕" icon button per row*
-
-### Archetype 6.5: Map Navigation Action Buttons
-*Secondary utility buttons triggering Leaflet map panning and boundary fitting, decoupled from workbench cards into a dedicated bottom dock.*
-- **Styling Standard**: Compact outlined button (`.btn.btn-outline.btn-secondary-action`), height 26px, font size `11.5px`, padding `0 9px`, accompanied by crosshair or search icon, guarded by Romania bounds, positioned in `.workbench-actions-dock`.
-- **Member Instances**:
-  - `Center on Map (#pt-center-map-btn, #batch-center-map-btn, #file-center-map-btn)` (Point, Text, Files)
-  - `Zoom to Extents (#pt-zoom-extents-btn, #batch-zoom-extents-btn, #file-zoom-extents-btn)` (Point, Text, Files)
-
-### Archetype 6.6: Graph Series Total Toggles
-*Standalone toggle buttons turning the cumulative Total series curve on/off on SVG time charts.*
-- **Styling Standard**: Independent toggle button with status indicator, mirroring source toggles.
-- **Member Instances**:
-  - `Computation Total Overlay Toggle (#comp-toggle-total)` (Computation Sub-View)
-  - `Legacy Total Overlay Toggle (#legacy-toggle-total)` (Legacy Sub-View)
-
-### Archetype 6.7: Dialog & Modal Action Buttons
-*Compact action triggers inside modal dialog footers, floating utility drawers, and card dialogs.*
-- **Styling Standard**: Compact button modifier (`.btn-sm`), height `30px`, padding `0 12px`, font size `12px`, `font-weight: 500`, border radius `--radius-sm` (6px).
-- **Member Instances**:
-  - `Submit Feedback Button (#fb-submit-btn)` (Feedback Modal) — *.btn.btn-primary.btn-sm*
-  - `Close Feedback Button (#fb-cancel-btn)` (Feedback Modal) — *.btn.btn-secondary.btn-sm*
-  - `Close Report Modal Button (#modal-close-btn)` (Batch Report Modal) — *.btn.btn-primary.btn-sm*
+  - `Drawer Minimize & Close Buttons (.drawer-icon-btn, #fhp-close-btn, #ffp-close-btn, #fgp-close-btn)` (Drawers)
+  - `Remove File Item Button (.file-queue-remove)` (Files Mode)
 
 ---
 
-## 7. Quality Reporting & Feedback Labels
+## 7. Badges & Diagnostic Feedback
 
-### Archetype 7.1: Quality Info Labels & Informational Badges
-*Neutral, informational pills indicating point counts, dimensional traits, and calculated geodetic metrics.*
-- **Styling Standard**: Elevated background (`--bg-surface-elevated` or `--bg-surface-input`), neutral border (`--border-medium`), text color `--text-muted`, corner radius `--radius-sm` (6px) or `--radius-xs` (4px).
+### Archetype 7.1: Diagnostic Status & Validation Pills
+*Compact status pills indicating calculation validity, error notices, or neutral point counts.*
+- **Styling Standard**: High-contrast semantic pill (`.status-pill`, `border-radius: var(--radius-sm)` or `var(--radius-xs)`):
+  - Neutral (`.status-pill.neutral`, `.status-pill-neutral`): `--bg-surface-elevated`, `--text-muted`, `--border-subtle` (`Ready to transform`, `Total (15)`, `2D (10)`, `3D (5)`).
+  - Success (`.status-pill.success`): Green (`#10b981`), `--color-success-bg` (`Valid`).
+  - Warning (`.status-pill.warning`): Amber (`#f59e0b`), `--color-warning-bg` (`Outside Grid`, `No Grid Data`).
+  - Danger (`.status-pill.danger`): Red (`#ef4444`), `--color-danger-bg` (`Invalid Input`, `Invalid Angle`).
 - **Member Instances**:
-  - `Quasigeoid Height Badge (.info-field-badge)` (Point Mode) — *Monospace chip "+34.218 m"*
-  - `Total Points Count (.quality-report-badges .status-pill)` (Batch / Files)
-  - `2D Coordinates Pill / Count (.quality-report-badges .status-pill)` (Point / Batch / Files)
-  - `3D Coordinates Pill / Count (.quality-report-badges .status-pill)` (Point / Batch / Files)
+  - `Ready to Transform Pill (.status-pill.neutral)` (Point / Batch / Files)
+  - `Dimension Breakdown Pills (.quality-report-badges .status-pill)` (Point / Batch / Files)
+  - `Valid Transformation Pill (.status-pill.success)` (Point / Batch / Files)
+  - `Outside Grid / No Data Warning Pills (.status-pill.warning)` (Point / Batch / Files)
+  - `Invalid Syntax / Angle Danger Pills (.status-pill.danger)` (Point / Batch / Files)
 
-### Archetype 7.2: Quality Validation Labels
-*Outcome and diagnostic pills rendered with semantic status colors (Green, Amber, Red).*
-- **Styling Standard**: High-contrast semantic pill (`border-radius: var(--radius-xs)`):
-  - Green (`#10b981`): `Valid`
-  - Amber (`#f59e0b`): `Outside Grid`, `No Grid Data`
-  - Red (`#ef4444`): `Invalid Input`, `Invalid Angle`
-- **Member Instances**:
-  - `Valid Transformation (.status-pill.success)` (Point / Batch / Files) — *Green*
-  - `Outside Grid (.status-pill.warning)` (Point / Batch / Files) — *Amber*
-  - `No Grid Data (.status-pill.warning)` (Point / Batch / Files) — *Amber*
-  - `Invalid Input (.status-pill.danger)` (Point / Batch / Files) — *Red*
-  - `Invalid Angle (.status-pill.danger)` (Point / Batch / Files) — *Red*
-
-### Archetype 7.3: File Processing Status Badges
-*Status indicators for individual files queued in File Upload mode.*
-- **Styling Standard**: Small rounded pill indicating processing lifecycle state.
+### Archetype 7.2: Queue Lifecycle Badges
+*Status indicators representing asynchronous file processing states.*
+- **Styling Standard**: Small rounded pill (`.file-status-badge`) indicating queue lifecycle: pending (neutral), processing (primary glow), completed (success green), error (danger red).
 - **Member Instances**:
   - `Pending Badge (.file-status-badge.pending)` (Files Mode)
   - `Processing Badge (.file-status-badge.processing)` (Files Mode)
@@ -316,30 +272,17 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
 
 ---
 
-## 8. Analytics & Telemetry KPI Cards
+## 8. Analytics & Telemetry KPI Displays
 
-### Archetype 8.1: Main KPI Cards (Single Metric)
-*Standard standalone KPI cards with one large numerical value and one descriptive label below it.*
-- **Styling Standard**: Elevated card surface (`--bg-surface`), subtle 1px border, large monospace metric value (`font-size: 20px–22px`, `--text-main`), quiet uppercase label below (`--text-muted`, `font-size: 11px`).
+### Archetype 8.1: KPI Metric Cards & Banners
+*Elevated numerical readout containers displaying key volume indicators with large monospace figures and subtle descriptions.*
+- **Styling Standard**: Elevated surface (`.telemetry-kpi-card`, `.spatial-overview-banner`, `--bg-surface`), 1px border (`--border-subtle`), prominent monospace metric value (`20px–22px`, `--text-main`), quiet sentence-case label (`11px`, `--text-muted`).
 - **Member Instances**:
-  - `Total Points Card (.telemetry-kpi-card)` (Computation Sub-View)
-  - `Total Calls Card (.telemetry-kpi-card)` (Computation Sub-View)
-  - `Points / Call Card [Batch Intensity] (.telemetry-kpi-card)` (Computation Sub-View)
-  - `Legacy Total Points Card (.telemetry-kpi-card)` (Legacy Sub-View)
-  - `Legacy Web App Points Card (.telemetry-kpi-card)` (Legacy Sub-View)
-  - `Legacy Service API Points Card (.telemetry-kpi-card)` (Legacy Sub-View)
-  - `Legacy Stereo 70 Points Card (.telemetry-kpi-card)` (Legacy Sub-View)
-  - `Legacy Stereo 30 Points Card (.telemetry-kpi-card)` (Legacy Sub-View)
+  - `Total Points / Calls / Intensity Cards (.telemetry-kpi-card)` (Computation & Legacy)
+  - `Spatial Overview Banner (.spatial-overview-banner)` (Spatial Sub-View)
 
-### Archetype 8.2: Main KPI Cards (Merged Multi-Column Banner)
-*A unified full-width card container divided into distinct metric columns.*
-- **Styling Standard**: Full-width elevated banner with vertical separator line between metric columns.
-- **Member Instances**:
-  - `Spatial Overview Banner (.spatial-overview-banner)` (Spatial Sub-View)  
-    *Columns: Total Points/Calls (Left) + Active Cells Count (Right)*
-
-### Archetype 8.3: Secondary Regional KPI Cards (Quadrants)
-*Compact geographic distribution cards displaying quadrant name above, numerical value below, and percentage share alongside.*
+### Archetype 8.2: Regional Geographic Quadrant Cards
+*Compact geographic distribution cards displaying quadrant code above, numerical volume below, and percentage share alongside.*
 - **Styling Standard**: 4-column deck (`.spatial-quadrants-deck`), quadrant code above (`NW`, `NE`, `SW`, `SE`), monospace value + percentage share (`font-size: 12px`, `--text-muted`).
 - **Member Instances**:
   - `Quadrant NW Card (.quadrant-card.nw)` (Spatial Sub-View)
@@ -351,22 +294,24 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
 
 ## 9. Content Sections & Notice Blocks
 
-### Archetype 9.1: Section Content Cards
-*Elevated modular cards grouping related informational topics, benchmarks, or reference documentation.*
-- **Styling Standard**: Elevated background (`--bg-surface-elevated`), 1px subtle border (`--border-subtle`), rounded corners (`--radius-md`), standard internal padding (`14px 16px`), flex-column layout with gap `10px`. Features an authoritative Tier 1 sentence-case title (`font-size: 13.5px`, `font-weight: 600`, `--text-main`) with a solid divider underline (`border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px`) that anchors all subheadings below it, and optional subtitle (`font-size: 11.5px`, `--text-muted`).
+### Archetype 9.1: Content Section Cards
+*Universally shared elevated modular cards grouping related informational topics, benchmarks, documentation, and user reporting.*
+- **Styling Standard**: Shared card container (`.content-card`, `.fhp-card`, `.ffp-card`), elevated background (`--bg-surface-elevated`), 1px subtle border (`--border-subtle`), rounded corners (`--radius-md`), standard internal padding (`14px 16px`), flex-column layout with gap `10px`. Features an authoritative Tier 1 title (`.content-card-title`, `13.5px`, `600` weight, `--text-main`) with a solid divider underline (`border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px`), optional subtitle (`11.5px`, `--text-muted`), and structured topic rows (`.content-row-divided`).
 - **Member Instances**:
-  - `About & Disclaimer Card (.fhp-card)` (Geodetic Help Panel)
-  - `Official Engine Replication Benchmark Card (.fhp-card)` (Geodetic Help Panel)
-  - `Reference Systems & Datums Card (.fhp-card)` (Geodetic Help Panel)
-  - `Formats & Input Conventions Card (.fhp-card)` (Geodetic Help Panel)
-  - `Report & Feedback Card (.fhp-card.ffp-card)` (Feedback Panel) — *Title: "Report & Feedback" with solid underline divider*
-  - `Human Verification Card (.fhp-card.ffp-verify-card)` (Feedback Panel) — *Title: "Human Verification" with solid underline divider*
+  - `About & Disclaimer Card (.content-card)` (Geodetic Help Panel)
+  - `Official Engine Replication Benchmark Card (.content-card)` (Geodetic Help Panel)
+  - `Reference Systems & Datums Card (.content-card)` (Geodetic Help Panel)
+  - `Formats & Input Conventions Card (.content-card)` (Geodetic Help Panel)
+  - `Report & Feedback Card (.content-card)` (Feedback Drawer)
+  - `Human Verification Card (.content-card)` (Feedback Drawer)
+  - `Active Grid Specification Card (.content-card)` (Legacy Stats View)
 
-### Archetype 9.2: Notice & Callout Boxes
-*Embedded secondary callout boxes for disclaimers, acceptance criteria, notes, or operational remarks.*
-- **Styling Standard**: Recessed background (`--bg-surface-input`), 1px medium border (`--border-medium`), border radius `--radius-sm` (6px), padding `10px 12px`, flex-column layout. Features a bold sentence-case title (`font-size: 11.5px`, `font-weight: 600`, `--text-main`, strictly no trailing colon) and body text (`font-size: 11.5px`, line-height `1.45`, `--text-muted`).
+### Archetype 9.2: Callout & Notice Boxes
+*Universally shared recessed notice boxes for disclaimers, acceptance criteria, operational instructions, and origin notices.*
+- **Styling Standard**: Shared callout container (`.callout-box`, `.fhp-callout-box`, `.fgp-callout-box`, `.ffp-template-callout`), recessed background (`--bg-surface-input`), 1px medium border (`--border-medium`), border radius `--radius-sm` (6px), padding `10px 12px`, flex-column layout with gap `4px`. Features a bold sentence-case title (`.callout-title`, `11.5px`, `600` weight, `--text-main`, strictly no trailing colon) and body text (`.callout-body`, `11.5px`, line-height `1.45`, `--text-muted`).
 - **Member Instances**:
-  - `About Section Disclaimer Box (.fhp-callout-box)` (Geodetic Help Panel) — *Title: "Disclaimer"*
-  - `Benchmark Acceptance Criteria Box (.fhp-callout-box)` (Geodetic Help Panel) — *Title: "Acceptance Criteria"*
-  - `Binary Grid Origin Callout Box (.fhp-callout-box.fgp-callout-box)` (Grid Metadata Panel) — *Title: "Binary Grid Origin"*
-  - `Feedback Description Template Callout Box (.fhp-callout-box.ffp-template-callout)` (Feedback Panel) — *Title: "Detailed Description"*
+  - `About Section Disclaimer Box (.callout-box)` (Geodetic Help Panel) — *Title: "Disclaimer"*
+  - `Benchmark Acceptance Criteria Box (.callout-box)` (Geodetic Help Panel) — *Title: "Acceptance Criteria"*
+  - `Binary Grid Origin Callout Box (.callout-box)` (Grid Metadata Panel) — *Title: "Binary Grid Origin"*
+  - `Feedback Description Template Callout Box (.callout-box)` (Feedback Drawer) — *Title: "Detailed Description"*
+  - `Accuracy & Distortion Note (.callout-box.accent-primary)` (Legacy Stats View) — *Title: "Accuracy & Limitations"*

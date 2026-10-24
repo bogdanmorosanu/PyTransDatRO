@@ -160,6 +160,7 @@ test.describe('Batch mixed delimiters & clean error formatting', () => {
     await page.locator('#batch-input-area').fill(tabInput);
     await page.locator('#batch-transform-btn').click();
 
+    await expect(output).toHaveValue(/P_TAB1/);
     outLines = lines(await output.inputValue());
     expect(outLines).toHaveLength(2);
     expect(outLines[0]).toContain('P_TAB1');

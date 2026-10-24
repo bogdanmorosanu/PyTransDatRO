@@ -434,7 +434,7 @@ export class TelemetryDashboard {
       <!-- Controls Deck -->
       <div class="telemetry-deck">
         <!-- Row 1: Unified Single Bar Presets (Left) & Granularity (Right) -->
-        <div class="telemetry-deck-row unified-controls-row" style="justify-content: space-between;">
+        <div class="telemetry-deck-row unified-controls-row flex-between-center">
           <div class="telemetry-facet-group">
             <div class="telemetry-btn-toggle-group">
               <button class="telemetry-toggle-btn ${this.activePreset === 'all' && !this.hasCustomRange ? 'active' : ''}" data-preset="all">${t('stats.presetAll')}</button>
@@ -607,7 +607,7 @@ export class TelemetryDashboard {
       const totalColors = this.chart.getTotalSeriesColors();
       totalHtml = `
         <div class="legend-total-cluster">
-          <button type="button" class="telemetry-toggle-btn individual ${this.compShowTotal ? 'active' : ''}" id="comp-toggle-total" style="padding: 2px 8px; font-size: 11px;">
+          <button type="button" class="telemetry-toggle-btn individual compact ${this.compShowTotal ? 'active' : ''}" id="comp-toggle-total">
             ${t('stats.seriesTotal')}
           </button>
           ${
@@ -1414,7 +1414,7 @@ export class TelemetryDashboard {
       <!-- Controls Deck -->
       <div class="telemetry-deck">
         <!-- Row 1: Unified Presets & Granularity -->
-        <div class="telemetry-deck-row unified-controls-row" style="justify-content: space-between;">
+        <div class="telemetry-deck-row unified-controls-row flex-between-center">
           <div class="telemetry-facet-group">
             <div class="telemetry-btn-toggle-group">
               <button class="telemetry-toggle-btn ${this.legacyPreset === 'all' && !this.legacyHasCustomRange ? 'active' : ''}" data-legacy-preset="all">${t('stats.presetAll')}</button>
@@ -1559,7 +1559,7 @@ export class TelemetryDashboard {
       const totalColor = this.legacyChart.getTotalColor();
       totalHtml = `
         <div class="legend-total-cluster">
-          <button type="button" class="telemetry-toggle-btn individual ${this.legacyShowTotal ? 'active' : ''}" id="legacy-toggle-total" style="padding: 2px 8px; font-size: 11px;">
+          <button type="button" class="telemetry-toggle-btn individual compact ${this.legacyShowTotal ? 'active' : ''}" id="legacy-toggle-total">
             ${t('stats.seriesTotal')}
           </button>
           ${

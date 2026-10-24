@@ -16,15 +16,15 @@ export class VolumeWarningModal {
     this.backdrop.innerHTML = `
       <div class="modal-dialog">
         <div class="modal-header">
-          <div class="modal-title" style="color: var(--color-warning);">${t('volumeWarning.title')}</div>
+          <div class="modal-title warning">${t('volumeWarning.title')}</div>
           <button class="btn-icon modal-close-btn" id="vw-close-icon" title="${t('common.close') || 'Close'}">✕</button>
         </div>
         <div class="modal-body">
-          <p style="font-size: 13px; line-height: 1.6; color: var(--text-main); margin-bottom: 20px;">
+          <p class="modal-body-text">
             ${t('volumeWarning.message', { count })}
           </p>
 
-          <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="flex-column-gap-md">
             <button class="btn btn-primary" id="vw-sample-btn">
               ${t('volumeWarning.btnSample', { sample: APP_CONFIG.batchSampleSize.toLocaleString() })}
             </button>

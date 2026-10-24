@@ -32,6 +32,9 @@
   --z-header: 600;
   --z-modal: 1000;
   --z-toast: 1100;
+
+  /* Form Control Tokens */
+  --toggle-thumb-checked: #ffffff;
 }
 
 /* ==========================================================================
@@ -55,6 +58,7 @@
   /* Borders */
   --border-subtle: #22272e;
   --border-medium: #30363d;
+  --border-dashed: #30363d;
   --border-focus: #7c93ab;
   --glass-border: rgba(240, 246, 252, 0.12);
 
@@ -79,6 +83,12 @@
   --color-metric-text: #56b6c2;
   --color-metric-border: rgba(86, 182, 194, 0.32);
   --color-metric-bg: rgba(86, 182, 194, 0.08);
+
+  /* Spatial Choropleth Heatmap Tokens */
+  --heatmap-step-1: #1e3a5f;
+  --heatmap-step-2: #0284c7;
+  --heatmap-step-3: #38bdf8;
+  --heatmap-step-4: #a5f3fc;
 
   /* GIS Scale Bar Tokens */
   --scale-bar-border: rgba(255, 255, 255, 0.45);
@@ -121,6 +131,7 @@
   /* Borders */
   --border-subtle: #d8dee4;
   --border-medium: #d0d7de;
+  --border-dashed: #afb8c1;
   --border-focus: #57606a;
   --glass-border: rgba(31, 35, 40, 0.12);
 
@@ -145,6 +156,12 @@
   --color-metric-text: #0e7490;
   --color-metric-border: rgba(14, 116, 144, 0.28);
   --color-metric-bg: rgba(14, 116, 144, 0.06);
+
+  /* Spatial Choropleth Heatmap Tokens */
+  --heatmap-step-1: #0969da;
+  --heatmap-step-2: #218bff;
+  --heatmap-step-3: #54aeff;
+  --heatmap-step-4: #80ccff;
 
   /* GIS Scale Bar Tokens */
   --scale-bar-border: rgba(24, 24, 27, 0.35);

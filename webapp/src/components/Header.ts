@@ -198,7 +198,7 @@ export class Header {
             }
           </button>
 
-          <button type="button" class="btn btn-secondary mobile-only-btn" id="header-mobile-view-btn" style="display: none;">
+          <button type="button" class="btn btn-secondary mobile-only-btn" id="header-mobile-view-btn">
             <span>${t('app.mobileViewToggle')}</span>
           </button>
         </div>

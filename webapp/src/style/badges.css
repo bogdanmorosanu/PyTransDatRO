@@ -33,6 +33,12 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.status-pill.neutral {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
 /* Technical Metric Field (Quasigeoid Height ζ = h - H) */
 /* INVARIANT: Physical measurement, not a status. Must NEVER be colored green/red/yellow. */
 .form-input.metric-field,
@@ -317,14 +323,26 @@ input.form-input[readonly].metric-field {
   background-color: var(--color-success-bg);
 }
 
+.status-badge-card.success .status-badge-num {
+  color: var(--color-success);
+}
+
 .status-badge-card.warning {
   border-color: var(--color-warning);
   background-color: var(--color-warning-bg);
 }
 
+.status-badge-card.warning .status-badge-num {
+  color: var(--color-warning);
+}
+
 .status-badge-card.danger {
   border-color: var(--color-danger);
   background-color: var(--color-danger-bg);
+}
+
+.status-badge-card.danger .status-badge-num {
+  color: var(--color-danger);
 }
 
 .status-badge-num {

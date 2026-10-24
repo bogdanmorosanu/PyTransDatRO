@@ -707,7 +707,7 @@ export class PointConverter {
         break;
       case 'ready':
       default:
-        transformQualityBadge = `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`;
+        transformQualityBadge = `<span class="status-pill neutral">${t('quality.readyToTransform')}</span>`;
         break;
     }
 
@@ -717,15 +717,15 @@ export class PointConverter {
         <div class="section-micro-label">${t('point.inputCoordsHint')}</div>
 
         <div class="coord-grid-3">
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group margin-bottom-none">
             <label class="form-label">${c1Label}</label>
             <input type="text" class="form-input mono" id="pt-input-1" aria-label="${c1Label}" value="${escapeHtmlAttr(this.inputCoo1)}" />
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group margin-bottom-none">
             <label class="form-label">${c2Label}</label>
             <input type="text" class="form-input mono" id="pt-input-2" aria-label="${c2Label}" value="${escapeHtmlAttr(this.inputCoo2)}" />
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group margin-bottom-none">
             <label class="form-label">${c3Label}</label>
             <input 
               type="text" 
@@ -748,21 +748,21 @@ export class PointConverter {
 
       <!-- Card 2: Output Section -->
       <div class="studio-card result-card" role="group" aria-label="${t('point.outputSectionLabel')}">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div class="flex-between-center margin-bottom-sm">
           <div class="section-micro-label">${t('point.outputSectionLabel')}</div>
           <div id="pt-copy-btn-slot" data-c1="${escapeHtmlAttr(outCol1Raw)}" data-c2="${escapeHtmlAttr(outCol2Raw)}" data-c3="${escapeHtmlAttr(raw3Str)}"></div>
         </div>
 
         <div class="output-grid-3">
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group margin-bottom-none">
             <label class="form-label">${outCol1Label}</label>
             <input type="text" readonly class="form-input mono" aria-label="${outCol1Label}" value="${escapeHtmlAttr(outCol1Val)}" />
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group margin-bottom-none">
             <label class="form-label">${outCol2Label}</label>
             <input type="text" readonly class="form-input mono" aria-label="${outCol2Label}" value="${escapeHtmlAttr(outCol2Val)}" />
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-group margin-bottom-none">
             <label class="form-label">${label3}</label>
             <input type="text" readonly class="form-input mono" aria-label="${label3}" value="${escapeHtmlAttr(val3Str)}" />
           </div>
@@ -778,7 +778,7 @@ export class PointConverter {
       <!-- Card 3: Report Section -->
       <div class="studio-card report-card" role="group" aria-label="${t('quality.sectionTitle')}">
         <div class="section-micro-label">${t('quality.sectionTitle')}</div>
-        <div class="quality-report-content" style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="quality-report-content flex-column-gap-sm">
           <div class="quality-report-row">
             <span class="quality-label">${t('quality.sectionCoords')}</span>
             <div class="quality-report-badges">

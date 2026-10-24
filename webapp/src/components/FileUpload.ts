@@ -445,7 +445,7 @@ export class FileUpload {
     this.container.innerHTML = `
       <!-- Card 1: Input Section -->
       <div class="studio-card" role="group" aria-label="${t('file.inputLabel')}">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div class="flex-between-center margin-bottom-sm">
           <div class="section-micro-label">${t('file.inputLabel')}</div>
           ${
             hasFiles
@@ -460,17 +460,17 @@ export class FileUpload {
 
         <!-- 1. Drag and Drop Dropzone -->
         <div id="file-dropzone" class="file-dropzone">
-          <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text-main);">
+          <div class="dropzone-title">
             ${t('file.dropzoneTitle')}
           </div>
-          <div style="color: var(--text-muted); font-size: 11.5px;">
+          <div class="dropzone-desc">
             ${t('file.dropzoneHint')}
           </div>
           <input type="file" id="file-input-hidden" aria-label="${t('file.dropzoneTitle')}" multiple accept=".csv,.txt,.xyz,.dat" style="display: none;" />
         </div>
 
         <!-- Options Row: Skip Header Toggle -->
-        <div class="file-options-row" style="margin-top: 10px; display: flex; align-items: center; justify-content: flex-start;">
+        <div class="file-options-row">
           <label class="toggle-switch-container" for="file-skip-header-toggle">
             <input type="checkbox" id="file-skip-header-toggle" class="toggle-switch-input" ${this.skipHeader ? 'checked' : ''} />
             <span class="toggle-switch-track">
@@ -485,7 +485,7 @@ export class FileUpload {
           pendingFiles.length > 0
             ? `
           <div class="file-queue">
-            <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px;">
+            <div class="dropzone-queue-header">
               ${t('file.queueTitle')} (${pendingFiles.length})
             </div>
             ${pendingFiles
@@ -533,12 +533,12 @@ export class FileUpload {
 
       <!-- Card 2: Output Section -->
       <div class="studio-card result-card" role="group" aria-label="${t('file.outputLabel')}">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div class="flex-between-center margin-bottom-sm">
           <div class="section-micro-label">${t('file.outputLabel')}</div>
           ${
             outputFiles.length > 0
               ? `
-            <div style="display: flex; gap: 6px; align-items: center;">
+            <div class="flex-row-gap-sm">
               <button class="btn btn-secondary btn-secondary-action" id="file-clear-output-btn">
                 <span>${t('file.clearOutput')}</span>
               </button>
@@ -608,7 +608,7 @@ export class FileUpload {
       <!-- Card 3: Report Section -->
       <div class="studio-card report-card" role="group" aria-label="${t('quality.sectionTitle')}">
         <div class="section-micro-label">${t('quality.sectionTitle')}</div>
-        <div class="quality-report-content" style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="quality-report-content flex-column-gap-sm">
           <!-- Top Row: Coordinates -->
           <div class="quality-report-row">
             <span class="quality-label">${t('quality.sectionCoords')}</span>
@@ -697,7 +697,7 @@ export class FileUpload {
                 }
                 ${
                   completedCount === 0 && totalErrors === 0
-                    ? `<span class="status-pill" style="color: var(--text-muted);">${t('quality.readyToTransform')}</span>`
+                    ? `<span class="status-pill neutral">${t('quality.readyToTransform')}</span>`
                     : ''
                 }
               </div>

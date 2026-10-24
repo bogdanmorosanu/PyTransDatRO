@@ -122,24 +122,24 @@ export class GridMetadataPanel {
 
     this.element.innerHTML = `
       <!-- Draggable Header -->
-      <div class="fgp-header" id="fgp-drag-handle">
-        <div class="fgp-title-cluster">
-          <span class="fgp-title">${t('gridMetadata.title')}</span>
+      <div class="drawer-header fgp-header" id="fgp-drag-handle">
+        <div class="drawer-title-cluster fgp-title-cluster">
+          <span class="drawer-title fgp-title">${t('gridMetadata.title')}</span>
         </div>
-        <div class="fgp-header-actions">
-          <button class="btn-icon fgp-icon-btn" id="fgp-minimize-btn" title="${this.isMinimized ? t('common.restore') : t('common.minimize')}">
+        <div class="drawer-header-actions fgp-header-actions">
+          <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="fgp-minimize-btn" title="${this.isMinimized ? t('common.restore') : t('common.minimize')}">
             ${this.isMinimized ? '□' : '—'}
           </button>
-          <button class="btn-icon fgp-icon-btn" id="fgp-close-btn" title="${t('common.close')}">✕</button>
+          <button class="btn-icon drawer-icon-btn fgp-icon-btn" id="fgp-close-btn" title="${t('common.close')}">✕</button>
         </div>
       </div>
 
       <!-- Main Body Container -->
       <div class="fgp-content" style="${this.isMinimized ? 'display: none;' : ''}">
         <!-- Authoritative Origin Notice -->
-        <div class="fhp-callout-box fgp-callout-box">
-          <span class="fhp-callout-title">${t('gridMetadata.originTitle')}</span>
-          <p class="fhp-callout-body">${t('gridMetadata.sourceNotice')}</p>
+        <div class="callout-box fhp-callout-box fgp-callout-box">
+          <span class="callout-title fhp-callout-title">${t('gridMetadata.originTitle')}</span>
+          <p class="callout-body fhp-callout-body">${t('gridMetadata.sourceNotice')}</p>
           ${
             shaStr
               ? `
