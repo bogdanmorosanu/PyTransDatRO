@@ -1,6 +1,6 @@
 # PyTransDatRO Web Application — Component Archetypes & Consistency Catalog
 
-This catalog defines the **14 multi-instance UI element archetypes** across the PyTransDatRO web application. Elements within the same archetype share the same geometry, typography, active/hover transitions, and styling rules.
+This catalog defines the **27 multi-instance UI element archetypes across 9 functional categories** in the PyTransDatRO web application. Elements within the same archetype share the same geometry, typography, active/hover transitions, and styling rules.
 
 > [!NOTE]
 > Global color tokens and layout invariants are defined in [`design_system.md`](./design_system.md). Operational behaviors and automated test mappings are documented in [`actionable_inventory.md`](./actionable_inventory.md).
@@ -130,9 +130,11 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Altitude/Height Output Label (.form-label)` (Point Mode) — *"Ellipsoidal Height (h)"* / *"Altitude (H)"*
   - `Batch Input Label (.form-label)` (Text Mode) — *"Input coordinates (multi-line)"*
   - `Batch Output Label (.form-label)` (Text Mode) — *"Transformed coordinates"*
-  - `Telemetry Facet Group Labels (.facet-label)` (Usage Dashboard) — *"SOURCES"*, *"METRIC"*, *"OPERATIONS"*
-  - `Earliest Available Date Label (.limit-subtle)` (Usage Date Limits) — *"Earliest Available:"*
-  - `Current / Today Date Label (.limit-subtle)` (Usage Date Limits) — *"Current Date:"* / *"Today:"*
+  - `Telemetry Facet Group Labels (.form-label)` (Usage Dashboard) — *"Sources"*, *"Metrics"* (multi-select Computation) / *"Metric"* (single-select Spatial), *"Operations"*
+  - `Earliest Available Date Label (.info-label)` (Usage Date Limits) — *"Earliest Available"*
+  - `Current / Today Date Label (.info-label)` (Usage Date Limits) — *"Current Date"*
+  - `Active Period Main Label (.form-label.telemetry-active-main-label)` (Usage Active Period) — *"Active Period"*
+  - `Active Period Start & End Sub-Labels (.info-label)` (Usage Active Period) — *"Start"*, *"End"*
 
 ### Archetype 4.4: Discrete / Subtle Section Labels
 *Faded, low-prominence landmark labels that organize functional cards without drawing visual attention.*
@@ -156,6 +158,12 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Angular Formats Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Angular Formats (ETRS89)"*
   - `Coordinate Order Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Coordinate Order"*
   - `Dimensionality Auto-Detection Heading (.fhp-topic-heading)` (Geodetic Help Panel) — *"Dimensionality Auto-Detection (2D / 3D)"*
+
+### Archetype 4.6: Informational Contextual Tooltip Indicators
+*Discrete, non-actionable hoverable icons providing contextual domain guidance or explanations without button semantics.*
+- **Styling Standard**: GitHub-style hoverable SVG indicator (`.info-help-indicator`). Rendered as an accessible inline element (`<span class="info-help-indicator" tabindex="0">`) with `cursor: help`, transparent background, zero border, and muted color (`--text-dim` or `--text-muted`) that smoothly transitions to `--text-main` on hover/focus. Pairs with an embedded theme-reactive contextual tooltip bubble (`.info-tooltip-bubble`, `role="tooltip"`) that strictly honors Dark/Light mode (`background-color: var(--bg-surface)`, `color: var(--text-main)`, `border: 1px solid var(--border-medium)`, `box-shadow: var(--shadow-md)`), avoiding native OS black box tooltip popovers on light backgrounds.
+- **Member Instances**:
+  - `Active Period Explanation Indicator (.info-help-indicator)` (Usage Dashboard — Computation & Spatial) — *Contextual help icon explaining monthly and quarterly telemetry database storage snapping.*
 
 ---
 
@@ -193,9 +201,11 @@ This catalog defines the **14 multi-instance UI element archetypes** across the 
   - `Quasigeoid Height Value (.metric-field)` (Point Output Card)  
     *Selectable / copyable numerical scalar value in cyan metric palette (e.g., `+0.421`).*
   - `Earliest Available Date Value (.limit-date-val)` (Usage Dashboard)  
-    *Selectable historical boundary date (e.g., `2023-11-01`).*
+    *Selectable historical boundary date in UK format (e.g., `01/11/23`).*
   - `Current / Today Date Value (.limit-date-val)` (Usage Dashboard)  
-    *Selectable current boundary date (e.g., `2026-10-22`).*
+    *Selectable current boundary date in UK format (e.g., `24/10/26`).*
+  - `Active Period Start & End Values (.active-period-value)` (Usage Dashboard)  
+    *Selectable effective snapped period boundaries in UK format (e.g., `Start [ 01/01/24 ]` and `End [ 31/12/24 ]`).*
   - `Benchmark Residual Metric Chips (.fhp-metric-chip)` (Geodetic Help Panel)  
     *Monospace read-only info chips displaying numerical planimetric arcseconds / mm and elevation mm without inequality clutter.*
   - `Angle Units Format Preview Chips (.fhp-format-chip)` (Geodetic Help Panel)  

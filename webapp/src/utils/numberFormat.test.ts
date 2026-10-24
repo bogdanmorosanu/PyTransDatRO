@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setLanguage } from '../i18n';
-import { formatTelemetryNumber, formatTelemetryCompact, formatTelemetryDecimal, formatTelemetryPercent } from './numberFormat';
+import { formatTelemetryNumber, formatTelemetryCompact, formatTelemetryDecimal, formatTelemetryPercent, formatDisplayDate } from './numberFormat';
 
 describe('numberFormat utility', () => {
   describe('English locale (en)', () => {
@@ -73,6 +73,27 @@ describe('numberFormat utility', () => {
     it('handles numeric string inputs correctly in Romanian', () => {
       expect(formatTelemetryDecimal('12.34', 1)).toBe('12,3');
       expect(formatTelemetryPercent('24.5', 1)).toBe('24,5%');
+    });
+  });
+
+  describe('formatDisplayDate utility', () => {
+    it('formats standard ISO YYYY-MM-DD dates to UK standard DD/MM/YY', () => {
+      expect(formatDisplayDate('2026-10-24')).toBe('24/10/26');
+      expect(formatDisplayDate('2023-11-01')).toBe('01/11/23');
+      expect(formatDisplayDate('2024-01-05')).toBe('05/01/24');
+      expect(formatDisplayDate('2024-12-31')).toBe('31/12/24');
+    });
+
+    it('formats month-only ISO YYYY-MM dates to 01/MM/YY', () => {
+      expect(formatDisplayDate('2023-11')).toBe('01/11/23');
+      expect(formatDisplayDate('2025-06')).toBe('01/06/25');
+    });
+
+    it('handles whitespace, null, undefined, or empty strings gracefully', () => {
+      expect(formatDisplayDate('  2026-05-15  ')).toBe('15/05/26');
+      expect(formatDisplayDate(null)).toBe('');
+      expect(formatDisplayDate(undefined)).toBe('');
+      expect(formatDisplayDate('')).toBe('');
     });
   });
 });

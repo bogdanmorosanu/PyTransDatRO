@@ -22,15 +22,23 @@ test.describe('Usage Computation Subpage', () => {
     await expect(kpiCards.nth(1).locator('.telemetry-kpi-label')).toHaveText('Calls');
     await expect(kpiCards.nth(2).locator('.telemetry-kpi-label')).toHaveText('Batch Intensity (Points/Call)');
 
-    // 4. Date Limits with Info Archetype (strictly verifying full YYYY-MM-DD format with day)
+    // 4. Date Limits with Info Archetype (UK standard DD/MM/YY format)
     const dateLimits = page.locator('.telemetry-date-limits-cluster');
     await expect(dateLimits).toBeVisible();
     await expect(dateLimits.locator('.info-label').nth(0)).toHaveText('Earliest Available');
-    await expect(dateLimits.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+    await expect(dateLimits.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
     await expect(dateLimits.locator('.info-label').nth(1)).toHaveText('Current Date');
-    await expect(dateLimits.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
-    await expect(dateLimits.locator('.info-label').nth(2)).toHaveText('Active Period');
-    await expect(dateLimits.locator('.info-field-readonly').nth(2)).toHaveText(/^\d{4}-\d{2}-\d{2}\s*→\s*\d{4}-\d{2}-\d{2}$/);
+    await expect(dateLimits.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
+
+    const activePeriod = page.locator('#comp-effective-period-group');
+    await expect(activePeriod).toBeVisible();
+    await expect(activePeriod.locator('.telemetry-active-main-label')).toHaveText('Active Period');
+    await expect(activePeriod.locator('.info-label').nth(0)).toHaveText('Start');
+    await expect(activePeriod.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
+    await expect(activePeriod.locator('.info-label').nth(1)).toHaveText('End');
+    await expect(activePeriod.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
+    await expect(activePeriod.locator('#comp-active-period-info-btn')).toBeVisible();
+    await expect(activePeriod.locator('#comp-active-period-info-btn .info-tooltip-bubble')).toHaveText(/The active period reflects/);
 
     // 5. Sources and Metric Enclosed Multi-Select Segmented Trays
     const multiSelectTrays = page.locator('.telemetry-btn-toggle-group.multi-select');

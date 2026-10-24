@@ -44,15 +44,23 @@ test.describe('Usage Spatial Subpage', () => {
     });
     expect(nwTransform).toBe('none');
 
-    // 5. Date Limits with Info Archetype (Full YYYY-MM-DD Resolution)
+    // 5. Date Limits with Info Archetype (UK standard DD/MM/YY format)
     const dateLimits = page.locator('.telemetry-date-limits-cluster');
     await expect(dateLimits).toBeVisible();
     await expect(dateLimits.locator('.info-label').nth(0)).toHaveText('Earliest Available');
-    await expect(dateLimits.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+    await expect(dateLimits.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
     await expect(dateLimits.locator('.info-label').nth(1)).toHaveText('Current Date');
-    await expect(dateLimits.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
-    await expect(dateLimits.locator('.info-label').nth(2)).toHaveText('Active Period');
-    await expect(dateLimits.locator('.info-field-readonly').nth(2)).toHaveText(/^\d{4}-\d{2}-\d{2}\s*→\s*\d{4}-\d{2}-\d{2}$/);
+    await expect(dateLimits.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
+
+    const activePeriod = page.locator('#spatial-effective-period-group');
+    await expect(activePeriod).toBeVisible();
+    await expect(activePeriod.locator('.telemetry-active-main-label')).toHaveText('Active Period');
+    await expect(activePeriod.locator('.info-label').nth(0)).toHaveText('Start');
+    await expect(activePeriod.locator('.info-field-readonly').nth(0)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
+    await expect(activePeriod.locator('.info-label').nth(1)).toHaveText('End');
+    await expect(activePeriod.locator('.info-field-readonly').nth(1)).toHaveText(/^\d{2}\/\d{2}\/\d{2}$/);
+    await expect(activePeriod.locator('#spatial-active-period-info-btn')).toBeVisible();
+    await expect(activePeriod.locator('#spatial-active-period-info-btn .info-tooltip-bubble')).toHaveText(/The active period reflects/);
 
     // 6. Sources Enclosed Multi-Select Tray (Dot Indicators)
     const sourcesTray = page.locator('.filters-left-group .telemetry-btn-toggle-group.multi-select');

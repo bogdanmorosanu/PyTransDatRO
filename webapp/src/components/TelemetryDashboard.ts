@@ -1,4 +1,4 @@
-import { formatTelemetryNumber, formatTelemetryDecimal, formatTelemetryPercent } from '../utils/numberFormat';
+import { formatTelemetryNumber, formatTelemetryDecimal, formatTelemetryPercent, formatDisplayDate } from '../utils/numberFormat';
 import { t, onLanguageChange } from '../i18n';
 import {
   apiClient,
@@ -409,7 +409,10 @@ export class TelemetryDashboard {
 
     const compEffectiveFrom = this.timelineData?.summary?.effective_from_date ?? this.timelineData?.summary?.from_date ?? this.customStartDate;
     const compEffectiveTo = this.timelineData?.summary?.effective_to_date ?? this.timelineData?.summary?.to_date ?? this.customEndDate;
-    const compEffectiveSpan = compEffectiveFrom && compEffectiveTo ? `${compEffectiveFrom} → ${compEffectiveTo}` : `${this.customStartDate} → ${this.customEndDate}`;
+    const compMinFormatted = formatDisplayDate(this.minHistoryDate.length === 7 ? `${this.minHistoryDate}-01` : this.minHistoryDate);
+    const compMaxFormatted = formatDisplayDate(this.maxHistoryDate);
+    const compActiveStartFormatted = formatDisplayDate(compEffectiveFrom);
+    const compActiveEndFormatted = formatDisplayDate(compEffectiveTo);
 
     return `
       <!-- KPI Banner: Neutral Theme Colors, Clean Info Presentation -->
@@ -451,49 +454,72 @@ export class TelemetryDashboard {
           </div>
         </div>
 
-        <!-- Row 2: Native Themed Calendar Range Controls & Range Limits Info -->
+        <!-- Row 2: Native Themed Calendar Range Controls, Bounds (Left) & Active Period (Right) -->
         <div class="telemetry-deck-row telemetry-date-controls-row">
-          <div class="telemetry-date-inputs-cluster">
-            <div class="date-input-group">
-              <input 
-                type="date" 
-                class="telemetry-date-input" 
-                id="comp-date-start"
-                min="${this.minHistoryDate}" 
-                max="${this.maxHistoryDate}" 
-                value="${this.customStartDate}" 
-              />
+          <!-- Left Group: User Query Selection & Historical Limits -->
+          <div class="telemetry-date-left-group">
+            <div class="telemetry-date-inputs-cluster">
+              <div class="date-input-group">
+                <input 
+                  type="date" 
+                  class="telemetry-date-input" 
+                  id="comp-date-start"
+                  min="${this.minHistoryDate}" 
+                  max="${this.maxHistoryDate}" 
+                  value="${this.customStartDate}" 
+                />
+              </div>
+              <span class="range-arrow">→</span>
+              <div class="date-input-group">
+                <input 
+                  type="date" 
+                  class="telemetry-date-input" 
+                  id="comp-date-end"
+                  min="${this.minHistoryDate}" 
+                  max="${this.maxHistoryDate}" 
+                  value="${this.customEndDate}" 
+                />
+              </div>
             </div>
-            <span class="range-arrow">→</span>
-            <div class="date-input-group">
-              <input 
-                type="date" 
-                class="telemetry-date-input" 
-                id="comp-date-end"
-                min="${this.minHistoryDate}" 
-                max="${this.maxHistoryDate}" 
-                value="${this.customEndDate}" 
-              />
+
+            <div class="telemetry-date-limits-cluster">
+              <div class="telemetry-info-subgroup">
+                <span class="info-label">${t('stats.earliestAvailable')}</span>
+                <span class="info-field-readonly">${compMinFormatted}</span>
+              </div>
+              <div class="telemetry-info-subgroup">
+                <span class="info-label">${t('stats.currentDate')}</span>
+                <span class="info-field-readonly">${compMaxFormatted}</span>
+              </div>
             </div>
           </div>
 
-          <div class="telemetry-date-limits-cluster">
+          <!-- Vertical Visual Divider -->
+          <div class="telemetry-deck-vdivider" aria-hidden="true"></div>
+
+          <!-- Right Group: Database Effective Period Result -->
+          <div class="telemetry-date-active-cluster" id="comp-effective-period-group">
+            <span class="form-label telemetry-active-main-label">${t('stats.effectivePeriod')}</span>
             <div class="telemetry-info-subgroup">
-              <span class="info-label">${t('stats.earliestAvailable')}</span>
-              <span class="info-field-readonly">${this.minHistoryDate.length === 7 ? `${this.minHistoryDate}-01` : this.minHistoryDate}</span>
+              <span class="info-label">${t('stats.periodStart')}</span>
+              <span class="info-field-readonly active-period-value">${compActiveStartFormatted}</span>
             </div>
             <div class="telemetry-info-subgroup">
-              <span class="info-label">${t('stats.currentDate')}</span>
-              <span class="info-field-readonly">${this.maxHistoryDate}</span>
+              <span class="info-label">${t('stats.periodEnd')}</span>
+              <span class="info-field-readonly active-period-value">${compActiveEndFormatted}</span>
             </div>
-            <div class="telemetry-info-subgroup" id="comp-effective-period-group">
-              <span class="info-label">${t('stats.effectivePeriod')}</span>
-              <span class="info-field-readonly active-period-value">${compEffectiveSpan}</span>
-            </div>
+            <span class="info-help-indicator" id="comp-active-period-info-btn" aria-label="${t('stats.activePeriodTooltip')}" tabindex="0">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="8" cy="8" r="7"/>
+                <line x1="8" y1="7.5" x2="8" y2="11.5"/>
+                <circle cx="8" cy="4.5" r="0.75" fill="currentColor"/>
+              </svg>
+              <span class="info-tooltip-bubble" role="tooltip">${t('stats.activePeriodTooltip')}</span>
+            </span>
           </div>
         </div>
 
-        <!-- Row 3: Merged Sources (Left) & Metric (Right) -->
+        <!-- Row 3: Merged Sources (Left) & Metrics (Right) -->
         <div class="telemetry-deck-row merged-filters-row">
           <div class="filters-left-group">
             <label class="form-label">${t('stats.sourcesFilterLabel')}</label>
@@ -502,7 +528,7 @@ export class TelemetryDashboard {
             </div>
           </div>
           <div class="filters-right-group">
-            <label class="form-label">${t('stats.metricFilterLabel')}</label>
+            <label class="form-label">${t('stats.metricsFilterLabel')}</label>
             <div class="telemetry-btn-toggle-group multi-select">
               <button class="telemetry-toggle-btn individual ${this.compShowPoints ? 'active' : ''}" id="comp-metric-points-btn">
                 ${t('stats.metricPoints')}
@@ -881,7 +907,10 @@ export class TelemetryDashboard {
 
     const spEffectiveFrom = this.spatialData?.summary?.effective_from_date ?? this.spatialData?.summary?.from_date ?? this.spatialCustomStartDate;
     const spEffectiveTo = this.spatialData?.summary?.effective_to_date ?? this.spatialData?.summary?.to_date ?? this.spatialCustomEndDate;
-    const spatialEffectiveSpan = spEffectiveFrom && spEffectiveTo ? `${spEffectiveFrom} → ${spEffectiveTo}` : `${this.spatialCustomStartDate} → ${this.spatialCustomEndDate}`;
+    const spMinFormatted = formatDisplayDate(this.minHistoryDate.length === 7 ? `${this.minHistoryDate}-01` : this.minHistoryDate);
+    const spMaxFormatted = formatDisplayDate(this.maxHistoryDate);
+    const spActiveStartFormatted = formatDisplayDate(spEffectiveFrom);
+    const spActiveEndFormatted = formatDisplayDate(spEffectiveTo);
 
     return `
       <!-- Overall Stats Area: 2 Archetype 8.1 Standalone KPI Cards -->
@@ -956,45 +985,68 @@ export class TelemetryDashboard {
           </div>
         </div>
 
-        <!-- Row 2: Native Themed Calendar Inputs & Limits (Info Archetype) -->
+        <!-- Row 2: Native Themed Calendar Inputs, Bounds (Left) & Active Period (Right) -->
         <div class="telemetry-deck-row telemetry-date-controls-row">
-          <div class="telemetry-date-inputs-cluster">
-            <div class="date-input-group">
-              <input 
-                type="date" 
-                class="telemetry-date-input" 
-                id="spatial-date-start"
-                min="${this.minHistoryDate}" 
-                max="${this.maxHistoryDate}" 
-                value="${this.spatialCustomStartDate}" 
-              />
+          <!-- Left Group: User Query Selection & Historical Limits -->
+          <div class="telemetry-date-left-group">
+            <div class="telemetry-date-inputs-cluster">
+              <div class="date-input-group">
+                <input 
+                  type="date" 
+                  class="telemetry-date-input" 
+                  id="spatial-date-start"
+                  min="${this.minHistoryDate}" 
+                  max="${this.maxHistoryDate}" 
+                  value="${this.spatialCustomStartDate}" 
+                />
+              </div>
+              <span class="range-arrow">→</span>
+              <div class="date-input-group">
+                <input 
+                  type="date" 
+                  class="telemetry-date-input" 
+                  id="spatial-date-end"
+                  min="${this.minHistoryDate}" 
+                  max="${this.maxHistoryDate}" 
+                  value="${this.spatialCustomEndDate}" 
+                />
+              </div>
             </div>
-            <span class="range-arrow">→</span>
-            <div class="date-input-group">
-              <input 
-                type="date" 
-                class="telemetry-date-input" 
-                id="spatial-date-end"
-                min="${this.minHistoryDate}" 
-                max="${this.maxHistoryDate}" 
-                value="${this.spatialCustomEndDate}" 
-              />
+
+            <div class="telemetry-date-limits-cluster">
+              <div class="telemetry-info-subgroup">
+                <span class="info-label">${t('stats.earliestAvailable')}</span>
+                <span class="info-field-readonly">${spMinFormatted}</span>
+              </div>
+              <div class="telemetry-info-subgroup">
+                <span class="info-label">${t('stats.currentDate')}</span>
+                <span class="info-field-readonly">${spMaxFormatted}</span>
+              </div>
             </div>
           </div>
 
-          <div class="telemetry-date-limits-cluster">
+          <!-- Vertical Visual Divider -->
+          <div class="telemetry-deck-vdivider" aria-hidden="true"></div>
+
+          <!-- Right Group: Database Effective Period Result -->
+          <div class="telemetry-date-active-cluster" id="spatial-effective-period-group">
+            <span class="form-label telemetry-active-main-label">${t('stats.effectivePeriod')}</span>
             <div class="telemetry-info-subgroup">
-              <span class="info-label">${t('stats.earliestAvailable')}</span>
-              <span class="info-field-readonly">${this.minHistoryDate.length === 7 ? `${this.minHistoryDate}-01` : this.minHistoryDate}</span>
+              <span class="info-label">${t('stats.periodStart')}</span>
+              <span class="info-field-readonly active-period-value">${spActiveStartFormatted}</span>
             </div>
             <div class="telemetry-info-subgroup">
-              <span class="info-label">${t('stats.currentDate')}</span>
-              <span class="info-field-readonly">${this.maxHistoryDate}</span>
+              <span class="info-label">${t('stats.periodEnd')}</span>
+              <span class="info-field-readonly active-period-value">${spActiveEndFormatted}</span>
             </div>
-            <div class="telemetry-info-subgroup" id="spatial-effective-period-group">
-              <span class="info-label">${t('stats.effectivePeriod')}</span>
-              <span class="info-field-readonly active-period-value">${spatialEffectiveSpan}</span>
-            </div>
+            <span class="info-help-indicator" id="spatial-active-period-info-btn" aria-label="${t('stats.activePeriodTooltip')}" tabindex="0">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="8" cy="8" r="7"/>
+                <line x1="8" y1="7.5" x2="8" y2="11.5"/>
+                <circle cx="8" cy="4.5" r="0.75" fill="currentColor"/>
+              </svg>
+              <span class="info-tooltip-bubble" role="tooltip">${t('stats.activePeriodTooltip')}</span>
+            </span>
           </div>
         </div>
 

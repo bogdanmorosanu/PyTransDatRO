@@ -68,8 +68,8 @@ webapp/
 │   ├── map.spec.ts         # Map zoom constraints, layer toggling, centering vs fit-bounds
 │   ├── i18n.spec.ts        # Dynamic RO/EN language switching, UI translation reactivity
 │   ├── errors.spec.ts      # Syntax errors, out-of-grid badges, API rate limits
-│   ├── computation.spec.ts # Computation timeline dashboard, KPI cards, Active Period badge
-│   ├── spatial.spec.ts     # Spatial density heatmap matrix, quadrant distribution, Active Period badge
+│   ├── computation.spec.ts # Computation timeline dashboard, KPI cards, Active Period deck, UK date format
+│   ├── spatial.spec.ts     # Spatial density heatmap matrix, quadrant distribution, Active Period deck, UK date format
 │   ├── lifecycle.spec.ts   # Client SPA lifecycle, modal management, and deep links
 │   ├── legacy.spec.ts      # Legacy TransdatOnline historical telemetry subpage
 │   └── referencePoints.ts  # Reference coordinate fixtures across Romania

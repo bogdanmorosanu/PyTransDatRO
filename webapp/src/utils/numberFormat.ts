@@ -96,3 +96,27 @@ export function formatTelemetryPercent(num: number | string, fractionDigits: num
   }
   return `${formatted}%`;
 }
+
+/**
+ * Formats an ISO date string (YYYY-MM-DD or YYYY-MM) to UK standard display format (DD/MM/YY).
+ * Used strictly for telemetry and dashboard readouts.
+ */
+export function formatDisplayDate(isoDateStr: string | null | undefined): string {
+  if (!isoDateStr) return '';
+  const trimmed = isoDateStr.trim();
+  const parts = trimmed.split('-');
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    const cleanDay = day.padStart(2, '0');
+    const cleanMonth = month.padStart(2, '0');
+    const cleanYear = year.slice(-2);
+    return `${cleanDay}/${cleanMonth}/${cleanYear}`;
+  }
+  if (parts.length === 2) {
+    const [year, month] = parts;
+    const cleanMonth = month.padStart(2, '0');
+    const cleanYear = year.slice(-2);
+    return `01/${cleanMonth}/${cleanYear}`;
+  }
+  return trimmed;
+}
