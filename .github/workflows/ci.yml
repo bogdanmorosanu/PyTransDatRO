@@ -40,7 +40,7 @@ jobs:
 
       - name: Web API Integration & Telemetry Tests
         run: |
-          pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_rate_limiter.py tests/test_telemetry.py tests/test_feedback.py
+          pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_legacy_stats.py tests/test_api_rate_limiter.py tests/test_telemetry.py tests/test_feedback.py tests/test_logging.py
 
   # ----------------------------------------------------------------------------
   # Frontend TypeScript & Vitest Suite

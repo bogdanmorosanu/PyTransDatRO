@@ -11,6 +11,9 @@ services:
       dockerfile: Dockerfile
     container_name: pytransdatro-backend
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     environment:
       - PYTHONUNBUFFERED=1
       - PYTRANSDAT_LOG_DIR=/app/logs

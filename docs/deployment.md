@@ -68,7 +68,7 @@ This ensures that the repository contains zero hardcoded IP addresses, domains, 
   - *Stage 2 (Nginx Alpine):* Strips default Nginx assets and installs the compiled distribution into `/usr/share/nginx/html` with custom [`nginx.conf`](../nginx.conf).
 - **Reverse Proxy Routing:**
   - `/` $\to$ Serves SPA static bundle with `try_files $uri $uri/ /index.html;`.
-  - `/api/*`, `/docs`, `/openapi.json` $\to$ Forwarded to `http://backend:8000`.
+  - `/api/*`, `/docs`, `/redoc`, `/openapi.json`, `/health`, `/cooOpService`, `/transdatonline/*` $\to$ Forwarded to `http://backend:8000`.
 - **Client IP Preservation:**
   FastAPI's sliding-window rate limiter relies on the `X-Forwarded-For` header. Nginx explicitly injects:
   ```nginx
@@ -119,7 +119,7 @@ docker compose exec backend python -c "import sqlite3; conn = sqlite3.connect('/
 All configuration knobs are centrally defined and documented in [`.env.example`](../.env.example):
 
 ```env
-# Host port mapped to Nginx web container (default: 8000 locally, 80/custom on server)
+# Host port mapped to Nginx web container (default: 8000 locally, 80 or 8080 on production)
 WEBAPP_PORT=8000
 
 # Backend service configuration
@@ -134,7 +134,13 @@ PYTRANSDAT_MAX_BATCH_POINTS=20000
 PYTRANSDAT_MAX_FILE_POINTS=100000
 PYTRANSDAT_MAX_FILE_UPLOAD_BYTES=52428800
 PYTRANSDAT_LOG_DIR=./logs
-PYTRANSDAT_FEEDBACK_LOG_PATH=./logs/feedback.log
+PYTRANSDAT_LEGACY_DB_PATH=./logs/legacy_stats.db
+PYTRANSDAT_FEEDBACK_LOG_PATH=./logs/feedback.jsonl
+PYTRANSDAT_TELEMETRY_FALLBACK_PATH=./logs/telemetry_fallback.jsonl
+PYTRANSDAT_APP_LOG_ENABLED=true
+PYTRANSDAT_APP_LOG_PATH=./logs/app.log
+PYTRANSDAT_APP_LOG_MAX_BYTES=10485760
+PYTRANSDAT_APP_LOG_BACKUP_COUNT=5
 ```
 
 ---

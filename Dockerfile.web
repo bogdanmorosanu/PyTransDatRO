@@ -4,6 +4,12 @@
 FROM node:20-alpine AS builder
 WORKDIR /build
 
+# Build arguments for customizable branding & API routing
+ARG VITE_APP_NAME
+ARG VITE_API_BASE_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME \
+    VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Install dependencies with lockfile consistency
 COPY webapp/package.json webapp/package-lock.json ./
 RUN npm ci
