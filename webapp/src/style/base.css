@@ -50,11 +50,12 @@ html, body {
 
 /* Main Split Workbench Layout */
 .workbench-layout {
-  display: grid;
-  grid-template-columns: 480px minmax(0, 1fr);
+  display: flex;
   flex: 1;
   min-height: 0;
   height: calc(100vh - 52px);
+  width: 100%;
+  position: relative;
   overflow: hidden;
 }
 
@@ -71,6 +72,7 @@ html, body {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  flex-shrink: 0;
   z-index: 10;
   box-sizing: border-box;
 }
@@ -80,33 +82,11 @@ html, body {
   position: relative;
   height: 100%;
   width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   background-color: var(--bg-app);
 }
 
-/* Mobile & Tablet Responsive Layout */
-@media (max-width: 1024px) {
-  .workbench-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-    position: relative;
-  }
+/* Responsive workbench layout is defined in layout.css */
 
-  .utility-panel {
-    display: none;
-    border-right: none;
-    width: 100%;
-  }
-
-  .utility-panel.mobile-active {
-    display: flex;
-  }
-
-  .map-panel {
-    display: none;
-  }
-
-  .map-panel.mobile-active {
-    display: block;
-  }
-}

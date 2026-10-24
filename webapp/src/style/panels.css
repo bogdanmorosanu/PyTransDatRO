@@ -805,3 +805,47 @@
   border-top: 1px solid var(--border-subtle);
   background-color: var(--bg-surface);
 }
+
+/* ==========================================================================
+   Mobile Bottom Modal Overlay Overrides (<= 768px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .floating-drawer,
+  .floating-grid-panel,
+  .floating-help-panel,
+  .floating-feedback-panel,
+  .floating-drawer.minimized,
+  .floating-grid-panel.minimized,
+  .floating-help-panel.minimized,
+  .floating-feedback-panel.minimized {
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    inset: auto 0 0 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    max-height: 85vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35) !important;
+    z-index: 1055 !important;
+  }
+
+  /* Hide desktop minimize buttons on mobile bottom sheets */
+  #fgp-minimize-btn,
+  #fhp-minimize-btn,
+  #ffp-minimize-btn {
+    display: none !important;
+  }
+
+  .drawer-header,
+  .fgp-header {
+    cursor: default !important;
+  }
+}
+

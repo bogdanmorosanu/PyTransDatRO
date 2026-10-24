@@ -464,6 +464,7 @@ html[data-theme="light"] .legend-swatch-option {
   height: auto;
   display: block;
   overflow: visible;
+  touch-action: pan-y;
 }
 
 .chart-grid-line {
@@ -1613,3 +1614,85 @@ html[data-theme="light"] .step-swatch.ghost {
   gap: 10px;
   font-size: 11.5px;
 }
+
+/* ==========================================================================
+   Mobile Telemetry Harmonization Overrides (<= 640px and <= 540px)
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .telemetry-page-container {
+    padding: 12px 14px;
+    gap: 14px;
+  }
+
+  .telemetry-nav-tabs {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 4px 0;
+    gap: 6px;
+  }
+
+  .telemetry-deck-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .telemetry-deck-row.unified-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .telemetry-kpi-banner,
+  .telemetry-kpi-banner.two-cards,
+  .telemetry-kpi-banner.five-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .spatial-matrix-viewport,
+  .spatial-matrix-container {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .spatial-matrix-bottom-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 540px) {
+  .telemetry-btn-toggle-group {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .telemetry-btn-toggle-group .telemetry-toggle-btn {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 5px 6px;
+    font-size: 11px;
+  }
+
+  .telemetry-date-inputs-cluster {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .telemetry-date-left-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .telemetry-date-limits-cluster {
+    flex-wrap: wrap;
+  }
+
+  .telemetry-date-active-cluster {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+

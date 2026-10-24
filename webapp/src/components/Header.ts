@@ -10,7 +10,7 @@ export interface HeaderCallbacks {
   onOpenFeedback: (initialType?: 'discrepancy' | 'grid_update' | 'bug' | 'feature' | 'api_down') => void;
   onOpenGridInfo: () => void;
   onOpenGeodeticHelp: () => void;
-  onToggleMobileView: () => void;
+  onToggleMobileView?: () => void;
 }
 
 export class Header {
@@ -197,10 +197,6 @@ export class Header {
                    </svg>`
             }
           </button>
-
-          <button type="button" class="btn btn-secondary mobile-only-btn" id="header-mobile-view-btn">
-            <span>${t('app.mobileViewToggle')}</span>
-          </button>
         </div>
       </div>
     `;
@@ -349,10 +345,6 @@ export class Header {
       syncFaviconWithTheme(next);
       window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
       this.render();
-    });
-
-    this.element.querySelector('#header-mobile-view-btn')?.addEventListener('click', () => {
-      this.callbacks.onToggleMobileView();
     });
   }
 }

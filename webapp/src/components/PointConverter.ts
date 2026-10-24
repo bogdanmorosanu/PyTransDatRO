@@ -719,11 +719,31 @@ export class PointConverter {
         <div class="coord-grid-3">
           <div class="form-group margin-bottom-none">
             <label class="form-label">${c1Label}</label>
-            <input type="text" class="form-input mono" id="pt-input-1" aria-label="${c1Label}" value="${escapeHtmlAttr(this.inputCoo1)}" />
+            <input 
+              type="text" 
+              class="form-input mono" 
+              id="pt-input-1" 
+              aria-label="${c1Label}" 
+              value="${escapeHtmlAttr(this.inputCoo1)}" 
+              autocomplete="off" 
+              autocorrect="off" 
+              autocapitalize="none" 
+              spellcheck="false" 
+            />
           </div>
           <div class="form-group margin-bottom-none">
             <label class="form-label">${c2Label}</label>
-            <input type="text" class="form-input mono" id="pt-input-2" aria-label="${c2Label}" value="${escapeHtmlAttr(this.inputCoo2)}" />
+            <input 
+              type="text" 
+              class="form-input mono" 
+              id="pt-input-2" 
+              aria-label="${c2Label}" 
+              value="${escapeHtmlAttr(this.inputCoo2)}" 
+              autocomplete="off" 
+              autocorrect="off" 
+              autocapitalize="none" 
+              spellcheck="false" 
+            />
           </div>
           <div class="form-group margin-bottom-none">
             <label class="form-label">${c3Label}</label>
@@ -734,6 +754,10 @@ export class PointConverter {
               aria-label="${c3Label}"
               value="${escapeHtmlAttr(this.inputCoo3)}" 
               placeholder="${t('point.optionalPlaceholder')}" 
+              autocomplete="off" 
+              autocorrect="off" 
+              autocapitalize="none" 
+              spellcheck="false" 
             />
           </div>
         </div>

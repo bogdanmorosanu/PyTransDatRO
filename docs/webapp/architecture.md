@@ -149,8 +149,9 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **Line Streaming Robustness**: Auto-detects Point ID column (3 vs 4 tokens), parses DMS angles with sexagesimal radian conversion, outputs unspaced DMS, and handles Windows-1252 / Latin-1 degree symbol fallback decoding.
 - **Downloads**: Individual transformed file downloads plus batch `Download All`.
 
-### E. Interactive Web GIS Map (`MapView.ts`)
-- **Desktop Split-Screen**: Left-hand 480px workbench panel paired with a full-height interactive Leaflet map.
+### E. Interactive Web GIS Map & Responsive Viewport Topology (`MapView.ts`)
+- **Desktop Split-Screen & Dockable Workbench**: Left-hand 480px workbench panel paired with a full-height interactive Leaflet map. Includes a sleek vertical divider collapse toggle (`#workbench-dock-toggle`) allowing users to slide the workbench shut (`margin-left: -480px;`) and expand the map across 100% of the desktop window without entering OS fullscreen mode.
+- **Mobile Bottom Sheet Architecture (<= 768px)**: On mobile viewports, the Leaflet map occupies 100% of the screen (`position: absolute; inset: 0;`), while the transformation workbench operates as a Google Maps-style bottom sheet (`.utility-panel`) with a grab handle bar. Supports 3 states: `sheet-peek` (~72px peek at bottom), `sheet-half` (45% height, default), and `sheet-full` (85vh height), with drag swipe gestures, tap state cycling, and auto-elevation on coordinate input focus.
 - **3-Layer Independent Architecture**: `pointLayer`, `textLayer`, and `filesLayer` allow users to toggle visibility independently, customize colors via 6-swatch popovers, and inspect live point counters.
 - **Marker Symbology & Color Preservation**: Single point markers strictly retain their assigned layer color from the Layers drawer at all times, never turning red when untransformable or outside grid. Equipped with continuous soft pulsing ripple animation (`markerPulse`).
 - **Full Cluster Synchronization**: Cluster grouping circles (`custom-cluster-circle`) dynamically inherit their layer's active swatch color, keeping individual markers, zoom clusters, drawer swatches, and legend dots in perfect visual synchronization.

@@ -43,6 +43,10 @@ class App {
   private sharedConfigBar!: HTMLElement;
   private tabsBar!: HTMLElement;
   private tabContentContainer!: HTMLElement;
+  private isWorkbenchCollapsed: boolean = false;
+  private dockToggleBtn!: HTMLButtonElement;
+  private bottomSheetState: 'peek' | 'half' | 'full' = 'half';
+  private bottomSheetHandleBar!: HTMLElement;
 
   private header!: Header;
   private globalOfflineBanner!: HTMLElement;
@@ -119,7 +123,6 @@ class App {
       onOpenFeedback: (initialType) => this.feedbackPanel.toggle(initialType),
       onOpenGridInfo: () => this.gridMetadataPanel.toggle(),
       onOpenGeodeticHelp: () => this.geodeticHelpPanel.toggle(),
-      onToggleMobileView: () => this.toggleMobileView(),
     });
     this.rootElement.appendChild(this.header.getElement());
 
@@ -144,7 +147,7 @@ class App {
 
     // Left Panel
     this.utilityPanel = document.createElement('div');
-    this.utilityPanel.className = 'utility-panel mobile-active';
+    this.utilityPanel.className = 'utility-panel sheet-half';
 
     // Shared Configuration Bar
     this.sharedConfigBar = document.createElement('div');
@@ -290,6 +293,8 @@ class App {
     this.mapView.setCoordinateOrder(this.currentOrder);
 
     this.updateActiveTabContent();
+    this.initDockableWorkbench();
+    this.initBottomSheet();
   }
 
   private setDirection(op: TransformationOp): void {
@@ -498,18 +503,193 @@ class App {
     }
   }
 
-  private toggleMobileView(): void {
-    const isUtilActive = this.utilityPanel.classList.contains('mobile-active');
-    const mapPanel = this.mapView.getElement();
-
-    if (isUtilActive) {
-      this.utilityPanel.classList.remove('mobile-active');
-      mapPanel.classList.add('mobile-active');
-      setTimeout(() => this.mapView.invalidateSize(), 60);
-    } else {
-      this.utilityPanel.classList.add('mobile-active');
-      mapPanel.classList.remove('mobile-active');
+  private initDockableWorkbench(): void {
+    const saved = localStorage.getItem('pytransdat_workbench_collapsed') === 'true';
+    if (saved && window.innerWidth > 768) {
+      this.isWorkbenchCollapsed = true;
+      this.utilityPanel.classList.add('is-collapsed');
+      // Invalidate Leaflet map size on initial load so map fills 100% of container
+      requestAnimationFrame(() => this.mapView.invalidateSize());
     }
+
+    this.dockToggleBtn = document.createElement('button');
+    this.dockToggleBtn.type = 'button';
+    this.dockToggleBtn.className = `workbench-dock-toggle ${this.isWorkbenchCollapsed ? 'is-collapsed' : ''}`;
+    this.dockToggleBtn.setAttribute('aria-label', this.isWorkbenchCollapsed ? 'Expand workbench dock' : 'Collapse workbench dock');
+    this.dockToggleBtn.setAttribute('aria-expanded', String(!this.isWorkbenchCollapsed));
+    this.dockToggleBtn.title = this.isWorkbenchCollapsed ? 'Expand workbench (Ctrl+\\ or Alt+W)' : 'Collapse workbench (Ctrl+\\ or Alt+W)';
+    this.dockToggleBtn.innerHTML = `
+      <span class="workbench-dock-toggle-icon">${this.isWorkbenchCollapsed ? '▶' : '◀'}</span>
+    `;
+    this.workbenchLayout.appendChild(this.dockToggleBtn);
+
+    this.dockToggleBtn.addEventListener('click', () => {
+      this.toggleWorkbenchDock();
+    });
+
+    this.utilityPanel.addEventListener('transitionend', (e) => {
+      if (e.target === this.utilityPanel && (e.propertyName === 'margin-left' || e.propertyName === 'transform')) {
+        this.mapView.invalidateSize();
+      }
+    });
+
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if ((e.ctrlKey && e.key === '\\') || (e.altKey && (e.key === 'w' || e.key === 'W'))) {
+        e.preventDefault();
+        this.toggleWorkbenchDock();
+      }
+    });
+  }
+
+  private toggleWorkbenchDock(): void {
+    if (window.innerWidth <= 768) return;
+    this.isWorkbenchCollapsed = !this.isWorkbenchCollapsed;
+    this.utilityPanel.classList.toggle('is-collapsed', this.isWorkbenchCollapsed);
+    this.dockToggleBtn.classList.toggle('is-collapsed', this.isWorkbenchCollapsed);
+    this.dockToggleBtn.setAttribute('aria-label', this.isWorkbenchCollapsed ? 'Expand workbench dock' : 'Collapse workbench dock');
+    this.dockToggleBtn.setAttribute('aria-expanded', String(!this.isWorkbenchCollapsed));
+    this.dockToggleBtn.title = this.isWorkbenchCollapsed ? 'Expand workbench (Ctrl+\\ or Alt+W)' : 'Collapse workbench (Ctrl+\\ or Alt+W)';
+    const icon = this.dockToggleBtn.querySelector('.workbench-dock-toggle-icon');
+    if (icon) {
+      icon.textContent = this.isWorkbenchCollapsed ? '▶' : '◀';
+    }
+    localStorage.setItem('pytransdat_workbench_collapsed', String(this.isWorkbenchCollapsed));
+    this.mapView.invalidateSize();
+  }
+
+  private initBottomSheet(): void {
+    this.bottomSheetHandleBar = document.createElement('div');
+    this.bottomSheetHandleBar.className = 'bottom-sheet-handle-bar';
+    this.bottomSheetHandleBar.setAttribute('role', 'button');
+    this.bottomSheetHandleBar.setAttribute('aria-label', 'Drag or tap bottom sheet');
+    this.bottomSheetHandleBar.innerHTML = `<div class="bottom-sheet-handle-pill"></div>`;
+    this.utilityPanel.insertBefore(this.bottomSheetHandleBar, this.utilityPanel.firstChild);
+
+    this.setBottomSheetState('half');
+
+    let touchStartY = 0;
+    let touchCurrentY = 0;
+    let isTouching = false;
+    let didDrag = false;
+
+    // Tap handle to cycle states: half -> full -> peek -> half
+    this.bottomSheetHandleBar.addEventListener('click', () => {
+      if (window.innerWidth > 768) return;
+      if (didDrag) {
+        didDrag = false;
+        return;
+      }
+      if (this.bottomSheetState === 'half') {
+        this.setBottomSheetState('full');
+      } else if (this.bottomSheetState === 'full') {
+        this.setBottomSheetState('peek');
+      } else {
+        this.setBottomSheetState('half');
+      }
+    });
+
+    // Touch swipe gestures
+    this.bottomSheetHandleBar.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        if (window.innerWidth > 768) return;
+        if (e.touches.length === 1) {
+          isTouching = true;
+          didDrag = false;
+          touchStartY = e.touches[0].clientY;
+          touchCurrentY = touchStartY;
+          this.utilityPanel.style.transition = 'none';
+        }
+      },
+      { passive: true },
+    );
+
+    this.bottomSheetHandleBar.addEventListener(
+      'touchmove',
+      (e: TouchEvent) => {
+        if (!isTouching || e.touches.length !== 1) return;
+        touchCurrentY = e.touches[0].clientY;
+        const deltaY = touchCurrentY - touchStartY;
+        if (Math.abs(deltaY) > 6) {
+          didDrag = true;
+        }
+
+        const sheetHeight = this.utilityPanel.offsetHeight || window.innerHeight * 0.85;
+        let baseTranslateY = 0;
+        if (this.bottomSheetState === 'half') baseTranslateY = sheetHeight * 0.45;
+        else if (this.bottomSheetState === 'peek') baseTranslateY = sheetHeight - 72;
+        else baseTranslateY = 0;
+
+        const currentTranslate = Math.max(0, Math.min(sheetHeight - 72, baseTranslateY + deltaY));
+        this.utilityPanel.style.transform = `translateY(${currentTranslate}px)`;
+      },
+      { passive: true },
+    );
+
+    const finishTouch = () => {
+      if (!isTouching) return;
+      isTouching = false;
+
+      const deltaY = touchCurrentY - touchStartY;
+      const threshold = 40;
+      const sheetHeight = this.utilityPanel.offsetHeight || window.innerHeight * 0.85;
+
+      let targetState = this.bottomSheetState;
+
+      if (this.bottomSheetState === 'half') {
+        if (deltaY < -threshold) {
+          targetState = 'full';
+        } else if (deltaY > threshold) {
+          targetState = 'peek';
+        }
+      } else if (this.bottomSheetState === 'peek') {
+        if (deltaY < -sheetHeight * 0.45) {
+          targetState = 'full';
+        } else if (deltaY < -threshold) {
+          targetState = 'half';
+        }
+      } else if (this.bottomSheetState === 'full') {
+        if (deltaY > sheetHeight * 0.45) {
+          targetState = 'peek';
+        } else if (deltaY > threshold) {
+          targetState = 'half';
+        }
+      }
+
+      this.utilityPanel.style.transition = '';
+      this.utilityPanel.style.transform = '';
+      this.setBottomSheetState(targetState);
+
+      // Invalidate Leaflet view on gesture finish
+      this.mapView?.invalidateSize();
+
+      // Suppress synthesized click following drag
+      if (didDrag) {
+        setTimeout(() => {
+          didDrag = false;
+        }, 200);
+      }
+    };
+
+    this.bottomSheetHandleBar.addEventListener('touchend', finishTouch);
+    this.bottomSheetHandleBar.addEventListener('touchcancel', finishTouch);
+
+    // Auto-expand to sheet-full when user focuses any input or textarea on mobile
+    this.utilityPanel.addEventListener('focusin', (e: FocusEvent) => {
+      if (window.innerWidth <= 768 && this.bottomSheetState !== 'full') {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+          this.setBottomSheetState('full');
+        }
+      }
+    });
+  }
+
+  private setBottomSheetState(state: 'peek' | 'half' | 'full'): void {
+    this.bottomSheetState = state;
+    this.utilityPanel.classList.remove('sheet-peek', 'sheet-half', 'sheet-full');
+    this.utilityPanel.classList.add(`sheet-${state}`);
+    this.mapView?.invalidateSize();
   }
 
   private updateOfflineBanner(online: boolean): void {
@@ -568,6 +748,7 @@ class App {
     if (this.gridMetadataPanel.isOpen()) this.gridMetadataPanel.close();
     if (this.geodeticHelpPanel.isOpen()) this.geodeticHelpPanel.close();
 
+    this.setBottomSheetState('half');
     this.switchTab('point');
     this.navigateToPage('studio');
   }

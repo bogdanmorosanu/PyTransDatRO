@@ -25,6 +25,90 @@
   z-index: 10;
 }
 
+@media (min-width: 769px) {
+  .utility-panel {
+    transition: margin-left var(--transition-normal);
+  }
+  .utility-panel.is-collapsed {
+    margin-left: -480px;
+  }
+}
+
+/* Desktop Workbench Vertical Divider Dock / Collapse Toggle Button */
+.workbench-dock-toggle {
+  position: absolute;
+  top: 50%;
+  left: 480px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 48px;
+  border-radius: 0 8px 8px 0;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-left: none;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.2);
+  color: var(--text-muted);
+  cursor: pointer;
+  z-index: 550;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left var(--transition-normal), background-color var(--transition-fast), color var(--transition-fast);
+  padding: 0;
+  outline: none;
+  user-select: none;
+}
+
+.workbench-dock-toggle:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--color-primary-light);
+}
+
+.workbench-dock-toggle.is-collapsed {
+  left: 0;
+}
+
+.workbench-dock-toggle-icon {
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .workbench-dock-toggle {
+    display: none !important;
+  }
+}
+
+/* Bottom Sheet Grab Handle Bar */
+.bottom-sheet-handle-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 28px;
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+  background: transparent;
+  user-select: none;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.bottom-sheet-handle-pill {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--text-muted);
+  opacity: 0.5;
+}
+
+@media (min-width: 769px) {
+  .bottom-sheet-handle-bar {
+    display: none !important;
+  }
+}
+
 /* Header Navbar - Refined Layout */
 .app-header {
   position: relative;
@@ -871,9 +955,120 @@ input.form-input[readonly]:focus,
   display: none !important;
 }
 
+/* ==========================================================================
+   Mobile Bottom Sheet & Responsive Overrides (<= 768px and <= 540px)
+   ========================================================================== */
+
 @media (max-width: 768px) {
-  .btn.mobile-only-btn,
-  .mobile-only-btn {
-    display: inline-flex !important;
+  .workbench-layout {
+    position: relative;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  .map-panel {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+  }
+
+  .utility-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 85vh;
+    margin-left: 0 !important;
+    background-color: var(--bg-surface);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+    border-top: 1px solid var(--border-medium);
+    border-right: none;
+    z-index: 550;
+    transition: transform var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 3 Bottom Sheet States */
+  .utility-panel.sheet-peek {
+    transform: translateY(calc(100% - 72px));
+  }
+  .utility-panel.sheet-half {
+    transform: translateY(45%);
+  }
+  .utility-panel.sheet-full {
+    transform: translateY(0);
+  }
+
+  /* Mobile Input & Select Font Size: Prevents iOS Safari Auto-Zoom */
+  .form-input,
+  .form-select,
+  .form-select-sm,
+  .config-unit-select {
+    font-size: 16px !important;
+  }
+
+  /* Header Navbar Mobile Optimization */
+  .app-header {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .header-zone-left {
+    gap: 8px;
+  }
+
+  .header-repo-link,
+  .header-brand-nav-divider {
+    display: none !important;
+  }
+
+  .header-nav-tabs {
+    gap: 2px;
+  }
+
+  .header-tab-btn {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .header-zone-actions {
+    gap: 6px;
+  }
+
+  .header-utilities-dock {
+    gap: 4px;
   }
 }
+
+/* Compact Mobile 2-Row Coordinate Input & Config Bar Layout */
+@media (max-width: 540px) {
+  .coord-grid-3,
+  .output-grid-3 {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 8px;
+  }
+
+  .coord-grid-3 > div:nth-child(3),
+  .output-grid-3 > div:nth-child(3) {
+    grid-column: 1 / -1; /* Height spans full width underneath */
+  }
+
+  .config-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .config-unit-cluster {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+

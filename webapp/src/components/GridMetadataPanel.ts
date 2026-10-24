@@ -407,6 +407,7 @@ export class GridMetadataPanel {
 
     handle.addEventListener('pointerdown', (e: PointerEvent) => {
       if ((e.target as HTMLElement).closest('.fgp-header-actions')) return;
+      if (window.innerWidth <= 768) return;
       e.preventDefault();
       e.stopPropagation();
 

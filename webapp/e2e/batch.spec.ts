@@ -17,6 +17,7 @@ async function runBatch(page: import('@playwright/test').Page, input: string): P
   await page.locator('#batch-transform-btn').click();
   const output = page.locator('#batch-output-area');
   await expect(output).toBeVisible();
+  await expect(output).not.toHaveValue('');
   return output.inputValue();
 }
 
@@ -255,6 +256,7 @@ test.describe('The Settings-Shift Lifecycle Invariant', () => {
 
     // Step 5: Verify output was generated using the NEW active settings:
     // Longitude first (~24°59'), then Latitude (~45°59'), with DMS symbols
+    await expect(output).toHaveValue(/201/);
     outText = await output.inputValue();
     expect(outText).toContain('201');
     expect(outText).toContain('24°');

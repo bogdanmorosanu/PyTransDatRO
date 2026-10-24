@@ -391,6 +391,7 @@ export class FeedbackPanel {
 
     handle.addEventListener('pointerdown', (e: PointerEvent) => {
       if ((e.target as HTMLElement).closest('button')) return;
+      if (window.innerWidth <= 768) return;
 
       this.isDragging = true;
       this.dragStartX = e.clientX;

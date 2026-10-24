@@ -148,6 +148,23 @@ All visual styling is governed by semantic CSS custom properties in `webapp/src/
 - **Radians**: `R.RRRRRRRRRR` (10 decimal places).
 - **Pure Numeric Readouts**: Input and output boxes display pure numbers only (never append `m`, `°`, or `rad` inside the text field). Cleared or untransformable output boxes display empty fields (`""`) to prevent displaying misleading numbers.
 
+### 3.4 Responsive Mobile Breakpoints & Dockable Workbench Invariants
+1. **Desktop Left Docking (`@media (min-width: 769px)`)**:
+   - The 480px left workbench can be collapsed to the left (`.utility-panel.is-collapsed { margin-left: -480px; }`) via the vertical divider toggle button (`#workbench-dock-toggle`) or keyboard shortcut (`Ctrl+\` / `Alt+W`).
+   - The Leaflet map dynamically occupies 100% of the browser window without requiring OS fullscreen mode.
+   - The collapse state is persisted in `localStorage['pytransdat_workbench_collapsed']`.
+2. **Mobile Bottom Sheet (`@media (max-width: 768px)`)**:
+   - The Leaflet map occupies the full screen (`position: absolute; inset: 0;`).
+   - The workbench converts into a Google Maps-style bottom sheet (`.utility-panel`) with a grab handle bar (`.bottom-sheet-handle-bar`).
+   - Supports 3 ergonomic states: `sheet-peek` (~72px peek bar at bottom), `sheet-half` (45% height, default), and `sheet-full` (85vh height).
+   - Tapping the handle cycles states; touch swipe gestures track smoothly. Focusing coordinate inputs automatically elevates the sheet to `sheet-full` to prevent mobile virtual keyboards from obscuring data fields.
+3. **Compact Phone 2-Row Coordinate Grid (`@media (max-width: 540px)`)**:
+   - `.coord-grid-3` switches from 3 columns to an ergonomic 2-row layout: Row 1 = Coordinates 1 & 2 (`1fr 1fr`), Row 2 = Coordinate 3 (Height / Z) spanning full width underneath.
+   - Guarantees 17-character DMS coordinates (`45°50'28.44420"`) fit with zero horizontal clipping.
+   - Form inputs and select dropdowns enforce `font-size: 16px !important;` on mobile ($\le 768\text{px}$) to prevent iOS Safari auto-zoom on focus.
+4. **Mobile Bottom Modal Dialogs**:
+   - Geodetic Help, Feedback, and Grid Metadata floating windows render as responsive full-width bottom modal sheets on mobile viewports ($\le 768\text{px}$).
+
 ---
 
 ## 4. Header Architecture & Navigation Invariants (`Header.ts`)

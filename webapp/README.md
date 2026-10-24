@@ -58,7 +58,7 @@ webapp/
 ├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build options and dev server API proxy
-├── e2e/                    # Playwright end-to-end browser test suite (65+ tests across 14 specs)
+├── e2e/                    # Playwright end-to-end browser test suite (70 tests across 12 specs)
 │   ├── fixtures.ts         # Offline tile & font stubs and page helpers
 │   ├── helpers/            # Shared locator and assertion helpers
 │   ├── smoke.spec.ts       # Critical DOM shell and initial layout smoke tests
@@ -238,7 +238,7 @@ The unit test suite executes 80 tests in $< 400\text{ ms}$ covering:
 - **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu` with active checkmarks, `renderSegmentedControl`, etc.) and the dual-theme `Map Projection Graticule` brand logo (`getLogoInlineSvg`, `getLogoStandaloneSvg`).
 
 ### End-to-End Browser Tests (Playwright)
-The Playwright suite executes 59 browser specs across 11 test suites against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
+The Playwright suite executes 70 browser specs across 12 test suites against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
 - **`smoke.spec.ts`**: DOM shell, layout containers, and initial component mounting.
 - **`point.spec.ts`**: Single-point coordinate conversions, direction toggling, angular units, copy buttons, map pin popups, untransformable map click coordinate erasing, and layer color preservation with pulse animation.
 - **`batch.spec.ts`**: Delimiter detection, coordinate swapping, comment/blank line preservation, error row formatting (`PointId, # [reason]`), textarea vertical height persistence, scrollbar hover cursor, and export triggers.
