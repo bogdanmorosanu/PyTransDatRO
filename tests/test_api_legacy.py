@@ -48,9 +48,9 @@ def test_legacy_get_stereo70_to_etrs89_3d(client):
     assert math.isclose(h, 139.6084, abs_tol=0.2)
 
 
-def test_legacy_get_root_alias_2d(client):
-    """Verifies root alias /cooOpService works for 2D inputs."""
-    res = client.get("/cooOpService?cooOp=Stereo70ToETRS89&coos=500000;500000")
+def test_legacy_get_2d(client):
+    """Verifies GET /transdatonline/cooOpService works for 2D inputs."""
+    res = client.get("/transdatonline/cooOpService?cooOp=Stereo70ToETRS89&coos=500000;500000")
     assert res.status_code == 200
     data = res.json()
 
@@ -298,16 +298,15 @@ def test_legacy_get_stereo70_to_etrs89_no_data_and_1d_edge_scenarios(client):
 def test_legacy_get_etrs89_to_stereo70_complete_matrix(client):
     """Verifies ETRS89ToStereo70 GET across 2D, Out of grid (2D/1D/wedge), No data, Invalid, and Wrong dim."""
     # 1. Valid 2D on both /transdatonline/cooOpService and /cooOpService
-    for path in ["/transdatonline/cooOpService", "/cooOpService"]:
-        res_2d = client.get(
-            f"{path}?cooOp=ETRS89ToStereo70&coos=0.8028465450500996;0.43630521911977493"
-        )
-        assert res_2d.status_code == 200
-        data_2d = res_2d.json()
-        assert "warning" not in data_2d
-        assert len(data_2d["coos"]) == 2
-        assert math.isclose(data_2d["coos"][0], 500000.0, abs_tol=0.005)
-        assert math.isclose(data_2d["coos"][1], 500000.0, abs_tol=0.005)
+    res_2d = client.get(
+        "/transdatonline/cooOpService?cooOp=ETRS89ToStereo70&coos=0.8028465450500996;0.43630521911977493"
+    )
+    assert res_2d.status_code == 200
+    data_2d = res_2d.json()
+    assert "warning" not in data_2d
+    assert len(data_2d["coos"]) == 2
+    assert math.isclose(data_2d["coos"][0], 500000.0, abs_tol=0.005)
+    assert math.isclose(data_2d["coos"][1], 500000.0, abs_tol=0.005)
 
     # 2. Out of grid (2D and 3D pre-check rejection)
     res_oog_2d = client.get("/transdatonline/cooOpService?cooOp=ETRS89ToStereo70&coos=0.1;0.1")
@@ -394,7 +393,7 @@ def test_legacy_post_complete_matrix_both_directions(client):
         {"not_coos": [500000.0, 500000.0]},  # 12: invalid (missing 'coos' key)
     ]
     res_st70 = client.post(
-        "/cooOpService",
+        "/transdatonline/cooOpService",
         json={"cooOp": "Stereo70ToETRS89", "coosArray": st70_batch},
     )
     assert res_st70.status_code == 200

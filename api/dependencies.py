@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import Depends, Request
 
+from api.client_sources import CLIENT_SOURCE_LOOKUP
 from api.config import Settings, get_settings
 from pytransdatro.telemetry import SqliteUsageLogger
 from pytransdatro.trans_ro import TransRO
@@ -31,17 +32,22 @@ def get_telemetry_logger(request: Request) -> Optional[SqliteUsageLogger]:
 def get_client_source(request: Request) -> int:
     """Resolves client origin identifier from request headers.
 
-    Returns:
-        1: rest_api (default for API endpoints)
-        2: web_map (when X-Client-Source indicates web_map or web_app)
-        3: desktop_cli (when X-Client-Source indicates desktop_cli)
+    Decisional Structure:
+    1. If 'X-Client-Source' header is missing or empty:
+       Defaults to 1 (rest_api) to maintain seamless compatibility with standard
+       HTTP clients, QGIS plugins, CAD scripts, and legacy consumers.
+    2. If 'X-Client-Source' matches a registered origin in CLIENT_SOURCE_LOOKUP:
+       Returns the configured integer source ID (e.g., 1 for rest_api, 2 for web_map,
+       3 for desktop_cli, or 4+ for future partner sources).
+    3. If 'X-Client-Source' is provided but unrecognized:
+       Safely falls back to 0 (unknown).
     """
-    client_src = request.headers.get("X-Client-Source", "").strip().lower()
-    if client_src in ("web_map", "web_app", "web"):
-        return 2
-    if client_src in ("desktop_cli", "cli", "desktop"):
-        return 3
-    return 1
+    raw_header = request.headers.get("X-Client-Source")
+    if raw_header is None or not raw_header.strip():
+        return 1
+
+    normalized = raw_header.strip().lower()
+    return CLIENT_SOURCE_LOOKUP.get(normalized, 0)
 
 
 def get_db_path(settings: Settings = Depends(get_settings)) -> Path:

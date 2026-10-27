@@ -8,7 +8,7 @@ The `api/` package provides a high-performance, asynchronous REST API service bu
 2. **100% Backward Compatibility (`/transdatonline/cooOpService`)**: Byte-for-byte emulation of the 10+ year-old TransDatOnline/RomGeo Java servlet contract.
 3. **High-Throughput File Streaming**: Line-by-line chunked streaming for delimited files (`.csv`, `.txt`) up to **100,000 points** per request.
 4. **Sub-Millisecond In-Memory Execution**: The `.spg` grid is loaded into RAM once during server startup (singleton pattern). Transformations run in $< 0.05\text{ ms}$ per point without disk I/O.
-5. **Non-Blocking SQLite Telemetry**: Integrates with `SqliteUsageLogger` under `source=2` (`rest_api`), recording daily volume metrics and non-sensitive ~1 km spatial density cells.
+5. **Non-Blocking SQLite Telemetry**: Integrates with `SqliteUsageLogger` under configurable origins (`source=1` for `rest_api`, `source=2` for `web_map`, `source=3` for `desktop_cli`, `source=0` for `unknown`), recording daily volume metrics and non-sensitive ~1 km spatial density cells.
 6. **Zero-Dependency Rate Limiter**: In-memory sliding-window limiter enforcing 60 req/min for point endpoints and 10 req/min for batch/file uploads per client IP.
 
 ```mermaid
@@ -153,7 +153,7 @@ Streams transformations of an uploaded `.csv` or `.txt` file (up to `settings.ma
 
 ### 3.2. Legacy Compatibility Endpoints
 
-#### `GET /transdatonline/cooOpService` (and `/cooOpService`)
+#### `GET /transdatonline/cooOpService`
 Maintains 100% backward compatibility with legacy scripts and GIS plugins, including Java `HttpServletRequest.getParameter()` non-null empty string semantics (`?cooOp=Stereo70ToETRS89&coos=` returns HTTP `200 {"coos": [], "warning": "Invalid coordinate data"}`, whereas missing parameters return HTTP `400`).
 
 * **Query Parameters**:
@@ -167,7 +167,7 @@ Maintains 100% backward compatibility with legacy scripts and GIS plugins, inclu
   - **Invalid Data** (non-numeric, `NaN`, `Infinity`, or empty intermediate tokens): `{"coos": [], "warning": "Invalid coordinate data"}`.
   - **Stereo 30**: `{"coos": [...], "warning": "Stereo30 transformation is obsolete and unsupported"}`.
 
-#### `POST /transdatonline/cooOpService` (and `/cooOpService`)
+#### `POST /transdatonline/cooOpService`
 Accepts `application/x-www-form-urlencoded`, `multipart/form-data` (`cooOp`, `coosArray`), and direct `application/json` bodies, validating `cooOp` eagerly before iterating over `coosArray`, enforcing `settings.max_batch_points`, and delegating to `execute_batch_transformation()` for 4-stage fault-isolated batch execution (including string-encoded numbers such as `{"coos": ["500000", "500000", "100"]}` matching Java `CooJSON.jsonToCoo()`):
 ```json
 {
@@ -178,6 +178,18 @@ Accepts `application/x-www-form-urlencoded`, `multipart/form-data` (`cooOp`, `co
 }
 ```
 * **Response**: JSON array preserving order: `[{"coos": [500000.0, 500000.0, 100.174]}]`.
+
+---
+
+### 3.4. Client Origin Identification (`X-Client-Source`)
+
+All transformation and telemetry recording endpoints resolve caller origin dynamically via the `X-Client-Source` HTTP header:
+- **Missing or Empty**: Defaults to `1` (`rest_api`) for seamless compatibility with third-party HTTP clients, QGIS plugins, CAD extensions, and curl scripts.
+- **Registered Origins**: Defined in [`api/client_sources.py`](../api/client_sources.py):
+  - `web_app` -> `2`
+  - `desktop_cli` -> `3`
+  - `rest_api` -> `1`
+- **Unrecognized Header Values**: Explicitly categorized as `0` (`unknown`) rather than collapsing into existing categories, preserving statistical purity.
 
 ---
 

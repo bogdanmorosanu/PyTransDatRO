@@ -68,7 +68,7 @@ This ensures that the repository contains zero hardcoded IP addresses, domains, 
   - *Stage 2 (Nginx Alpine):* Strips default Nginx assets and installs the compiled distribution into `/usr/share/nginx/html` with custom [`nginx.conf`](../nginx.conf).
 - **Reverse Proxy Routing:**
   - `/` $\to$ Serves SPA static bundle with `try_files $uri $uri/ /index.html;`.
-  - `/api/*`, `/docs`, `/redoc`, `/openapi.json`, `/health`, `/cooOpService`, `/transdatonline/*` $\to$ Forwarded to `http://backend:8000`.
+  - `/api/*`, `/docs`, `/redoc`, `/openapi.json`, `/health`, `/transdatonline/*` $\to$ Forwarded to `http://backend:8000`.
 - **Client IP Preservation:**
   FastAPI's sliding-window rate limiter relies on the `X-Forwarded-For` header. Nginx explicitly injects:
   ```nginx

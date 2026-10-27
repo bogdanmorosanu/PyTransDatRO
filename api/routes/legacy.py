@@ -1,10 +1,10 @@
 """Legacy TransDatOnline compatibility router.
 
-Reproduces the 10+ year-old Java servlet contract at /transdatonline/cooOpService and /cooOpService.
+Reproduces the 10+ year-old Java servlet contract at /transdatonline/cooOpService.
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -25,11 +25,18 @@ router = APIRouter(tags=["Legacy TransDatOnline Compatibility"])
 
 
 @router.get("/transdatonline/cooOpService")
-@router.get("/cooOpService")
 async def legacy_coo_op_get(
     request: Request,
-    cooOp: Optional[str] = Query(None),
-    coos: Optional[str] = Query(None),
+    cooOp: str = Query(
+        ...,
+        description="Legacy transformation operation (Stereo70ToETRS89, ETRS89ToStereo70)",
+        examples=["Stereo70ToETRS89"],
+    ),
+    coos: str = Query(
+        ...,
+        description="Semicolon-delimited coordinate string (e.g. '500000;500000;100')",
+        examples=["500000;500000;100"],
+    ),
     trans: TransRO = Depends(get_trans_engine),
     source: int = Depends(get_client_source),
 ):
@@ -56,7 +63,6 @@ async def legacy_coo_op_get(
 
 
 @router.post("/transdatonline/cooOpService")
-@router.post("/cooOpService")
 async def legacy_coo_op_post(
     request: Request,
     trans: TransRO = Depends(get_trans_engine),

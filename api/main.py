@@ -104,6 +104,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        if request.url.path == "/transdatonline/cooOpService":
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": "Invalid request! cooOp or coos variable is missing!",
+                },
+            )
         return JSONResponse(
             status_code=422,
             content={

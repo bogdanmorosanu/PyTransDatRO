@@ -245,9 +245,29 @@ def test_client_source_header_propagation(client):
     assert res.status_code == 200
 
 
-def test_webapp_static_mount(client):
+def test_webapp_static_mount(client, tmp_path):
     """Verifies the root path / serves the built webapp index.html."""
-    res = client.get("/")
+    from api.config import Settings, get_settings
+    from api.main import create_app
+
+    settings = getattr(app.state, "settings", None) or get_settings()
+    dist_dir = settings.webapp_dist_dir
+
+    if dist_dir.is_dir() and (dist_dir / "index.html").is_file():
+        res = client.get("/")
+    else:
+        # Standalone CI environment without webapp/dist build
+        dummy_dist = tmp_path / "dist"
+        dummy_dist.mkdir()
+        (dummy_dist / "index.html").write_text(
+            '<!DOCTYPE html><html><body><div id="app-root">PyTransDatRO</div></body></html>',
+            encoding="utf-8",
+        )
+        test_app = create_app(Settings(webapp_dist_dir=dummy_dist))
+        test_app.state.disable_rate_limiting = True
+        with TestClient(test_app) as standalone_client:
+            res = standalone_client.get("/")
+
     assert res.status_code == 200
     assert "text/html" in res.headers.get("content-type", "")
     assert "PyTransDatRO" in res.text
@@ -967,6 +987,8 @@ def test_client_source_resolution_all_origins(client):
             ("web_app", 2),
             ("desktop_cli", 3),
             ("cli", 3),
+            ("unknown", 0),
+            ("unrecognized_source_abc", 0),
         ]
         for header_val, expected_src in source_expectations:
             mock_collector.reset_mock()
@@ -1136,29 +1158,64 @@ def test_telemetry_endpoints_with_seeded_sqlite_db(client, tmp_path):
         app.dependency_overrides.pop(get_db_path, None)
 
 
-def test_telemetry_effective_date_snapping_and_parity(client):
+def test_telemetry_effective_date_snapping_and_parity(client, tmp_path):
     """Verifies effective date snapping on monthly/multi-day buckets and points parity."""
-    # 1. Query a 7-day mid-month window in March 2025 (where spatial is monthly: 2025-03-01 to 2025-03-31)
-    res_sm = client.get("/api/v1/telemetry/spatial-matrix?from_date=2025-03-10&to_date=2025-03-17")
-    assert res_sm.status_code == 200
-    d_sm = res_sm.json()
-    assert d_sm["summary"]["from_date"] == "2025-03-10"
-    assert d_sm["summary"]["to_date"] == "2025-03-17"
-    assert d_sm["summary"]["effective_from_date"] == "2025-03-01"
-    assert d_sm["summary"]["effective_to_date"] == "2025-03-31"
+    import sqlite3
 
-    # 2. Query timeline for the same exact full month
-    res_tl = client.get("/api/v1/telemetry/timeline?from_date=2025-03-01&to_date=2025-03-31")
-    assert res_tl.status_code == 200
-    d_tl = res_tl.json()
-    assert d_tl["summary"]["effective_from_date"] == "2025-03-01"
-    assert d_tl["summary"]["effective_to_date"] == "2025-03-31"
+    from api.dependencies import get_db_path
+    from pytransdatro.telemetry import SqliteUsageLogger
 
-    # 3. Verify points parity: for the full month of March 2025, total_points must match
-    month_sm = client.get(
-        "/api/v1/telemetry/spatial-matrix?from_date=2025-03-01&to_date=2025-03-31&metric=points"
+    # Seed an isolated SQLite telemetry database with March 2025 monthly data
+    logger_inst = SqliteUsageLogger(log_dir=str(tmp_path))
+    logger_inst.close()
+
+    seeded_db = tmp_path / "usage.db"
+    conn = sqlite3.connect(str(seeded_db))
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO computation_usage (period_start, period_end, source, operation, is_3d, count_calls, count_points)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        ("2025-03-01", "2025-03-31", 1, 1, 1, 5, 50),
     )
-    assert month_sm.status_code == 200
-    month_sm_data = month_sm.json()
+    cur.execute(
+        """
+        INSERT INTO spatial_usage (period_start, period_end, source, operation, is_3d, lat_deg, lat_grad, lon_deg, lon_grad, count, count_calls)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        ("2025-03-01", "2025-03-31", 1, 1, 1, 46, 0, 25, 0, 50, 5),
+    )
+    conn.commit()
+    conn.close()
 
-    assert month_sm_data["summary"]["total_metric_value"] == d_tl["summary"]["total_points"]
+    app.dependency_overrides[get_db_path] = lambda: seeded_db
+    try:
+        # 1. Query a 7-day mid-month window in March 2025 (where spatial is monthly: 2025-03-01 to 2025-03-31)
+        res_sm = client.get(
+            "/api/v1/telemetry/spatial-matrix?from_date=2025-03-10&to_date=2025-03-17"
+        )
+        assert res_sm.status_code == 200
+        d_sm = res_sm.json()
+        assert d_sm["summary"]["from_date"] == "2025-03-10"
+        assert d_sm["summary"]["to_date"] == "2025-03-17"
+        assert d_sm["summary"]["effective_from_date"] == "2025-03-01"
+        assert d_sm["summary"]["effective_to_date"] == "2025-03-31"
+
+        # 2. Query timeline for the same exact full month
+        res_tl = client.get("/api/v1/telemetry/timeline?from_date=2025-03-01&to_date=2025-03-31")
+        assert res_tl.status_code == 200
+        d_tl = res_tl.json()
+        assert d_tl["summary"]["effective_from_date"] == "2025-03-01"
+        assert d_tl["summary"]["effective_to_date"] == "2025-03-31"
+
+        # 3. Verify points parity: for the full month of March 2025, total_points must match
+        month_sm = client.get(
+            "/api/v1/telemetry/spatial-matrix?from_date=2025-03-01&to_date=2025-03-31&metric=points"
+        )
+        assert month_sm.status_code == 200
+        month_sm_data = month_sm.json()
+
+        assert month_sm_data["summary"]["total_metric_value"] == d_tl["summary"]["total_points"]
+    finally:
+        app.dependency_overrides.pop(get_db_path, None)
