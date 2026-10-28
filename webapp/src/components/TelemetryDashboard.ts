@@ -170,8 +170,8 @@ export class TelemetryDashboard {
       const res = await apiClient.getTelemetryTimeline(params);
       this.timelineData = res;
 
-      // Extract available sources dynamically from response
-      if (res.available_sources && res.available_sources.length > 0) {
+      // Extract available sources dynamically from response (only sources with active records in usage.db)
+      if (Array.isArray(res.available_sources)) {
         this.availableSources = res.available_sources;
       } else {
         const discovered = new Set<string>();
@@ -190,7 +190,6 @@ export class TelemetryDashboard {
           this.availableSources = [
             { id: 1, name: 'rest_api', description: 'REST API' },
             { id: 2, name: 'web_app', description: 'Web App' },
-            { id: 3, name: 'desktop_cli', description: 'Desktop / CLI' },
           ];
         }
       }

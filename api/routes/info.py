@@ -280,8 +280,22 @@ async def get_telemetry_timeline(
         conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
         cursor = conn.cursor()
 
-        # Query all available registered sources
-        cursor.execute("SELECT id, name, description FROM sources ORDER BY id ASC")
+        # Query all available registered sources with active records in usage.db
+        cursor.execute(
+            """
+            SELECT s.id, s.name, s.description
+            FROM sources s
+            WHERE EXISTS (
+                SELECT 1 FROM computation_usage cu
+                WHERE cu.source = s.id AND (cu.count_calls > 0 OR cu.count_points > 0)
+            )
+            OR EXISTS (
+                SELECT 1 FROM spatial_usage su
+                WHERE su.source = s.id AND (su.count_calls > 0 OR su.count > 0)
+            )
+            ORDER BY s.id ASC
+            """
+        )
         source_rows = cursor.fetchall()
         available_sources = [
             SourceItem(id=s_id, name=s_name, description=s_desc)

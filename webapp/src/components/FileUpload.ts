@@ -207,6 +207,8 @@ export class FileUpload {
 
       const pointId = inParsed.pointId || outParsed.pointId || `Point ${rowIdx}`;
       const isOutOfGrid = (outRaw || '').toLowerCase().includes('grid');
+      const hasError = !outRaw || outRaw.includes('#') || isOutOfGrid;
+      if (hasError) continue;
 
       if (this.op === 'Stereo70ToETRS89') {
         const inC1 = parseFloat(inParsed.tokens[0]);
@@ -472,11 +474,11 @@ export class FileUpload {
         <!-- Options Row: Skip Header Toggle -->
         <div class="file-options-row">
           <label class="toggle-switch-container" for="file-skip-header-toggle">
+            <span class="toggle-switch-label">${t('file.ignoreHeader')}</span>
             <input type="checkbox" id="file-skip-header-toggle" class="toggle-switch-input" ${this.skipHeader ? 'checked' : ''} />
             <span class="toggle-switch-track">
               <span class="toggle-switch-thumb"></span>
             </span>
-            <span class="toggle-switch-label">${t('file.ignoreHeader')}</span>
           </label>
         </div>
 

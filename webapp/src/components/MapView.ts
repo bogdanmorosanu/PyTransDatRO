@@ -443,8 +443,8 @@ export class MapView {
     if (!this.lastCursorLatLng) {
       this.coordsBadge.textContent =
         this.currentOrder === 'EN'
-          ? `Long: 24.96680000  Lat: 45.94320000`
-          : `Lat: 45.94320000  Long: 24.96680000`;
+          ? `Lon: 24.96680000  Lat: 45.94320000`
+          : `Lat: 45.94320000  Lon: 24.96680000`;
       return;
     }
 
@@ -467,8 +467,8 @@ export class MapView {
 
     this.coordsBadge.textContent =
       this.currentOrder === 'EN'
-        ? `Long: ${lonStr}  Lat: ${latStr}`
-        : `Lat: ${latStr}  Long: ${lonStr}`;
+        ? `Lon: ${lonStr}  Lat: ${latStr}`
+        : `Lat: ${latStr}  Lon: ${lonStr}`;
   }
 
   private renderControlsDock(): void {
@@ -1139,23 +1139,32 @@ export class MapView {
   public plotBatchPoints(points: MapPointItem[]): void {
     if (!this.map || !this.textLayer) return;
 
-    this.lastTextPoints = points;
+    const validPoints = points.filter(
+      (p) => !p.warning && !isNaN(p.lat) && !isNaN(p.lon) && p.lat >= -90 && p.lat <= 90 && p.lon >= -180 && p.lon <= 180
+    );
+
+    this.lastTextPoints = validPoints;
     this.renderLayersDock();
 
-    const count = points.length;
+    if (validPoints.length === 0) {
+      this.textLayer.clearLayers();
+      return;
+    }
+
+    const count = validPoints.length;
 
     if (count > APP_CONFIG.batchWarningThreshold) {
       this.callbacks.onOpenVolumeWarning(count, (choice) => {
         if (choice === 'skip') {
           return;
         } else if (choice === 'sample') {
-          this.renderPointsIntoLayer(this.textLayer, points.slice(0, APP_CONFIG.batchSampleSize), this.layerColors.text, false);
+          this.renderPointsIntoLayer(this.textLayer, validPoints.slice(0, APP_CONFIG.batchSampleSize), this.layerColors.text, false);
         } else {
-          this.renderPointsIntoLayer(this.textLayer, points, this.layerColors.text, false);
+          this.renderPointsIntoLayer(this.textLayer, validPoints, this.layerColors.text, false);
         }
       });
     } else {
-      this.renderPointsIntoLayer(this.textLayer, points, this.layerColors.text, false);
+      this.renderPointsIntoLayer(this.textLayer, validPoints, this.layerColors.text, false);
     }
   }
 
@@ -1172,23 +1181,32 @@ export class MapView {
   public plotFilePoints(points: MapPointItem[]): void {
     if (!this.map || !this.filesLayer) return;
 
-    this.lastFilePoints = points;
+    const validPoints = points.filter(
+      (p) => !p.warning && !isNaN(p.lat) && !isNaN(p.lon) && p.lat >= -90 && p.lat <= 90 && p.lon >= -180 && p.lon <= 180
+    );
+
+    this.lastFilePoints = validPoints;
     this.renderLayersDock();
 
-    const count = points.length;
+    if (validPoints.length === 0) {
+      this.filesLayer.clearLayers();
+      return;
+    }
+
+    const count = validPoints.length;
 
     if (count > APP_CONFIG.batchWarningThreshold) {
       this.callbacks.onOpenVolumeWarning(count, (choice) => {
         if (choice === 'skip') {
           return;
         } else if (choice === 'sample') {
-          this.renderPointsIntoLayer(this.filesLayer, points.slice(0, APP_CONFIG.batchSampleSize), this.layerColors.files, true);
+          this.renderPointsIntoLayer(this.filesLayer, validPoints.slice(0, APP_CONFIG.batchSampleSize), this.layerColors.files, true);
         } else {
-          this.renderPointsIntoLayer(this.filesLayer, points, this.layerColors.files, true);
+          this.renderPointsIntoLayer(this.filesLayer, validPoints, this.layerColors.files, true);
         }
       });
     } else {
-      this.renderPointsIntoLayer(this.filesLayer, points, this.layerColors.files, true);
+      this.renderPointsIntoLayer(this.filesLayer, validPoints, this.layerColors.files, true);
     }
   }
 

@@ -1128,6 +1128,9 @@ def test_telemetry_endpoints_with_seeded_sqlite_db(client, tmp_path):
             assert d_tl["summary"]["total_calls"] == 12
             assert d_tl["summary"]["total_points"] == 120
             assert d_tl["summary"]["avg_points_per_call"] == 10.0
+            avail_names = [s["name"] for s in d_tl.get("available_sources", [])]
+            assert "unknown" not in avail_names
+            assert set(avail_names) == {"rest_api", "web_map", "desktop_cli"}
 
         # Filter timeline by operation=ETRS89ToStereo70 and is_3d=0
         res_tl_filt = client.get(
@@ -1217,5 +1220,48 @@ def test_telemetry_effective_date_snapping_and_parity(client, tmp_path):
         month_sm_data = month_sm.json()
 
         assert month_sm_data["summary"]["total_metric_value"] == d_tl["summary"]["total_points"]
+    finally:
+        app.dependency_overrides.pop(get_db_path, None)
+
+
+def test_telemetry_timeline_available_sources_omits_zero_count_sources(client, tmp_path):
+    """Verifies available_sources omits sources (e.g. desktop_cli) with 0 records in usage.db."""
+    import sqlite3
+
+    from api.dependencies import get_db_path
+    from pytransdatro.telemetry import SqliteUsageLogger
+
+    logger_inst = SqliteUsageLogger(log_dir=str(tmp_path))
+    logger_inst.close()
+
+    seeded_db = tmp_path / "usage.db"
+    conn = sqlite3.connect(str(seeded_db))
+    cur = conn.cursor()
+    # Seed ONLY rest_api (source=1) and web_map (source=2); zero records for desktop_cli (source=3)
+    cur.execute(
+        """
+        INSERT INTO computation_usage (period_start, period_end, source, operation, is_3d, count_calls, count_points)
+        VALUES ('2026-03-01', '2026-03-01', 1, 1, 0, 5, 25)
+        """
+    )
+    cur.execute(
+        """
+        INSERT INTO computation_usage (period_start, period_end, source, operation, is_3d, count_calls, count_points)
+        VALUES ('2026-03-02', '2026-03-02', 2, 2, 0, 3, 15)
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    app.dependency_overrides[get_db_path] = lambda: seeded_db
+    try:
+        res = client.get("/api/v1/telemetry/timeline?granularity=daily")
+        assert res.status_code == 200
+        data = res.json()
+        avail_names = [s["name"] for s in data.get("available_sources", [])]
+        assert "rest_api" in avail_names
+        assert "web_map" in avail_names
+        assert "desktop_cli" not in avail_names
+        assert "unknown" not in avail_names
     finally:
         app.dependency_overrides.pop(get_db_path, None)

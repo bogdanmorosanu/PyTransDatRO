@@ -232,6 +232,7 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
   - `Clear Queue & Output Buttons (#file-clear-queue-btn, #file-clear-output-btn)` (Files Mode)
   - `Map Navigation Dock Buttons (#pt-center-map-btn, #batch-center-map-btn, #file-center-map-btn, #pt-zoom-extents-btn, etc.)` (Point, Text, Files)
   - `Modal Footer Buttons (#modal-close-btn, #fb-submit-btn, #fb-cancel-btn)` (Modals & Drawers)
+  - `Volume Warning Action Buttons (#vw-sample-btn, #vw-all-btn, #vw-skip-btn)` (High Volume Point Warning Modal)
   - `Feedback Auxiliary Buttons (#fb-reset-template-btn, #fb-copy-btn, #fb-github-btn)` (Feedback Drawer)
 
 ### Archetype 6.3: Icon Action & Copy Buttons

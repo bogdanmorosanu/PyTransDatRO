@@ -44,9 +44,11 @@ test.describe('Usage Computation Subpage', () => {
     const multiSelectTrays = page.locator('.telemetry-btn-toggle-group.multi-select');
     await expect(multiSelectTrays).toHaveCount(2);
 
-    // Sources tray buttons have individual class with status dots
+    // Sources tray buttons have individual class with status dots (dynamically filtered by recorded sources in DB)
     const sourceBtns = multiSelectTrays.nth(0).locator('.telemetry-toggle-btn.individual');
-    await expect(sourceBtns).toHaveCount(3);
+    const sourceCount = await sourceBtns.count();
+    expect(sourceCount).toBeGreaterThanOrEqual(1);
+    await expect(sourceBtns.first()).toBeVisible();
 
     // Metric tray buttons
     const pointsMetricBtn = page.locator('#comp-metric-points-btn');

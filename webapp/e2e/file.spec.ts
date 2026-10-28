@@ -320,3 +320,23 @@ test('volume warning modal appears when transforming > 2,000 points and handles 
   // Status completed
   await expect(page.locator('.file-status-badge.completed')).toBeVisible();
 });
+
+test('bulk file upload with 2,050 invalid/out-of-grid points does not trigger high volume warning modal', async ({
+  page,
+  externalRequests,
+}) => {
+  void externalRequests;
+  await openApp(page);
+  await openTab(page, 'Files');
+
+  // Generate 2050 invalid coordinate rows
+  const invalidBatch = Array.from({ length: 2050 }, (_, i) => `P${i + 1},invalid_x,invalid_y`).join('\n');
+  await uploadMemoryFiles(page, [{ name: 'invalid_large.csv', content: invalidBatch }]);
+
+  await page.getByRole('button', { name: 'Transform', exact: true }).click();
+
+  // Status completed with errors, and volume warning modal must NOT be displayed
+  await expect(page.locator('.file-status-badge.completed')).toBeVisible();
+  const modal = page.locator('#modal-root .modal-dialog');
+  await expect(modal).not.toBeVisible();
+});

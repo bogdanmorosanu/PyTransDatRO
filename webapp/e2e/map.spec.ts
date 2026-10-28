@@ -232,18 +232,18 @@ test('map coordinate badge honors coordinate order selection', async ({ page }) 
   const badge = page.locator('.map-coords-badge');
   await expect(badge).toBeVisible();
 
-  // Default is NE order -> Lat first, Long second
-  await expect(badge).toHaveText(/^Lat:.*Long:/);
+  // Default is NE order -> Lat first, Lon second
+  await expect(badge).toHaveText(/^Lat:.*Lon:/);
 
   // Toggle coordinate order to EN(H)
   await page.getByRole('radio', { name: 'EN(H)' }).click();
 
-  // Badge must update to show Long first, Lat second
-  await expect(badge).toHaveText(/^Long:.*Lat:/);
+  // Badge must update to show Lon first, Lat second
+  await expect(badge).toHaveText(/^Lon:.*Lat:/);
 
   // Toggle back to NE(H)
   await page.getByRole('radio', { name: 'NE(H)' }).click();
-  await expect(badge).toHaveText(/^Lat:.*Long:/);
+  await expect(badge).toHaveText(/^Lat:.*Lon:/);
 });
 
 test('untransformable map click outside grid empties inputs and outputs and displays outside grid status', async ({
