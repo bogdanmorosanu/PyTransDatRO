@@ -57,4 +57,4 @@ def get_db_path(settings: Settings = Depends(get_settings)) -> Path:
 
 def get_legacy_db_path(settings: Settings = Depends(get_settings)) -> Path:
     """Resolves the SQLite legacy TransdatOnline database path from application settings."""
-    return Path(settings.legacy_db_path)
+    return settings.resolved_legacy_db_path

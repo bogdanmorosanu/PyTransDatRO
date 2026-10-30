@@ -8,10 +8,40 @@ version = "1.0.0-beta"
 description = "Pure Python implementation of Romanian geodetic coordinate transformations (Stereo 70 <-> ETRS89)"
 authors = [{ name = "PyTransDatRO Authors" }]
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
+keywords = [
+    "geodesy",
+    "gis",
+    "coordinates",
+    "stereo70",
+    "etrs89",
+    "romania",
+    "ancpi",
+    "transformation",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: GIS",
+]
 dependencies = [
     "numpy>=1.20.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/bogdanmorosanu/PyTransDatRO"
+Repository = "https://github.com/bogdanmorosanu/PyTransDatRO"
+Issues = "https://github.com/bogdanmorosanu/PyTransDatRO/issues"
+Documentation = "https://github.com/bogdanmorosanu/PyTransDatRO#readme"
 
 [project.optional-dependencies]
 api = [
@@ -31,6 +61,9 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["pytransdatro*", "api*"]
 
+[tool.setuptools.package-data]
+"pytransdatro.grids" = ["*.spg", "*.json"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
@@ -41,9 +74,22 @@ select = [
     "W",   # pycodestyle warnings
     "F",   # Pyflakes
     "I",   # isort (import sorting)
+    "B",   # flake8-bugbear
 ]
 ignore = [
     "E501", # line-too-long (handled by formatter)
+    "B008", # do not perform function call in argument defaults (FastAPI Depends/Query/File idiom)
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Header",
+    "fastapi.Path",
+    "pydantic.Field",
 ]
 
 [tool.ruff.lint.isort]
@@ -57,5 +103,3 @@ known-first-party = ["pytransdatro", "api"]
 markers = [
     "legacy_live: Live differential parity tests against the external legacy TransDatOnline service (auto-skipped when offline or decommissioned).",
 ]
-
-

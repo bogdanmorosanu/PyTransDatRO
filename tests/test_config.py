@@ -1,6 +1,7 @@
 """Unit tests for centralized configuration and core constants."""
 
 import math
+from pathlib import Path
 
 from api.config import Settings
 from pytransdatro import constants, utils
@@ -22,8 +23,29 @@ def test_default_settings():
     assert settings.max_file_points == 100000
     assert settings.max_file_upload_bytes == 50 * 1024 * 1024
     assert settings.log_dir == "./logs"
-    assert settings.feedback_log_path == "./logs/feedback.jsonl"
-    assert settings.telemetry_fallback_path == "./logs/telemetry_fallback.jsonl"
+    assert settings.resolved_legacy_db_path == Path("./logs/legacy_stats.db")
+    assert settings.resolved_feedback_log_path == Path("./logs/feedback.jsonl")
+    assert settings.resolved_telemetry_fallback_path == Path("./logs/telemetry_fallback.jsonl")
+    assert settings.resolved_app_log_path == Path("./logs/app.log")
+
+
+def test_settings_log_dir_atomic_relocation():
+    """Verifies that overriding PYTRANSDAT_LOG_DIR automatically relocates all log paths."""
+    settings = Settings(log_dir="/custom/var/log")
+    assert settings.resolved_legacy_db_path == Path("/custom/var/log/legacy_stats.db")
+    assert settings.resolved_feedback_log_path == Path("/custom/var/log/feedback.jsonl")
+    assert settings.resolved_telemetry_fallback_path == Path(
+        "/custom/var/log/telemetry_fallback.jsonl"
+    )
+    assert settings.resolved_app_log_path == Path("/custom/var/log/app.log")
+
+    # Explicit override takes precedence over log_dir
+    settings_override = Settings(
+        log_dir="/custom/var/log",
+        feedback_log_path="/somewhere/else/feedback.jsonl",
+    )
+    assert settings_override.resolved_feedback_log_path == Path("/somewhere/else/feedback.jsonl")
+    assert settings_override.resolved_app_log_path == Path("/custom/var/log/app.log")
 
 
 def test_settings_cors_parsing():

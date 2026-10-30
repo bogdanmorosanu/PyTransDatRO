@@ -18,7 +18,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$PythonPath = "D:\anaconda3\envs\pytransdat\python.exe",
+    [string]$PythonPath = "",
     [switch]$Ui,
     [switch]$Interactive
 )
@@ -26,17 +26,37 @@ param(
 $rootDir = $PSScriptRoot
 $webappDir = Join-Path $rootDir "webapp"
 
+function Find-ProjectPython {
+    param([string]$Explicit)
+    if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
+    if ($env:PYTHON -and (Test-Path $env:PYTHON)) { return $env:PYTHON }
+    if ($env:CONDA_PREFIX) {
+        $condaPy = Join-Path $env:CONDA_PREFIX "python.exe"
+        if (Test-Path $condaPy) { return $condaPy }
+    }
+    $candidates = @(
+        (Join-Path $env:USERPROFILE "anaconda3\envs\pytransdat\python.exe"),
+        (Join-Path $env:USERPROFILE "miniconda3\envs\pytransdat\python.exe"),
+        "D:\anaconda3\envs\pytransdat\python.exe",
+        (Join-Path $rootDir ".venv\Scripts\python.exe")
+    )
+    foreach ($cand in $candidates) {
+        if ($cand -and (Test-Path $cand)) { return $cand }
+    }
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return "python"
+}
+
+$pyExe = Find-ProjectPython -Explicit $PythonPath
+$env:PYTHON = $pyExe
+
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host "      PyTransDatRO E2E Test Runner (Playwright)  " -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Cyan
 
 # 1. Validate Python environment
-if (Test-Path $PythonPath) {
-    $env:PYTHON = $PythonPath
-    Write-Host "Using Python: $PythonPath" -ForegroundColor Green
-} else {
-    Write-Warning "Conda python not found at $PythonPath, falling back to system 'python'..."
-}
+Write-Host "Using Python: $pyExe" -ForegroundColor Green
 
 # 2. Execute Playwright tests
 Push-Location $webappDir

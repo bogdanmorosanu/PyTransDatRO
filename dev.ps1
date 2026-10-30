@@ -10,7 +10,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$PythonPath = "D:\anaconda3\envs\pytransdat\python.exe",
+    [string]$PythonPath = "",
     [int]$ApiPort = 8000,
     [switch]$NoBrowser
 )
@@ -18,16 +18,37 @@ param(
 $rootDir = $PSScriptRoot
 $webappDir = Join-Path $rootDir "webapp"
 
+function Find-ProjectPython {
+    param([string]$Explicit)
+    if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
+    if ($env:PYTHON -and (Test-Path $env:PYTHON)) { return $env:PYTHON }
+    if ($env:CONDA_PREFIX) {
+        $condaPy = Join-Path $env:CONDA_PREFIX "python.exe"
+        if (Test-Path $condaPy) { return $condaPy }
+    }
+    $candidates = @(
+        (Join-Path $env:USERPROFILE "anaconda3\envs\pytransdat\python.exe"),
+        (Join-Path $env:USERPROFILE "miniconda3\envs\pytransdat\python.exe"),
+        "D:\anaconda3\envs\pytransdat\python.exe",
+        (Join-Path $rootDir ".venv\Scripts\python.exe")
+    )
+    foreach ($cand in $candidates) {
+        if ($cand -and (Test-Path $cand)) { return $cand }
+    }
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return "python"
+}
+
+$pyExe = Find-ProjectPython -Explicit $PythonPath
+$env:PYTHON = $pyExe
+
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host "       PyTransDatRO Development Runner           " -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Cyan
 
 # 1. Validate Python environment
-if (-not (Test-Path $PythonPath)) {
-    Write-Warning "Conda python executable not found at: $PythonPath"
-    Write-Host "Falling back to system 'python'..." -ForegroundColor Yellow
-    $PythonPath = "python"
-}
+Write-Host "Using Python: $pyExe" -ForegroundColor Green
 
 # 2. Check for port conflicts on API port
 $existingApi = Get-NetTCPConnection -LocalPort $ApiPort -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
@@ -39,7 +60,7 @@ if ($existingApi) {
 # 3. Start Backend (FastAPI / Uvicorn)
 Write-Host "[1/2] Starting REST API on http://127.0.0.1:$ApiPort..." -ForegroundColor Green
 $backendArgs = "-m uvicorn api.main:app --host 127.0.0.1 --port $ApiPort --reload"
-$backendProc = Start-Process -FilePath $PythonPath `
+$backendProc = Start-Process -FilePath $pyExe `
     -ArgumentList $backendArgs `
     -WorkingDirectory $rootDir `
     -PassThru

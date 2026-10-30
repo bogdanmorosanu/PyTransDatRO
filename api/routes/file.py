@@ -14,6 +14,7 @@ import pytransdatro.utils as geoutils
 from api.config import Settings, get_settings
 from api.dependencies import get_client_source, get_trans_engine
 from api.schemas.point import FileAngleUnitEnum, OperationEnum
+from api.services.transformer import WARNING_NO_DATA, WARNING_OUT_OF_GRID
 from pytransdatro.telemetry import BufferedTelemetryCollector
 from pytransdatro.trans_ro import TransRO
 
@@ -171,9 +172,9 @@ def _transform_line(
         return f"{out_coords}\n"
 
     except exc.OutOfGridErr:
-        return line + " # Out of grid\n"
+        return f"{line} # {WARNING_OUT_OF_GRID}\n"
     except exc.NoDataGridErr:
-        return line + " # No data on grid\n"
+        return f"{line} # {WARNING_NO_DATA}\n"
     except exc.WrongDimensionErr:
         return line + " # Wrong dimension\n"
     except exc.InvalidCoordinateErr:

@@ -194,7 +194,7 @@ def generate_markdown_report(history):
     )
     md.append("|---|---|---|---|---|---|---|---|\n")
 
-    for k, res in latest["results"].items():
+    for _k, res in latest["results"].items():
         md.append(
             f"| {res['scenario']} | {res['points']} | {res['direction']} | {res['mode']} | {res['cache']} | "
             f"`{res['best_sec']:.4f}` | **{res['throughput_pts_sec']:,.0f}** | {res['latency_us_per_pt']:.1f} |\n"
@@ -238,7 +238,7 @@ def run_benchmark(tag="baseline", description="Initial unoptimized baseline", ru
     # 2. Loading datasets
     print("\n[Step 2/3] Loading scenario datasets and preparing reverse coordinates...")
     datasets = {}
-    for sc_key, (csv_name, expected_pts) in SCENARIO_FILES.items():
+    for sc_key, (csv_name, _expected_pts) in SCENARIO_FILES.items():
         st70_pts = load_dataset(csv_name)
         etrs89_pts = precompute_etrs89_coords(t, st70_pts)
         datasets[sc_key] = {"st70": st70_pts, "etrs89": etrs89_pts}

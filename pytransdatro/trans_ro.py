@@ -282,7 +282,7 @@ class TransRO:
         is_scalar, n_seq, e_seq, z_seq = _validate_and_normalize_inputs(n, e, z)
         is_3d_bool = z_seq is not None
 
-        for n_val, e_val in zip(n_seq, e_seq):
+        for n_val, e_val in zip(n_seq, e_seq, strict=True):
             self._precheck_st70_point(n_val, e_val, is_3d_bool)
 
         r_n, r_e = self._t_gr2d.trans(n_seq, e_seq, -1)
@@ -379,7 +379,7 @@ class TransRO:
         is_scalar, lat_seq, lon_seq, h_seq = _validate_and_normalize_inputs(lat, lon, h)
         is_3d_bool = h_seq is not None
 
-        for lat_val, lon_val in zip(lat_seq, lon_seq):
+        for lat_val, lon_val in zip(lat_seq, lon_seq, strict=True):
             self._precheck_etrs89_point(lat_val, lon_val, is_3d_bool)
 
         r_n, r_e = self._p_st70.to_grid(lat_seq, lon_seq)

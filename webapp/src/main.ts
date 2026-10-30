@@ -163,9 +163,7 @@ class App {
 
     // Tab Content Area
     this.tabContentContainer = document.createElement('div');
-    this.tabContentContainer.style.flex = '1';
-    this.tabContentContainer.style.display = 'flex';
-    this.tabContentContainer.style.flexDirection = 'column';
+    this.tabContentContainer.className = 'tab-content-container';
     this.utilityPanel.appendChild(this.tabContentContainer);
 
     workbench.appendChild(this.utilityPanel);

@@ -35,8 +35,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.web
+      args:
+        - VITE_APP_NAME=${VITE_APP_NAME:-PyTransDatRO}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_REPO_URL=${VITE_REPO_URL:-https://github.com/bogdanmorosanu/PyTransDatRO}
+        - VITE_BATCH_WARNING_THRESHOLD=${VITE_BATCH_WARNING_THRESHOLD:-2000}
+        - VITE_DEFAULT_MAP_LAT=${VITE_DEFAULT_MAP_LAT:-45.9432}
+        - VITE_DEFAULT_MAP_LON=${VITE_DEFAULT_MAP_LON:-24.9668}
+        - VITE_DEFAULT_MAP_ZOOM=${VITE_DEFAULT_MAP_ZOOM:-7}
     container_name: pytransdatro-web
     restart: unless-stopped
+    environment:
+      - NGINX_CLIENT_MAX_BODY_SIZE=${NGINX_CLIENT_MAX_BODY_SIZE:-50M}
     ports:
       # Host port configurable via .env (e.g., 8000 for local testing, 80/custom on remote hosts)
       - "${WEBAPP_PORT:-8000}:80"

@@ -18,8 +18,8 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
     """Sliding-window in-memory rate limiter.
 
     Default rules:
-    - Point transformations (GET legacy, POST /point): 60 requests / minute / IP
-    - Batch and file uploads (POST legacy, POST /batch, POST /file): 10 requests / minute / IP
+    - Point transformations (GET legacy, POST /point): 60 requests / window / IP
+    - Batch and file uploads (POST legacy, POST /batch, POST /file): 10 requests / window / IP
     - Health, grid info, documentation: unmetered
     """
 
@@ -61,6 +61,16 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
             return retry_after
 
         client_hits.append(now)
+
+        # Memory hygiene: periodically prune empty entries if IP tracker grows large
+        if len(hits_map) > 10000:
+            for ip in list(hits_map.keys()):
+                dq = hits_map[ip]
+                while dq and dq[0] < cutoff:
+                    dq.popleft()
+                if not dq and ip != client_ip:
+                    del hits_map[ip]
+
         return 0
 
     async def dispatch(self, request: Request, call_next) -> Response:
@@ -98,7 +108,8 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=429,
                     content={
-                        "detail": "Too Many Requests. Batch rate limit exceeded (10 requests/minute)."
+                        "detail": f"Too Many Requests. Batch rate limit exceeded ({self.batch_limit} requests/{int(self.window_seconds)}s).",
+                        "code": "RATE_LIMIT_EXCEEDED",
                     },
                     headers={"Retry-After": str(retry_after)},
                 )
@@ -118,7 +129,8 @@ class SlidingWindowRateLimiter(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=429,
                     content={
-                        "detail": "Too Many Requests. Point rate limit exceeded (60 requests/minute)."
+                        "detail": f"Too Many Requests. Point rate limit exceeded ({self.point_limit} requests/{int(self.window_seconds)}s).",
+                        "code": "RATE_LIMIT_EXCEEDED",
                     },
                     headers={"Retry-After": str(retry_after)},
                 )

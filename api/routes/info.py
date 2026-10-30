@@ -1,5 +1,6 @@
 """Grid information and telemetry statistics endpoints."""
 
+import contextlib
 import datetime
 import json
 import logging
@@ -37,15 +38,45 @@ from api.schemas.info import (
     TimelineSeriesMetrics,
     TimelineSummary,
 )
+from pytransdatro.constants import (
+    ROMANIA_BBOX_LAT_MAX,
+    ROMANIA_BBOX_LAT_MIN,
+    ROMANIA_BBOX_LON_MAX,
+    ROMANIA_BBOX_LON_MIN,
+)
 from pytransdatro.trans_ro import TransRO
 
-try:
-    from tools.export_spg_metadata_json import extract_full_spg_metadata
-except ImportError:
-    extract_full_spg_metadata = None
+# Dynamic tools import removed for standalone Docker/wheel portability
 
 logger = logging.getLogger("api.routes.info")
 router = APIRouter(prefix="/api/v1", tags=["Metadata & Telemetry"])
+
+
+def _build_date_filter_clauses(
+    from_date: Optional[str],
+    to_date: Optional[str],
+    start_col: str = "period_start",
+    end_col: str = "period_end",
+) -> tuple[list[str], list[str]]:
+    """Builds SQL WHERE filter clauses and parameters for date bounding."""
+    clauses: list[str] = []
+    params: list[str] = []
+    if from_date:
+        clauses.append(f"{end_col} >= ?")
+        params.append(from_date)
+    if to_date:
+        clauses.append(f"{start_col} <= ?")
+        params.append(to_date)
+    return clauses, params
+
+
+def _get_granularity_expression(granularity: str, col: str = "period_start") -> str:
+    """Returns SQLite time grouping expression for given granularity."""
+    if granularity == "monthly":
+        return f"substr({col}, 1, 7)"
+    if granularity == "weekly":
+        return f"date({col}, 'weekday 0', '-6 days')"
+    return col
 
 
 def _load_comparison_summary() -> dict:
@@ -115,11 +146,7 @@ def _load_or_extract_metadata() -> dict:
         except (json.JSONDecodeError, OSError) as e:
             logger.warning("Failed to load SPG grid metadata from %s: %s", json_path, e)
 
-    # Fallback to dynamic extraction if JSON not generated yet and tools available
-    spg_dir = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids"
-    spg_candidates = list(spg_dir.glob("*.spg"))
-    if spg_candidates and extract_full_spg_metadata is not None:
-        return extract_full_spg_metadata(spg_candidates[0])
+    # Fallback to default dictionary if precompiled JSON not found
     return {
         "file_info": {
             "name": "rom_grid3d_25.09.spg",
@@ -191,45 +218,45 @@ async def get_telemetry_stats(
 
     if db_path.exists():
         try:
-            # Connect in read-only mode to prevent locking
-            conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
-            cursor = conn.cursor()
+            # Connect in read-only mode with closing context manager
+            with contextlib.closing(
+                sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
+            ) as conn:
+                cursor = conn.cursor()
 
-            # Query computation_usage (grouped by period_start and source)
-            cursor.execute(
-                """
-                SELECT c.period_start, COALESCE(s.name, 'unknown'), SUM(c.count_calls), SUM(c.count_points)
-                FROM computation_usage c
-                LEFT JOIN sources s ON c.source = s.id
-                GROUP BY c.period_start, c.source
-                ORDER BY c.period_start DESC, c.source ASC
-                LIMIT 30
-                """
-            )
-            rows = cursor.fetchall()
-
-            for date_str, src_name, calls, points in rows:
-                calls_int = int(calls)
-                points_int = int(points)
-                daily_items.append(
-                    DailyStatItem(
-                        date=date_str,
-                        source=src_name,
-                        calls=calls_int,
-                        points=points_int,
-                    )
+                # Query computation_usage (grouped by period_start and source)
+                cursor.execute(
+                    """
+                    SELECT c.period_start, COALESCE(s.name, 'unknown'), SUM(c.count_calls), SUM(c.count_points)
+                    FROM computation_usage c
+                    LEFT JOIN sources s ON c.source = s.id
+                    GROUP BY c.period_start, c.source
+                    ORDER BY c.period_start DESC, c.source ASC
+                    LIMIT 30
+                    """
                 )
+                rows = cursor.fetchall()
 
-            # Query overall totals
-            cursor.execute(
-                "SELECT COALESCE(SUM(count_calls), 0), COALESCE(SUM(count_points), 0) FROM computation_usage"
-            )
-            tot_row = cursor.fetchone()
-            if tot_row:
-                total_calls = int(tot_row[0])
-                total_points = int(tot_row[1])
+                for date_str, src_name, calls, points in rows:
+                    calls_int = int(calls)
+                    points_int = int(points)
+                    daily_items.append(
+                        DailyStatItem(
+                            date=date_str,
+                            source=src_name,
+                            calls=calls_int,
+                            points=points_int,
+                        )
+                    )
 
-            conn.close()
+                # Query overall totals
+                cursor.execute(
+                    "SELECT COALESCE(SUM(count_calls), 0), COALESCE(SUM(count_points), 0) FROM computation_usage"
+                )
+                tot_row = cursor.fetchone()
+                if tot_row:
+                    total_calls = int(tot_row[0])
+                    total_points = int(tot_row[1])
         except sqlite3.Error as e:
             logger.error("Database error querying telemetry stats: %s", e)
 
@@ -276,8 +303,8 @@ async def get_telemetry_timeline(
             series=[],
         )
 
+    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
     try:
-        conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
         cursor = conn.cursor()
 
         # Query all available registered sources with active records in usage.db
@@ -302,16 +329,10 @@ async def get_telemetry_timeline(
             for s_id, s_name, s_desc in source_rows
         ]
 
-        # Build dynamic query filters
-        filters = []
-        params = []
-
-        if from_date:
-            filters.append("c.period_end >= ?")
-            params.append(from_date)
-        if to_date:
-            filters.append("c.period_start <= ?")
-            params.append(to_date)
+        # Build dynamic query filters using canonical helper
+        filters, params = _build_date_filter_clauses(
+            from_date, to_date, start_col="c.period_start", end_col="c.period_end"
+        )
         if source is not None:
             filters.append("c.source = ?")
             params.append(source)
@@ -329,13 +350,8 @@ async def get_telemetry_timeline(
 
         where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
 
-        # Time grouping: 'daily' groups by period_start; 'weekly' groups by date(period_start, 'weekday 0', '-6 days'); 'monthly' groups by substr(period_start, 1, 7)
-        if granularity == "monthly":
-            time_expr = "substr(c.period_start, 1, 7)"
-        elif granularity == "weekly":
-            time_expr = "date(c.period_start, 'weekday 0', '-6 days')"
-        else:
-            time_expr = "c.period_start"
+        # Time grouping via canonical granularity expression helper
+        time_expr = _get_granularity_expression(granularity, col="c.period_start")
 
         sql = f"""
             SELECT
@@ -437,9 +453,6 @@ async def get_telemetry_timeline(
         b_row = cursor.fetchone()
         effective_from = b_row[0] if b_row and b_row[0] else None
         effective_to = b_row[1] if b_row and b_row[1] else None
-
-        conn.close()
-
         # Format series items sorted chronologically
         series_items: List[TimelineSeriesItem] = []
         for bucket in sorted(series_map.keys()):
@@ -538,8 +551,13 @@ async def get_telemetry_spatial_matrix(
 ) -> SpatialMatrixResponse:
     """Returns aggregated 0.1 degree spatial density cells and mathematical quadrant totals."""
 
-    # Default bounding box for Romania
-    default_bounds = SpatialBounds(min_lat=43.6, max_lat=48.3, min_lon=20.2, max_lon=29.7)
+    # Default bounding box for Romania derived from constants
+    default_bounds = SpatialBounds(
+        min_lat=ROMANIA_BBOX_LAT_MIN,
+        max_lat=ROMANIA_BBOX_LAT_MAX,
+        min_lon=ROMANIA_BBOX_LON_MIN,
+        max_lon=ROMANIA_BBOX_LON_MAX,
+    )
     center_lat = 45.9
     center_lon = 24.9
 
@@ -571,20 +589,14 @@ async def get_telemetry_spatial_matrix(
     if not db_path.exists():
         return empty_response
 
+    conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
     try:
-        conn = sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
         cursor = conn.cursor()
 
-        # Build dynamic SQL query
-        where_clauses = []
-        params = []
-
-        if from_date:
-            where_clauses.append("period_end >= ?")
-            params.append(from_date)
-        if to_date:
-            where_clauses.append("period_start <= ?")
-            params.append(to_date)
+        # Build dynamic SQL query using canonical helper
+        where_clauses, params = _build_date_filter_clauses(
+            from_date, to_date, start_col="period_start", end_col="period_end"
+        )
         if sources:
             src_ids = [int(s.strip()) for s in sources.split(",") if s.strip().isdigit()]
             if src_ids:
@@ -629,7 +641,6 @@ async def get_telemetry_spatial_matrix(
         b_row = cursor.fetchone()
         effective_from = b_row[0] if b_row and b_row[0] else from_date
         effective_to = b_row[1] if b_row and b_row[1] else to_date
-
         conn.close()
 
         if not rows:
@@ -741,21 +752,22 @@ async def get_legacy_stats(
         )
 
     try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT
-                COUNT(*),
-                MIN(day),
-                MAX(day),
-                COALESCE(SUM(cooOpAppSt70), 0),
-                COALESCE(SUM(cooOpAppSt30), 0),
-                COALESCE(SUM(cooOpServiceSt70), 0),
-                COALESCE(SUM(cooOpServiceSt30), 0)
-            FROM statistics
-        """)
-        row = cursor.fetchone()
-        conn.close()
+        with contextlib.closing(
+            sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
+        ) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    COUNT(*),
+                    MIN(day),
+                    MAX(day),
+                    COALESCE(SUM(cooOpAppSt70), 0),
+                    COALESCE(SUM(cooOpAppSt30), 0),
+                    COALESCE(SUM(cooOpServiceSt70), 0),
+                    COALESCE(SUM(cooOpServiceSt30), 0)
+                FROM statistics
+            """)
+            row = cursor.fetchone()
 
         count, min_day, max_day, app70, app30, srv70, srv30 = row
         total = app70 + app30 + srv70 + srv30
@@ -810,48 +822,36 @@ async def get_legacy_timeline(
         )
 
     try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        cursor = conn.cursor()
+        with contextlib.closing(
+            sqlite3.connect(f"file:{db_path.resolve()}?mode=ro", uri=True, timeout=2.0)
+        ) as conn:
+            cursor = conn.cursor()
 
-        # Retrieve absolute database boundaries
-        cursor.execute("SELECT MIN(day), MAX(day) FROM statistics")
-        min_bound, max_bound = cursor.fetchone()
-        bounds_map = {"min_date": min_bound or "", "max_date": max_bound or ""}
+            # Retrieve absolute database boundaries
+            cursor.execute("SELECT MIN(day), MAX(day) FROM statistics")
+            min_bound, max_bound = cursor.fetchone()
+            bounds_map = {"min_date": min_bound or "", "max_date": max_bound or ""}
 
-        filters = []
-        params = []
+            filters, params = _build_date_filter_clauses(
+                from_date, to_date, start_col="day", end_col="day"
+            )
+            where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+            time_expr = _get_granularity_expression(granularity, col="day")
 
-        if from_date:
-            filters.append("day >= ?")
-            params.append(from_date)
-        if to_date:
-            filters.append("day <= ?")
-            params.append(to_date)
-
-        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
-
-        if granularity == "monthly":
-            time_expr = "substr(day, 1, 7)"
-        elif granularity == "weekly":
-            time_expr = "date(day, 'weekday 0', '-6 days')"
-        else:
-            time_expr = "day"
-
-        sql = f"""
-            SELECT
-                {time_expr} AS time_bucket,
-                SUM(cooOpAppSt70) AS app_st70,
-                SUM(cooOpAppSt30) AS app_st30,
-                SUM(cooOpServiceSt70) AS srv_st70,
-                SUM(cooOpServiceSt30) AS srv_st30
-            FROM statistics
-            {where_clause}
-            GROUP BY time_bucket
-            ORDER BY time_bucket ASC
-        """
-        cursor.execute(sql, params)
-        rows = cursor.fetchall()
-        conn.close()
+            sql = f"""
+                SELECT
+                    {time_expr} AS time_bucket,
+                    SUM(cooOpAppSt70) AS app_st70,
+                    SUM(cooOpAppSt30) AS app_st30,
+                    SUM(cooOpServiceSt70) AS srv_st70,
+                    SUM(cooOpServiceSt30) AS srv_st30
+                FROM statistics
+                {where_clause}
+                GROUP BY time_bucket
+                ORDER BY time_bucket ASC
+            """
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
 
         # Parse source and operation filters if provided
         active_sources = set()

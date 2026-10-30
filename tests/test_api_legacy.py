@@ -661,7 +661,7 @@ def _assert_legacy_item_parity(
         # in-place (converting radians to degrees or projecting to Stereo70 meters before
         # hitting the grid check), whereas PyTransDatRO cleanly echoes the original input.
         if coo_op == "Stereo70ToETRS89":
-            for c_live, c_local in zip(live_item["coos"], local_item["coos"]):
+            for c_live, c_local in zip(live_item["coos"], local_item["coos"], strict=True):
                 assert math.isclose(c_live, c_local, abs_tol=1e-9)
         return
 
@@ -784,7 +784,7 @@ def test_legacy_live_post_differential_parity(
     assert isinstance(live_list, list) and isinstance(local_list, list)
     assert len(live_list) == len(local_list) == len(batch_items)
 
-    for live_item, local_item in zip(live_list, local_list):
+    for live_item, local_item in zip(live_list, local_list, strict=True):
         _assert_legacy_item_parity(live_item, local_item, coo_op)
 
 

@@ -1,4 +1,4 @@
-import { parseAngleToDeg, radToDeg } from './dmsParser';
+import { parseAngleToDeg, parseAngularTokenToDeg } from './dmsParser';
 
 export type CoordinateOrder = 'NE' | 'EN';
 
@@ -225,19 +225,8 @@ export function parseInputLines(
       let c3: number | undefined;
 
       if (isSourceGeo) {
-        const parseGeoToken = (tok: string): number => {
-          if (angularUnit === 'radians') {
-            if (tok.includes('°') || tok.includes("'") || tok.includes('"')) {
-              return parseAngleToDeg(tok);
-            }
-            const clean = tok.replace(/rad/gi, '').trim();
-            const num = Number(clean);
-            if (!isNaN(num)) return radToDeg(num);
-          }
-          return parseAngleToDeg(tok);
-        };
-        c1 = parseGeoToken(coordTokens[0]);
-        c2 = parseGeoToken(coordTokens[1]);
+        c1 = parseAngularTokenToDeg(coordTokens[0], angularUnit);
+        c2 = parseAngularTokenToDeg(coordTokens[1], angularUnit);
 
         if (isNaN(c1) || isNaN(c2)) {
           rows.push({

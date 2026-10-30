@@ -249,7 +249,17 @@ export interface SpatialMatrixQueryParams {
   is_3d?: number;
 }
 
-import { APP_CONFIG } from '../config';
+import { APP_CONFIG, syncRuntimeLimits, type RuntimeLimits } from '../config';
+
+export interface HealthCheckResponse {
+  status: string;
+  grid_loaded: boolean;
+  engine_version?: string;
+  telemetry_active?: boolean;
+  telemetry_status?: string;
+  telemetry_error?: string | null;
+  limits?: RuntimeLimits;
+}
 
 const COMMON_HEADERS = {
   'Content-Type': 'application/json',
@@ -419,9 +429,16 @@ export const apiClient = {
     }
     return res.json();
   },
-  async checkHealth(): Promise<{ status: string; grid_loaded: boolean }> {
-    const res = await fetch(apiUrl('/health'));
-    return res.json();
+  async checkHealth(): Promise<HealthCheckResponse> {
+    const res = await fetch(apiUrl('/health'), { cache: 'no-cache' });
+    if (!res.ok) {
+      throw new Error(`Health check failed: ${res.status}`);
+    }
+    const data: HealthCheckResponse = await res.json();
+    if (data.limits) {
+      syncRuntimeLimits(data.limits);
+    }
+    return data;
   },
 
   async submitFeedback(payload: {

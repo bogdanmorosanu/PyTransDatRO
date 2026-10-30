@@ -107,12 +107,7 @@ def test_modern_file_streaming_csv(client):
 def test_modern_file_streaming_preserves_blank_lines_and_alignment(client):
     """Verifies that empty lines and comments maintain exact 1-to-1 correspondence with input rows."""
     input_text = (
-        "P1,500000.0,500000.0\n"
-        "\n"
-        "P2,505000.0,505000.0\n"
-        "# Just a comment\n"
-        "\n"
-        "P3,500000.0,500000.0\n"
+        "P1,500000.0,500000.0\n\nP2,505000.0,505000.0\n# Just a comment\n\nP3,500000.0,500000.0\n"
     )
     files = {"file": ("points.csv", io.BytesIO(input_text.encode("utf-8")), "text/csv")}
     data = {"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma"}

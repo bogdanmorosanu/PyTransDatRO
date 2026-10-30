@@ -113,7 +113,7 @@ class StereoProj:
 
         n_out: list[float] = []
         e_out: list[float] = []
-        for lat_c, lon_c in zip(lat_c_arr, lon_c_arr):
+        for lat_c, lon_c in zip(lat_c_arr, lon_c_arr, strict=True):
             sin_lat_c = _sin(lat_c)
             cos_lat_c = _cos(lat_c)
             dlon = lon_c - lon_c0
@@ -162,7 +162,7 @@ class StereoProj:
 
         lat_out: list[float] = []
         lon_out: list[float] = []
-        for lat_c, lon_c in zip(lat_c_arr, lon_c_arr):
+        for lat_c, lon_c in zip(lat_c_arr, lon_c_arr, strict=True):
             sin_lat_c = _sin(lat_c)
             iso_lat = (0.5 * _log((1 + sin_lat_c) / (c_conf * (1 - sin_lat_c)))) / n_conf
             r_lat = 2 * _atan(_exp(iso_lat)) - pi_2
@@ -278,7 +278,7 @@ class StereoProj:
 
             lat_out: list[float] = []
             lon_out: list[float] = []
-            for n_val, e_val in zip(n, e):
+            for n_val, e_val in zip(n, e, strict=True):
                 dn = n_val - f_n
                 de = e_val - f_e
                 i = _atan(de / (h + dn))
@@ -312,7 +312,7 @@ class StereoProj:
             lat_out: list[float] = []
             lon_out: list[float] = []
             half_pi = math.pi / 2.0
-            for lat_val, lon_val in zip(lat, lon):
+            for lat_val, lon_val in zip(lat, lon, strict=True):
                 if abs(lat_val) >= half_pi or abs(lon_val) > math.pi:
                     raise exceptions.InvalidCoordinateErr(
                         "Geographic coordinates must satisfy |lat| < pi/2 and |lon| <= pi radians."

@@ -2,13 +2,14 @@ import { t } from '../i18n';
 import { APP_CONFIG } from '../config';
 import { apiClient } from '../utils/apiClient';
 import { showToast } from '../utils/toast';
+import { renderSelect } from '../ui';
 
 export type FeedbackReportType = 'discrepancy' | 'grid_update' | 'bug' | 'feature' | 'api_down';
 
 export class FeedbackPanel {
   private element: HTMLElement | null = null;
   private currentType: FeedbackReportType = 'discrepancy';
-  private activeGridInfo: string = 'RO_TransDatRO_ETRS89_Stereo70.spg';
+  private activeGridInfo: string = 'rom_grid3d_25.09.spg';
   private isMinimized: boolean = false;
   private isSubmitting: boolean = false;
   private renderTimestamp: number = 0;
@@ -149,7 +150,7 @@ export class FeedbackPanel {
     const text = textarea?.value || '';
     const title = encodeURIComponent(`[Feedback: ${this.currentType.toUpperCase()}]`);
     const body = encodeURIComponent(text);
-    const url = `https://github.com/bogdanmorosanu/PyTransDatRO/issues/new?title=${title}&body=${body}`;
+    const url = `${APP_CONFIG.repoUrl}/issues/new?title=${title}&body=${body}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -184,7 +185,7 @@ export class FeedbackPanel {
     const description = textarea?.value.trim() || '';
 
     if (description.length < 10) {
-      showToast('Please provide a more detailed description before submitting.', 'warning');
+      showToast(t('feedback.descriptionTooShort') || 'Please provide a more detailed description before submitting.', 'warning');
       textarea?.focus();
       return;
     }
@@ -193,7 +194,7 @@ export class FeedbackPanel {
     const submitBtn = this.element.querySelector('#fb-submit-btn') as HTMLButtonElement | null;
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Submitting...';
+      submitBtn.textContent = t('feedback.submittingBtn') || 'Submitting...';
     }
 
     try {
@@ -266,14 +267,8 @@ export class FeedbackPanel {
 
           <!-- Report Type Selector -->
           <div class="form-group ffp-field-group">
-            <label class="form-label">${t('feedback.typeLabel')}</label>
-            <select class="form-select form-select-sm" id="fb-type-select">
-              <option value="discrepancy" ${this.currentType === 'discrepancy' ? 'selected' : ''}>${t('feedback.typeDiscrepancy')}</option>
-              <option value="grid_update" ${this.currentType === 'grid_update' ? 'selected' : ''}>${t('feedback.typeGridUpdate')}</option>
-              <option value="bug" ${this.currentType === 'bug' ? 'selected' : ''}>${t('feedback.typeBug')}</option>
-              <option value="feature" ${this.currentType === 'feature' ? 'selected' : ''}>${t('feedback.typeFeature')}</option>
-              <option value="api_down" ${this.currentType === 'api_down' ? 'selected' : ''}>${t('feedback.typeApiDown')}</option>
-            </select>
+            <label class="form-label" for="fb-type-select">${t('feedback.typeLabel')}</label>
+            <div id="fb-type-select-slot"></div>
           </div>
 
           <!-- Detailed Description / Template Area -->
@@ -287,13 +282,13 @@ export class FeedbackPanel {
 
           <!-- Dedicated Command Actions Row (Aligned Right) -->
           <div class="ffp-actions-row">
-            <button type="button" class="btn btn-outline ffp-aux-btn" id="fb-reset-template-btn" title="Revert description to default template for this report type">
+            <button type="button" class="btn btn-outline ffp-aux-btn" id="fb-reset-template-btn" title="${t('feedback.resetTemplateTitle')}">
               ${t('feedback.resetTemplateBtn')}
             </button>
-            <button type="button" class="btn btn-outline ffp-aux-btn" id="fb-copy-btn" title="Copy report text to clipboard">
+            <button type="button" class="btn btn-outline ffp-aux-btn" id="fb-copy-btn" title="${t('feedback.copyTitle')}">
               ${t('feedback.copyBtn')}
             </button>
-            <button type="button" class="btn btn-outline ffp-aux-btn" id="fb-github-btn" title="Open as GitHub issue in a new tab">
+            <button type="button" class="btn btn-outline ffp-aux-btn" id="fb-github-btn" title="${t('feedback.openGithubTitle')}">
               ${t('feedback.openGithubBtn')}
             </button>
           </div>
@@ -328,12 +323,33 @@ export class FeedbackPanel {
       </div>
 
       <!-- Resizer Handle -->
-      <div class="fgp-resize-handle" id="ffp-resize-handle" title="Resize window">
+      <div class="fgp-resize-handle" id="ffp-resize-handle" title="${t('common.resizeWindow')}">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
           <path d="M9 1v8H1l8-8zM9 5v4H5l4-4z"/>
         </svg>
       </div>
     `;
+
+    const selectSlot = this.element.querySelector('#fb-type-select-slot');
+    if (selectSlot) {
+      const typeSelect = renderSelect({
+        id: 'fb-type-select',
+        className: 'form-select-sm',
+        selectedValue: this.currentType,
+        options: [
+          { value: 'discrepancy', label: t('feedback.typeDiscrepancy') },
+          { value: 'grid_update', label: t('feedback.typeGridUpdate') },
+          { value: 'bug', label: t('feedback.typeBug') },
+          { value: 'feature', label: t('feedback.typeFeature') },
+          { value: 'api_down', label: t('feedback.typeApiDown') },
+        ],
+        onChange: (val) => {
+          this.currentType = val as FeedbackReportType;
+          this.populateTemplateForCurrentType();
+        },
+      });
+      selectSlot.appendChild(typeSelect);
+    }
 
     this.populateTemplateForCurrentType();
     this.attachHeaderListeners();
@@ -356,12 +372,6 @@ export class FeedbackPanel {
 
   private attachContentListeners(): void {
     if (!this.element) return;
-
-    const select = this.element.querySelector('#fb-type-select') as HTMLSelectElement | null;
-    select?.addEventListener('change', () => {
-      this.currentType = select.value as FeedbackReportType;
-      this.populateTemplateForCurrentType();
-    });
 
     this.element.querySelector('#fb-reset-template-btn')?.addEventListener('click', () => {
       this.populateTemplateForCurrentType();

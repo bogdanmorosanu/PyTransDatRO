@@ -20,6 +20,10 @@ export const ETRS89_GRID_BOUNDS = {
   maxLon: 30.30,
 };
 
+/** Canonical warning string constants matching backend API */
+export const WARNING_OUT_OF_GRID = 'Out of grid';
+export const WARNING_NO_DATA = 'No data on grid';
+
 /**
  * Coarse pre-flight envelope check for Stereo 70 coordinates (meters).
  */
@@ -44,4 +48,25 @@ export function isWithinETRS89Grid(lat: number, lon: number): boolean {
     lon >= ETRS89_GRID_BOUNDS.minLon &&
     lon <= ETRS89_GRID_BOUNDS.maxLon
   );
+}
+
+/** Backward-compatible alias for MapView / PointConverter */
+export const isInsideRomaniaGrid = isWithinETRS89Grid;
+export const ROMANIA_GRID_BOUNDS = ETRS89_GRID_BOUNDS;
+
+/**
+ * Returns true if the warning indicates that the coordinate cannot be transformed
+ * by the official SPG grid (either out-of-grid or no-data on grid cell).
+ */
+export function isUntransformableWarning(warning: string | null | undefined): boolean {
+  if (!warning) return false;
+  return warning === WARNING_OUT_OF_GRID || warning === WARNING_NO_DATA;
+}
+
+/**
+ * Returns true if the warning indicates out-of-grid condition.
+ */
+export function isOutOfGridWarning(warning: string | null | undefined): boolean {
+  if (!warning) return false;
+  return warning === WARNING_OUT_OF_GRID;
 }

@@ -43,7 +43,7 @@ A decoupled REST service built on FastAPI provides public access to the `pytrans
 - **Centralized Configuration (`api/config.py`)**: Environment-driven settings using Pydantic `BaseSettings` (`.env` file support), configuring server ports, CORS origins, SQLite telemetry directories, sliding-window rate limit thresholds, upload file sizes, and logging levels.
 - **Structured Error Handling (`api/schemas/error.py`)**: Uniform `ErrorResponse` schema (`{"detail": "...", "code": "..."}`) with custom exception handlers for `StarletteHTTPException` and `RequestValidationError` (`code: "VALIDATION_ERROR"`).
 - **Modern Endpoints (`/api/v1`)**: Fast JSON point, batch, streaming file (`/transform/file`), feedback (`/feedback`), and telemetry endpoints supporting radians and decimal degrees.
-- **Legacy Compatibility (`/transdatonline/cooOpService` and `/cooOpService`)**: 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service.
+- **Legacy Compatibility (`/transdatonline/cooOpService`)**: 100% byte-for-byte backward compatible emulation of the 2012 TransDatOnline Java service.
 - **Dependency Injection (`api/dependencies.py`)**: Clean inversion of control for `Settings`, `TransRO` singleton engine, and `SqliteUsageLogger`.
 - See [docs/rest_api.md](rest_api.md) for endpoint references and [docs/transdatonline/](transdatonline/README.md) for the historical reverse-engineering analysis.
 

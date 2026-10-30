@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 INIT_FILE = REPO_ROOT / "pytransdatro" / "__init__.py"
 PYPROJECT_FILE = REPO_ROOT / "pyproject.toml"
 PACKAGE_JSON_FILE = REPO_ROOT / "webapp" / "package.json"
+PACKAGE_LOCK_JSON_FILE = REPO_ROOT / "webapp" / "package-lock.json"
 
 
 def validate_semver(version: str) -> bool:
@@ -67,13 +68,27 @@ def read_package_json_version() -> Optional[str]:
         return None
 
 
+def read_package_lock_json_version() -> Optional[str]:
+    """Reads version from webapp/package-lock.json."""
+    if not PACKAGE_LOCK_JSON_FILE.exists():
+        return None
+    try:
+        data = json.loads(PACKAGE_LOCK_JSON_FILE.read_text(encoding="utf-8"))
+        return str(data.get("version", "")).strip() or None
+    except Exception:
+        return None
+
+
 def get_all_versions() -> Dict[str, Optional[str]]:
     """Returns a dictionary of all recorded file versions."""
-    return {
+    versions = {
         "pytransdatro/__init__.py": read_init_version(),
         "pyproject.toml": read_pyproject_version(),
         "webapp/package.json": read_package_json_version(),
     }
+    if PACKAGE_LOCK_JSON_FILE.exists():
+        versions["webapp/package-lock.json"] = read_package_lock_json_version()
+    return versions
 
 
 def write_init_version(new_version: str) -> None:
@@ -114,6 +129,18 @@ def write_package_json_version(new_version: str) -> None:
     PACKAGE_JSON_FILE.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def write_package_lock_json_version(new_version: str) -> None:
+    """Updates version in webapp/package-lock.json while preserving structure and indentation."""
+    if not PACKAGE_LOCK_JSON_FILE.exists():
+        return
+    content = PACKAGE_LOCK_JSON_FILE.read_text(encoding="utf-8")
+    data = json.loads(content)
+    data["version"] = new_version
+    if "packages" in data and "" in data["packages"]:
+        data["packages"][""]["version"] = new_version
+    PACKAGE_LOCK_JSON_FILE.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
 def check_versions() -> Tuple[bool, str]:
     """Validates that all versions exist, match, and adhere to SemVer."""
     versions = get_all_versions()
@@ -151,6 +178,9 @@ def set_version(new_version: str) -> None:
     print("  [OK] Updated pyproject.toml")
     write_package_json_version(clean_version)
     print("  [OK] Updated webapp/package.json")
+    if PACKAGE_LOCK_JSON_FILE.exists():
+        write_package_lock_json_version(clean_version)
+        print("  [OK] Updated webapp/package-lock.json")
 
     ok, msg = check_versions()
     if not ok:

@@ -15,18 +15,36 @@
 
 [CmdletBinding()]
 param(
-    [string]$PythonPath = "D:\anaconda3\envs\pytransdat\python.exe",
+    [string]$PythonPath = "",
     [switch]$SkipE2E
 )
 
 $rootDir = $PSScriptRoot
 $webappDir = Join-Path $rootDir "webapp"
 
-Write-Host "=================================================" -ForegroundColor Cyan
-Write-Host "       PyTransDatRO Full Verification Suite      " -ForegroundColor Cyan
-Write-Host "=================================================" -ForegroundColor Cyan
+function Find-ProjectPython {
+    param([string]$Explicit)
+    if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
+    if ($env:PYTHON -and (Test-Path $env:PYTHON)) { return $env:PYTHON }
+    if ($env:CONDA_PREFIX) {
+        $condaPy = Join-Path $env:CONDA_PREFIX "python.exe"
+        if (Test-Path $condaPy) { return $condaPy }
+    }
+    $candidates = @(
+        (Join-Path $env:USERPROFILE "anaconda3\envs\pytransdat\python.exe"),
+        (Join-Path $env:USERPROFILE "miniconda3\envs\pytransdat\python.exe"),
+        "D:\anaconda3\envs\pytransdat\python.exe",
+        (Join-Path $rootDir ".venv\Scripts\python.exe")
+    )
+    foreach ($cand in $candidates) {
+        if ($cand -and (Test-Path $cand)) { return $cand }
+    }
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return "python"
+}
 
-$pyExe = if (Test-Path $PythonPath) { $PythonPath } else { "python" }
+$pyExe = Find-ProjectPython -Explicit $PythonPath
 $env:PYTHON = $pyExe
 
 $results = [ordered]@{}

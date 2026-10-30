@@ -6,6 +6,8 @@
 export const DEG_TO_RAD = Math.PI / 180.0;
 export const RAD_TO_DEG = 180.0 / Math.PI;
 
+export type AngularUnit = 'dms' | 'degrees' | 'radians';
+
 export function degToRad(deg: number): number {
   return deg * DEG_TO_RAD;
 }
@@ -131,4 +133,35 @@ export function formatDegToDMS(deg: number, precision: number = 5): string {
   const dStr = String(d);
 
   return `${sign}${dStr}°${mStr}'${sStr}"`;
+}
+
+/**
+ * Canonical helper for parsing arbitrary user input tokens into decimal degrees.
+ * Handles degrees, DMS notation, and radians ('rad' suffix or pure numbers when unit is 'radians').
+ * If the input is in radians mode but contains DMS symbols (° ' "), seamlessly falls back to DMS parsing.
+ * Returns NaN if parsing fails or input is empty.
+ */
+export function parseAngularTokenToDeg(tok: string | null | undefined, unit: AngularUnit = 'dms'): number {
+  if (!tok) return NaN;
+  const trimmed = tok.trim();
+  if (!trimmed) return NaN;
+
+  if (unit === 'radians') {
+    if (trimmed.includes('°') || trimmed.includes("'") || trimmed.includes('"')) {
+      try {
+        return parseAngleToDeg(trimmed);
+      } catch {
+        return NaN;
+      }
+    }
+    const clean = trimmed.replace(/rad/gi, '').trim();
+    const num = Number(clean);
+    return !isNaN(num) ? radToDeg(num) : NaN;
+  }
+
+  try {
+    return parseAngleToDeg(trimmed);
+  } catch {
+    return NaN;
+  }
 }

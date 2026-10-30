@@ -13,11 +13,27 @@ const E2E_PORT = 8100;
 const BASE_URL = `http://${E2E_HOST}:${E2E_PORT}`;
 const UNLIMITED_RATE = '100000';
 
-// Auto-detect project Python: process.env.PYTHON -> standard Conda env on Windows -> .venv -> system python.
+// Auto-detect project Python: process.env.PYTHON -> CONDA_PREFIX -> user conda -> .venv -> system python.
 function resolvePython(): string {
   if (process.env.PYTHON) return process.env.PYTHON;
-  const defaultCondaWindows = 'D:\\anaconda3\\envs\\pytransdat\\python.exe';
-  if (fs.existsSync(defaultCondaWindows)) return defaultCondaWindows;
+  if (process.env.CONDA_PREFIX) {
+    const condaPyWin = path.join(process.env.CONDA_PREFIX, 'python.exe');
+    if (fs.existsSync(condaPyWin)) return condaPyWin;
+    const condaPyPosix = path.join(process.env.CONDA_PREFIX, 'bin', 'python');
+    if (fs.existsSync(condaPyPosix)) return condaPyPosix;
+  }
+  const userHome = process.env.USERPROFILE || process.env.HOME || '';
+  if (userHome) {
+    const candidateWinPaths = [
+      path.join(userHome, 'anaconda3', 'envs', 'pytransdat', 'python.exe'),
+      path.join(userHome, 'miniconda3', 'envs', 'pytransdat', 'python.exe'),
+      path.join(userHome, 'miniforge3', 'envs', 'pytransdat', 'python.exe'),
+      'D:\\anaconda3\\envs\\pytransdat\\python.exe',
+    ];
+    for (const p of candidateWinPaths) {
+      if (fs.existsSync(p)) return p;
+    }
+  }
   const localVenvPosix = path.join(repoRoot, '.venv', 'bin', 'python');
   if (fs.existsSync(localVenvPosix)) return localVenvPosix;
   const localVenvWindows = path.join(repoRoot, '.venv', 'Scripts', 'python.exe');

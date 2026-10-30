@@ -119,7 +119,7 @@ def write_summary(filepath, direction, total, errs, flags_e, flags_n, flags_z):
         f.write("Precision Distribution (Count of points per flag):\n")
         labels = ["Easting/Longitude", "Northing/Latitude", "Elevation"]
         stats = [flags_e, flags_n, flags_z]
-        for label, stat in zip(labels, stats):
+        for label, stat in zip(labels, stats, strict=True):
             f.write(f"  {label}:\n")
             f.write(f"    Flag 0: {stat.get(0, 0)}\n")
             f.write(f"    Flag 1: {stat.get(1, 0)}\n")

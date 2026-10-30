@@ -1,4 +1,5 @@
 import { formatTelemetryNumber, formatTelemetryCompact } from '../utils/numberFormat';
+import { buildSmoothSvgPath, calculateNearestXIndex, calculateXPosition } from '../ui/chartCore';
 import { t } from '../i18n';
 import type { TimelineSeriesItem, SourceItem } from '../utils/apiClient';
 
@@ -287,7 +288,7 @@ export class TimelineChart {
       });
 
       if (showCalls) {
-        const callPathD = this.buildSmoothPath(callCoords);
+        const callPathD = buildSmoothSvgPath(callCoords);
         pathsSvg += `
           <path 
             d="${callPathD}" 
@@ -303,7 +304,7 @@ export class TimelineChart {
       }
 
       if (showPoints) {
-        const pointPathD = this.buildSmoothPath(pointCoords);
+        const pointPathD = buildSmoothSvgPath(pointCoords);
         pathsSvg += `
           <path 
             d="${pointPathD}" 
@@ -342,7 +343,7 @@ export class TimelineChart {
       });
 
       if (showCalls) {
-        const totalCallPathD = this.buildSmoothPath(totalCallCoords);
+        const totalCallPathD = buildSmoothSvgPath(totalCallCoords);
         pathsSvg += `
           <path 
             d="${totalCallPathD}" 
@@ -359,7 +360,7 @@ export class TimelineChart {
       }
 
       if (showPoints) {
-        const totalPointPathD = this.buildSmoothPath(totalPointCoords);
+        const totalPointPathD = buildSmoothSvgPath(totalPointCoords);
         pathsSvg += `
           <path 
             d="${totalPointPathD}" 
@@ -423,23 +424,6 @@ export class TimelineChart {
     this.attachInteractivity(padding, chartWidth, chartHeight, width, stepX, activeConfigs);
   }
 
-  private buildSmoothPath(coords: { x: number; y: number }[]): string {
-    if (coords.length === 0) return '';
-    if (coords.length === 1) return `M ${coords[0].x} ${coords[0].y}`;
-
-    let d = `M ${coords[0].x} ${coords[0].y}`;
-    for (let i = 1; i < coords.length; i++) {
-      const prev = coords[i - 1];
-      const curr = coords[i];
-      const cx1 = prev.x + (curr.x - prev.x) / 2;
-      const cy1 = prev.y;
-      const cx2 = prev.x + (curr.x - prev.x) / 2;
-      const cy2 = curr.y;
-      d += ` C ${cx1} ${cy1}, ${cx2} ${cy2}, ${curr.x} ${curr.y}`;
-    }
-    return d;
-  }
-
   private attachInteractivity(
     padding: { top: number; right: number; bottom: number; left: number },
     chartWidth: number,
@@ -474,11 +458,9 @@ export class TimelineChart {
       }
 
       const n = this.data.length;
-      let nearestIndex = n === 1 ? 0 : Math.round((mouseSvgX - padding.left) / stepX);
-      nearestIndex = Math.max(0, Math.min(n - 1, nearestIndex));
-
+      const nearestIndex = calculateNearestXIndex(mouseSvgX, padding.left, stepX, n);
       const item = this.data[nearestIndex];
-      const targetX = padding.left + (n === 1 ? chartWidth / 2 : nearestIndex * stepX);
+      const targetX = calculateXPosition(nearestIndex, padding.left, stepX, n, chartWidth);
 
       crosshair.setAttribute('x1', String(targetX));
       crosshair.setAttribute('x2', String(targetX));

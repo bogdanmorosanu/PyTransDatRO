@@ -106,7 +106,7 @@ class SqliteUsageLogger:
             self.fallback_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.fallback_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        except Exception as file_exc:
+        except (OSError, TypeError, ValueError) as file_exc:
             logger.error(
                 "Failed to write to telemetry fallback file %s: %s",
                 self.fallback_path,
@@ -117,7 +117,7 @@ class SqliteUsageLogger:
         conn = None
         try:
             conn = self._get_db_connection()
-        except Exception as exc:
+        except (sqlite3.Error, OSError) as exc:
             with self._lock:
                 self._last_error = str(exc)
                 self._last_error_time = time.time()
@@ -141,7 +141,7 @@ class SqliteUsageLogger:
             if conn is None:
                 try:
                     conn = self._get_db_connection()
-                except Exception as exc:
+                except (sqlite3.Error, OSError) as exc:
                     with self._lock:
                         self._last_error = str(exc)
                         self._last_error_time = time.time()
@@ -183,8 +183,8 @@ class SqliteUsageLogger:
         if conn:
             try:
                 conn.close()
-            except Exception:
-                pass
+            except sqlite3.Error as exc:
+                logger.debug("Telemetry worker DB connection close error: %s", exc)
 
     def _get_db_connection(self):
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -596,7 +596,7 @@ class SqliteUsageLogger:
             lon_iter = lons if not is_scalar else (lons,)
 
             valid_spatial_cells = []
-            for lat, lon in zip(lat_iter, lon_iter):
+            for lat, lon in zip(lat_iter, lon_iter, strict=True):
                 try:
                     lat_f = float(lat)
                     lon_f = float(lon)

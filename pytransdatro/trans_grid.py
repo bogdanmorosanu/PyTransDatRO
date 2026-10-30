@@ -195,10 +195,11 @@ class Grid(abc.ABC):
         """Cached retrieval of grid node values."""
         pass
 
+    @staticmethod
     @functools.lru_cache(maxsize=8192)
-    def _init_interp(self, values: Tuple[float, ...]) -> "Grid.BiInterp":
+    def _init_interp(values: Tuple[float, ...]) -> "Grid.BiInterp":
         """Factory method with LRU caching for 16-coefficient BiInterp instances."""
-        return self.BiInterp(values)
+        return Grid.BiInterp(values)
 
     def interp(
         self,
@@ -218,7 +219,7 @@ class Grid(abc.ABC):
         """
         if self.v_size == 1:
             z_out: list[float] = []
-            for n_val, e_val in zip(n, e):
+            for n_val, e_val in zip(n, e, strict=True):
                 if not self.covered_by_grid(n_val, e_val):
                     raise self._out_of_grid_exc(n_val, e_val, self)
 
@@ -238,7 +239,7 @@ class Grid(abc.ABC):
         elif self.v_size == 2:
             n_out: list[float] = []
             e_out: list[float] = []
-            for n_val, e_val in zip(n, e):
+            for n_val, e_val in zip(n, e, strict=True):
                 if not self.covered_by_grid(n_val, e_val):
                     raise self._out_of_grid_exc(n_val, e_val, self)
 
@@ -249,7 +250,7 @@ class Grid(abc.ABC):
                     raise exceptions.NoDataGridErr(n_val, e_val, self)
 
                 n_unity, e_unity = self._reduce_to_unity(n_val, e_val)
-                sg_v_e_list, sg_v_n_list = zip(*sg_v_dict.values())
+                sg_v_e_list, sg_v_n_list = zip(*sg_v_dict.values(), strict=True)
 
                 bi_n = self._init_interp(sg_v_n_list)
                 shift_n = bi_n.interp(n_unity, e_unity)
@@ -423,6 +424,7 @@ class Grid1D(Grid):
         :type filename: Optional[str]
         """
         super().__init__(filename)
+        self._cached_vs_at_idxs = functools.lru_cache(maxsize=4096)(self._grid_vs_at_idxs)
 
         # Dynamically bind the transformation method once based on grid metadata
         method = self.reader.interp_vertical
@@ -457,10 +459,9 @@ class Grid1D(Grid):
         """Returns 1 component (geoid undulation)."""
         return 1
 
-    @functools.lru_cache(maxsize=4096)
     def get_vs_at_idxs_cached(self, idxs: Tuple[int, ...]) -> dict[int, Tuple[float, ...]]:
         """Cached retrieval of 1D height node values."""
-        return self._grid_vs_at_idxs(idxs)
+        return self._cached_vs_at_idxs(idxs)
 
     def _trans_colocate(
         self,
@@ -494,7 +495,7 @@ class Grid1D(Grid):
         height_flat = self.reader.height_flat
 
         z_out: list[float] = []
-        for n_val, e_val, z_val in zip(n, e, z):
+        for n_val, e_val, z_val in zip(n, e, z, strict=True):
             if not (n_min <= n_val <= n_max and e_min <= e_val <= e_max):
                 raise self._out_of_grid_exc(n_val, e_val, self)
 
@@ -540,7 +541,7 @@ class Grid1D(Grid):
         :rtype: Tuple[list[float]]
         """
         corrs = self.interp(n, e)
-        return ([z_val + corr_sgn * corr for z_val, corr in zip(z, corrs[0])],)
+        return ([z_val + corr_sgn * corr for z_val, corr in zip(z, corrs[0], strict=True)],)
 
 
 class Grid2D(Grid):
@@ -555,6 +556,7 @@ class Grid2D(Grid):
         :type filename: Optional[str]
         """
         super().__init__(filename)
+        self._cached_vs_at_idxs = functools.lru_cache(maxsize=4096)(self._grid_vs_at_idxs)
 
     def _set_bounds(self) -> None:
         """Sets bounds for 2D horizontal shifts from SPG reader."""
@@ -576,10 +578,9 @@ class Grid2D(Grid):
         """Returns 2 components (Easting and Northing shifts)."""
         return 2
 
-    @functools.lru_cache(maxsize=4096)
     def get_vs_at_idxs_cached(self, idxs: Tuple[int, ...]) -> dict[int, Tuple[float, ...]]:
         """Cached retrieval of 2D shift node values."""
-        return self._grid_vs_at_idxs(idxs)
+        return self._cached_vs_at_idxs(idxs)
 
     def trans(
         self,
@@ -600,6 +601,6 @@ class Grid2D(Grid):
         """
         corrs = self.interp(n, e)
         return (
-            [n_val + corr_sgn * corr for n_val, corr in zip(n, corrs[0])],
-            [e_val + corr_sgn * corr for e_val, corr in zip(e, corrs[1])],
+            [n_val + corr_sgn * corr for n_val, corr in zip(n, corrs[0], strict=True)],
+            [e_val + corr_sgn * corr for e_val, corr in zip(e, corrs[1], strict=True)],
         )

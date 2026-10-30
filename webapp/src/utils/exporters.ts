@@ -1,6 +1,7 @@
 /**
  * Client-Side Multi-Format Export Generator (CSV, GeoJSON, AutoCAD DXF)
  */
+import { isUntransformableWarning } from './gridBounds';
 
 export interface ExportPointItem {
   pointId: string | null;
@@ -32,7 +33,7 @@ export function generateCSVContent(
   const lines: string[] = [];
 
   for (const item of items) {
-    if (item.warning === 'Out of grid' || item.warning === 'No data on grid') {
+    if (isUntransformableWarning(item.warning)) {
       lines.push(item.pointId ? `${item.pointId}${sep} # ${item.warning}` : `# ${item.warning}`);
       continue;
     }

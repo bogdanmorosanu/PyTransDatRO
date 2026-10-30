@@ -1,4 +1,5 @@
 import { formatTelemetryNumber, formatTelemetryDecimal, formatTelemetryPercent, formatDisplayDate } from '../utils/numberFormat';
+import { calculatePresetDateRange, type TelemetryPreset } from '../utils/dateUtils';
 import { t, onLanguageChange } from '../i18n';
 import {
   apiClient,
@@ -16,7 +17,7 @@ import { SpatialMatrixChart } from './SpatialMatrixChart';
 import { LegacyTimelineChart, LEGACY_SERIES_DEFS } from './LegacyTimelineChart';
 import type { LegacyTimelineResponse, LegacyStatsResponse } from '../utils/apiClient';
 
-export type TelemetryPreset = 'all' | '12m' | 'ytd' | '30d' | '7d';
+export { type TelemetryPreset };
 export type Granularity = 'daily' | 'weekly' | 'monthly';
 
 export interface TelemetryDashboardCallbacks {
@@ -243,27 +244,9 @@ export class TelemetryDashboard {
   private applyPreset(preset: TelemetryPreset): void {
     this.activePreset = preset;
     this.hasCustomRange = false;
-    const now = new Date();
-    this.customEndDate = now.toISOString().slice(0, 10);
-
-    if (preset === '7d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 7);
-      this.customStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === '30d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      this.customStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === 'ytd') {
-      this.customStartDate = `${now.getFullYear()}-01-01`;
-    } else if (preset === '12m') {
-      const d = new Date();
-      d.setFullYear(d.getFullYear() - 1);
-      this.customStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === 'all') {
-      this.customStartDate = this.minHistoryDate;
-    }
-
+    const range = calculatePresetDateRange(preset, this.minHistoryDate);
+    this.customStartDate = range.startDate;
+    this.customEndDate = range.endDate;
     this.fetchTimeline();
   }
 
@@ -855,27 +838,9 @@ export class TelemetryDashboard {
   private applySpatialPreset(preset: TelemetryPreset): void {
     this.spatialPreset = preset;
     this.spatialHasCustomRange = false;
-    const now = new Date();
-    this.spatialCustomEndDate = now.toISOString().slice(0, 10);
-
-    if (preset === '7d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 7);
-      this.spatialCustomStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === '30d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      this.spatialCustomStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === 'ytd') {
-      this.spatialCustomStartDate = `${now.getFullYear()}-01-01`;
-    } else if (preset === '12m') {
-      const d = new Date();
-      d.setFullYear(d.getFullYear() - 1);
-      this.spatialCustomStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === 'all') {
-      this.spatialCustomStartDate = this.minHistoryDate;
-    }
-
+    const range = calculatePresetDateRange(preset, this.minHistoryDate);
+    this.spatialCustomStartDate = range.startDate;
+    this.spatialCustomEndDate = range.endDate;
     this.fetchSpatialMatrix();
   }
 
@@ -1274,25 +1239,9 @@ export class TelemetryDashboard {
 
     // Use maxHistoryDate from DB (2026-10-14), not the live browser clock!
     const baseDate = new Date(this.legacyMaxDate);
-    this.legacyCustomEndDate = this.legacyMaxDate;
-
-    if (preset === '7d') {
-      const d = new Date(baseDate);
-      d.setDate(d.getDate() - 7);
-      this.legacyCustomStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === '30d') {
-      const d = new Date(baseDate);
-      d.setDate(d.getDate() - 30);
-      this.legacyCustomStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === 'ytd') {
-      this.legacyCustomStartDate = `${baseDate.getFullYear()}-01-01`;
-    } else if (preset === '12m') {
-      const d = new Date(baseDate);
-      d.setFullYear(d.getFullYear() - 1);
-      this.legacyCustomStartDate = d.toISOString().slice(0, 10);
-    } else if (preset === 'all') {
-      this.legacyCustomStartDate = this.legacyMinDate;
-    }
+    const range = calculatePresetDateRange(preset, this.legacyMinDate, this.legacyMaxDate, baseDate);
+    this.legacyCustomStartDate = range.startDate;
+    this.legacyCustomEndDate = range.endDate;
 
     this.fetchLegacyData();
   }

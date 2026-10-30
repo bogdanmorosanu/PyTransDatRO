@@ -1,10 +1,20 @@
 import { t, onLanguageChange } from '../i18n';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
-import { parseAngleToDeg, formatDegToDMS, degToRad, radToDeg } from '../utils/dmsParser';
+import { parseAngularTokenToDeg } from '../utils/dmsParser';
+import {
+  formatCoordinatePair,
+  computeQuasigeoidZeta,
+  formatQuasigeoidZeta,
+} from '../utils/coordinateFormat';
 import { isValidDecimal, type CoordinateOrder } from '../utils/pointParser';
-import { isWithinStereo70Grid, isWithinETRS89Grid } from '../utils/gridBounds';
+import {
+  isWithinStereo70Grid,
+  isWithinETRS89Grid,
+  isInsideRomaniaGrid,
+  isUntransformableWarning,
+  isOutOfGridWarning,
+} from '../utils/gridBounds';
 import { showToast } from '../utils/toast';
-import { isInsideRomaniaGrid } from './MapView';
 import { renderCopyButton } from '../ui';
 
 function escapeHtmlAttr(str: string): string {
@@ -100,38 +110,17 @@ export class PointConverter {
       // Switched to ETRS89ToStereo70
       if (hasValidOutput && this.outputCoords && this.outputCoords.length >= 2) {
         // Output from Stereo70ToETRS89: [Lat, Lon, (h)] (in degrees)
-        const lat = this.outputCoords[0];
-        const lon = this.outputCoords[1];
-        let latStr: string;
-        let lonStr: string;
-        if (this.angularUnit === 'dms') {
-          latStr = formatDegToDMS(lat);
-          lonStr = formatDegToDMS(lon);
-        } else if (this.angularUnit === 'radians') {
-          latStr = degToRad(lat).toFixed(10);
-          lonStr = degToRad(lon).toFixed(10);
-        } else {
-          latStr = lat.toFixed(8);
-          lonStr = lon.toFixed(8);
-        }
-        this.inputCoo1 = this.order === 'EN' ? lonStr : latStr;
-        this.inputCoo2 = this.order === 'EN' ? latStr : lonStr;
+        const pair = formatCoordinatePair(this.outputCoords[0], this.outputCoords[1], this.angularUnit, this.order, true);
+        this.inputCoo1 = pair.col1;
+        this.inputCoo2 = pair.col2;
         if (this.outputCoords[2] !== undefined) {
           this.inputCoo3 = this.outputCoords[2].toFixed(3);
         }
       } else {
         // Fallback default: projection center origin (46° N, 25° E, 100 m)
-        let latStr = '46.00000000';
-        let lonStr = '25.00000000';
-        if (this.angularUnit === 'dms') {
-          latStr = '46°00\'00.00000"';
-          lonStr = '25°00\'00.00000"';
-        } else if (this.angularUnit === 'radians') {
-          latStr = degToRad(46.0).toFixed(10);
-          lonStr = degToRad(25.0).toFixed(10);
-        }
-        this.inputCoo1 = this.order === 'EN' ? lonStr : latStr;
-        this.inputCoo2 = this.order === 'EN' ? latStr : lonStr;
+        const pair = formatCoordinatePair(46.0, 25.0, this.angularUnit, this.order, true);
+        this.inputCoo1 = pair.col1;
+        this.inputCoo2 = pair.col2;
         if (!this.inputCoo3 || this.inputCoo3.trim() === '') {
           this.inputCoo3 = '100.000';
         }
@@ -154,24 +143,12 @@ export class PointConverter {
         const c1Val = this.order === 'NE' ? this.inputCoo1 : this.inputCoo2;
         const c2Val = this.order === 'NE' ? this.inputCoo2 : this.inputCoo1;
 
-        const parseOldToDeg = (val: string): number => {
-          if (oldUnit === 'radians') {
-            if (val.includes('°') || val.includes("'") || val.includes('"')) {
-              return parseAngleToDeg(val);
-            }
-            const num = Number(val.replace(/rad/gi, '').trim());
-            return !isNaN(num) ? radToDeg(num) : NaN;
-          }
-          return parseAngleToDeg(val);
-        };
-
-        const degLat = parseOldToDeg(c1Val);
-        const degLon = parseOldToDeg(c2Val);
+        const degLat = parseAngularTokenToDeg(c1Val, oldUnit);
+        const degLon = parseAngularTokenToDeg(c2Val, oldUnit);
         if (!isNaN(degLat) && !isNaN(degLon)) {
-          const latStr = unit === 'dms' ? formatDegToDMS(degLat) : unit === 'radians' ? degToRad(degLat).toFixed(10) : degLat.toFixed(8);
-          const lonStr = unit === 'dms' ? formatDegToDMS(degLon) : unit === 'radians' ? degToRad(degLon).toFixed(10) : degLon.toFixed(8);
-          this.inputCoo1 = this.order === 'NE' ? latStr : lonStr;
-          this.inputCoo2 = this.order === 'NE' ? lonStr : latStr;
+          const pair = formatCoordinatePair(degLat, degLon, unit, this.order === 'NE' ? 'NE' : 'EN', true);
+          this.inputCoo1 = pair.col1;
+          this.inputCoo2 = pair.col2;
         }
       } catch {
         // keep existing if parse fails
@@ -218,27 +195,9 @@ export class PointConverter {
   }
 
   public setCoordinatesFromMap(lat: number, lon: number): void {
-    let latStr: string;
-    let lonStr: string;
-
-    if (this.angularUnit === 'dms') {
-      latStr = formatDegToDMS(lat);
-      lonStr = formatDegToDMS(lon);
-    } else if (this.angularUnit === 'radians') {
-      latStr = degToRad(lat).toFixed(10);
-      lonStr = degToRad(lon).toFixed(10);
-    } else {
-      latStr = lat.toFixed(8);
-      lonStr = lon.toFixed(8);
-    }
-
-    if (this.order === 'EN') {
-      this.inputCoo1 = lonStr;
-      this.inputCoo2 = latStr;
-    } else {
-      this.inputCoo1 = latStr;
-      this.inputCoo2 = lonStr;
-    }
+    const pair = formatCoordinatePair(lat, lon, this.angularUnit, this.order, true);
+    this.inputCoo1 = pair.col1;
+    this.inputCoo2 = pair.col2;
 
     this.render();
     this.calculate();
@@ -408,29 +367,9 @@ export class PointConverter {
         raw1 = Number(northingOrLat);
         raw2 = Number(eastingOrLon);
       } else {
-        // ETRS89 is source: parse angle into decimal degrees
-        const parseInputAngle = (str: string): number => {
-          if (this.angularUnit === 'radians') {
-            if (str.includes('°') || str.includes("'") || str.includes('"')) {
-              return parseAngleToDeg(str);
-            }
-            const clean = str.replace(/rad/gi, '').trim();
-            const num = Number(clean);
-            return !isNaN(num) ? radToDeg(num) : NaN;
-          }
-          return parseAngleToDeg(str);
-        };
-
-        try {
-          raw1 = parseInputAngle(northingOrLat);
-        } catch {
-          raw1 = NaN;
-        }
-        try {
-          raw2 = parseInputAngle(eastingOrLon);
-        } catch {
-          raw2 = NaN;
-        }
+        // ETRS89 is source: parse angle into decimal degrees via canonical helper
+        raw1 = parseAngularTokenToDeg(northingOrLat, this.angularUnit);
+        raw2 = parseAngularTokenToDeg(eastingOrLon, this.angularUnit);
 
         if (isNaN(raw1) || isNaN(raw2)) {
           this.outputCoords = null;
@@ -502,11 +441,9 @@ export class PointConverter {
       // When Stereo70 -> ETRS89: res.coos[2] is h, input is H => zeta = h - H
       // When ETRS89 -> Stereo70: res.coos[2] is H, input is h => zeta = h - H
       if (!isUntransformable && is3D && this.outputCoords.length >= 3 && raw3 !== undefined) {
-        if (this.op === 'Stereo70ToETRS89') {
-          this.quasigeoidZeta = this.outputCoords[2] - raw3;
-        } else {
-          this.quasigeoidZeta = raw3 - this.outputCoords[2];
-        }
+        this.quasigeoidZeta = this.op === 'Stereo70ToETRS89'
+          ? computeQuasigeoidZeta(this.outputCoords[2], raw3)
+          : computeQuasigeoidZeta(raw3, this.outputCoords[2]);
       } else {
         this.quasigeoidZeta = null;
       }
@@ -598,36 +535,22 @@ export class PointConverter {
     let outCol2Raw = '';
     let raw3Str = '';
 
-    const isOutOfGrid = this.outputWarning === 'Out of grid';
-    const isNoData = this.outputWarning === 'No data on grid';
-    const isUntransformable = isOutOfGrid || isNoData;
+    const isOutOfGrid = isOutOfGridWarning(this.outputWarning);
+    const isUntransformable = isUntransformableWarning(this.outputWarning);
     const is3D = this.outputCoords !== null && this.outputCoords.length >= 3;
 
     if (this.outputCoords && !isUntransformable) {
-      if (isTargetGeo) {
-        const lat = this.outputCoords[0];
-        const lon = this.outputCoords[1];
-
-        if (this.angularUnit === 'dms') {
-          outCol1Raw = this.order === 'EN' ? formatDegToDMS(lon) : formatDegToDMS(lat);
-          outCol2Raw = this.order === 'EN' ? formatDegToDMS(lat) : formatDegToDMS(lon);
-        } else if (this.angularUnit === 'radians') {
-          outCol1Raw = this.order === 'EN' ? degToRad(lon).toFixed(10) : degToRad(lat).toFixed(10);
-          outCol2Raw = this.order === 'EN' ? degToRad(lat).toFixed(10) : degToRad(lon).toFixed(10);
-        } else {
-          outCol1Raw = this.order === 'EN' ? lon.toFixed(8) : lat.toFixed(8);
-          outCol2Raw = this.order === 'EN' ? lat.toFixed(8) : lon.toFixed(8);
-        }
-        outCol1Val = outCol1Raw;
-        outCol2Val = outCol2Raw;
-      } else {
-        const n = this.outputCoords[0];
-        const e = this.outputCoords[1];
-        outCol1Raw = this.order === 'EN' ? e.toFixed(3) : n.toFixed(3);
-        outCol2Raw = this.order === 'EN' ? n.toFixed(3) : e.toFixed(3);
-        outCol1Val = outCol1Raw;
-        outCol2Val = outCol2Raw;
-      }
+      const pair = formatCoordinatePair(
+        this.outputCoords[0],
+        this.outputCoords[1],
+        this.angularUnit,
+        this.order,
+        isTargetGeo
+      );
+      outCol1Raw = pair.col1;
+      outCol2Raw = pair.col2;
+      outCol1Val = outCol1Raw;
+      outCol2Val = outCol2Raw;
 
       if (this.outputCoords[2] !== undefined) {
         raw3Str = this.outputCoords[2].toFixed(3);
@@ -646,10 +569,7 @@ export class PointConverter {
     }
     const label3 = isTargetGeo ? t('point.heightLabel') : t('point.altitudeLabel');
 
-    let zetaDisplay = '';
-    if (this.quasigeoidZeta !== null) {
-      zetaDisplay = (this.quasigeoidZeta >= 0 ? '+' : '') + this.quasigeoidZeta.toFixed(3);
-    }
+    const zetaDisplay = formatQuasigeoidZeta(this.quasigeoidZeta);
 
     // Map point coordinates
     let mapLat = NaN;
@@ -665,24 +585,8 @@ export class PointConverter {
         const val2 = this.inputCoo2.trim();
         const northingOrLat = this.order === 'NE' ? val1 : val2;
         const eastingOrLon = this.order === 'NE' ? val2 : val1;
-        const parseInputAngle = (str: string): number => {
-          if (this.angularUnit === 'radians') {
-            if (str.includes('°') || str.includes("'") || str.includes('"')) {
-              return parseAngleToDeg(str);
-            }
-            const clean = str.replace(/rad/gi, '').trim();
-            const num = Number(clean);
-            return !isNaN(num) ? radToDeg(num) : NaN;
-          }
-          return parseAngleToDeg(str);
-        };
-        try {
-          mapLat = parseInputAngle(northingOrLat);
-          mapLon = parseInputAngle(eastingOrLon);
-        } catch {
-          mapLat = NaN;
-          mapLon = NaN;
-        }
+        mapLat = parseAngularTokenToDeg(northingOrLat, this.angularUnit);
+        mapLon = parseAngularTokenToDeg(eastingOrLon, this.angularUnit);
       }
     }
 

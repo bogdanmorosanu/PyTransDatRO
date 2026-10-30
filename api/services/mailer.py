@@ -29,9 +29,9 @@ def _get_smtp_config(settings: Optional[Settings] = None) -> Dict[str, Any]:
 def _log_feedback_locally(
     payload: Dict[str, Any], client_ip: str, settings: Optional[Settings] = None
 ) -> Path:
-    """Appends feedback entry to a local JSONL log file under logs/feedback.jsonl."""
+    """Appends feedback entry to a local JSONL log file."""
     cfg = settings or get_settings()
-    if cfg.feedback_log_path and cfg.feedback_log_path != "./logs/feedback.jsonl":
+    if cfg.feedback_log_path:
         log_file = Path(cfg.feedback_log_path)
     else:
         log_file = Path(cfg.log_dir) / "feedback.jsonl"
@@ -54,7 +54,7 @@ def dispatch_feedback(
     """Dispatches user feedback.
 
     Attempts SMTP email dispatch if credentials are provided in settings.
-    Always safely logs to local `logs/feedback.jsonl`.
+    Always safely logs to local feedback JSONL file.
 
     Returns:
         (delivered_email: bool, confirmation_message: str)
@@ -64,7 +64,7 @@ def dispatch_feedback(
     # 1. Always record in local log file for auditing / backup
     saved_log_path = str(
         Path(cfg.feedback_log_path)
-        if cfg.feedback_log_path != "./logs/feedback.jsonl"
+        if cfg.feedback_log_path
         else Path(cfg.log_dir) / "feedback.jsonl"
     )
     try:

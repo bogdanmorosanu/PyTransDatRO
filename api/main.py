@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     # Initialize background SQLite WAL telemetry logger
     telemetry = SqliteUsageLogger(
         log_dir=settings.log_dir,
-        fallback_path=settings.telemetry_fallback_path,
+        fallback_path=str(settings.resolved_telemetry_fallback_path),
     )
     app.state.telemetry = telemetry
 

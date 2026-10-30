@@ -7,7 +7,7 @@ or local .env file, providing sensible out-of-the-box defaults for local develop
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -72,25 +72,25 @@ class Settings(BaseSettings):
         default="./logs",
         description="Directory for SQLite WAL usage database and telemetry logs",
     )
-    legacy_db_path: str = Field(
-        default="./logs/legacy_stats.db",
-        description="Path to SQLite legacy TransdatOnline statistics database",
+    legacy_db_path: Optional[str] = Field(
+        default=None,
+        description="Path to SQLite legacy TransdatOnline statistics database (defaults to log_dir/legacy_stats.db)",
     )
-    feedback_log_path: str = Field(
-        default="./logs/feedback.jsonl",
-        description="Path to user feedback submissions log file",
+    feedback_log_path: Optional[str] = Field(
+        default=None,
+        description="Path to user feedback submissions log file (defaults to log_dir/feedback.jsonl)",
     )
-    telemetry_fallback_path: str = Field(
-        default="./logs/telemetry_fallback.jsonl",
-        description="Path to telemetry JSONL emergency fallback spillover file",
+    telemetry_fallback_path: Optional[str] = Field(
+        default=None,
+        description="Path to telemetry JSONL emergency fallback spillover file (defaults to log_dir/telemetry_fallback.jsonl)",
     )
     app_log_enabled: bool = Field(
         default=True,
         description="Enable rotating file logging for application logs",
     )
-    app_log_path: str = Field(
-        default="./logs/app.log",
-        description="File path for rotating application log file",
+    app_log_path: Optional[str] = Field(
+        default=None,
+        description="File path for rotating application log file (defaults to log_dir/app.log)",
     )
     app_log_max_bytes: int = Field(
         default=10 * 1024 * 1024,
@@ -132,6 +132,38 @@ class Settings(BaseSettings):
         return value if value.is_absolute() else _REPO_ROOT / value
 
     @property
+    def resolved_legacy_db_path(self) -> Path:
+        """Returns the resolved Path to the legacy statistics database."""
+        return (
+            Path(self.legacy_db_path)
+            if self.legacy_db_path
+            else Path(self.log_dir) / "legacy_stats.db"
+        )
+
+    @property
+    def resolved_feedback_log_path(self) -> Path:
+        """Returns the resolved Path to the feedback log file."""
+        return (
+            Path(self.feedback_log_path)
+            if self.feedback_log_path
+            else Path(self.log_dir) / "feedback.jsonl"
+        )
+
+    @property
+    def resolved_telemetry_fallback_path(self) -> Path:
+        """Returns the resolved Path to the telemetry JSONL fallback spillover file."""
+        return (
+            Path(self.telemetry_fallback_path)
+            if self.telemetry_fallback_path
+            else Path(self.log_dir) / "telemetry_fallback.jsonl"
+        )
+
+    @property
+    def resolved_app_log_path(self) -> Path:
+        """Returns the resolved Path to the rotating application log file."""
+        return Path(self.app_log_path) if self.app_log_path else Path(self.log_dir) / "app.log"
+
+    @property
     def parsed_cors_origins(self) -> List[str]:
         """Resolves cors_origins into a list of strings if provided as JSON or comma-separated string."""
         if isinstance(self.cors_origins, list):
@@ -153,7 +185,7 @@ def get_logging_config(settings: Settings | None = None) -> dict:
         settings = get_settings()
     level = settings.log_level.upper()
     app_log_enabled = settings.app_log_enabled
-    app_log_path = settings.app_log_path
+    log_file = settings.resolved_app_log_path
     max_bytes = settings.app_log_max_bytes
     backup_count = settings.app_log_backup_count
 
@@ -168,7 +200,6 @@ def get_logging_config(settings: Settings | None = None) -> dict:
     active_handlers = ["console"]
 
     if app_log_enabled:
-        log_file = Path(app_log_path)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         handlers_dict["file"] = {
             "class": "logging.handlers.RotatingFileHandler",

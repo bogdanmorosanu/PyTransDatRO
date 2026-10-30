@@ -6,28 +6,21 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import { t, getLanguage, onLanguageChange } from '../i18n';
 import { APP_CONFIG } from '../config';
-import { formatDegToDMS, degToRad } from '../utils/dmsParser';
 import type { AngularUnitType, PointTransformedEvent } from './PointConverter';
 import type { CoordinateOrder } from '../utils/pointParser';
 import type { BoundsBox, MapViewSnapshot } from './mapViewSnapshot';
+import {
+  ROMANIA_GRID_BOUNDS,
+  isInsideRomaniaGrid,
+  isOutOfGridWarning,
+} from '../utils/gridBounds';
+import {
+  formatAngularCoordinate,
+  formatCoordinatePair,
+  formatQuasigeoidZeta,
+} from '../utils/coordinateFormat';
 
-export const ROMANIA_GRID_BOUNDS = {
-  minLat: 43.5,
-  maxLat: 48.3,
-  minLon: 20.2,
-  maxLon: 29.8,
-};
-
-export function isInsideRomaniaGrid(lat: number, lon: number): boolean {
-  return (
-    !isNaN(lat) &&
-    !isNaN(lon) &&
-    lat >= ROMANIA_GRID_BOUNDS.minLat &&
-    lat <= ROMANIA_GRID_BOUNDS.maxLat &&
-    lon >= ROMANIA_GRID_BOUNDS.minLon &&
-    lon <= ROMANIA_GRID_BOUNDS.maxLon
-  );
-}
+export { ROMANIA_GRID_BOUNDS, isInsideRomaniaGrid };
 
 export const LAYER_COLOR_PRESETS = [
   { name: 'Cyan', color: '#38bdf8' },
@@ -245,8 +238,8 @@ export class MapView {
     this.map = L.map(this.mapElement, {
       center: APP_CONFIG.defaultMapCenter,
       zoom: APP_CONFIG.defaultMapZoom,
-      minZoom: 3,
-      maxZoom: 18,
+      minZoom: APP_CONFIG.minMapZoom,
+      maxZoom: APP_CONFIG.maxMapZoom,
       zoomControl: false, // Custom Controls Dock in top-left
     });
 
@@ -451,24 +444,8 @@ export class MapView {
     const lat = this.lastCursorLatLng.lat;
     const lon = this.lastCursorLatLng.lng;
 
-    let latStr: string;
-    let lonStr: string;
-
-    if (this.currentAngularUnit === 'dms') {
-      latStr = formatDegToDMS(lat);
-      lonStr = formatDegToDMS(lon);
-    } else if (this.currentAngularUnit === 'radians') {
-      latStr = degToRad(lat).toFixed(10);
-      lonStr = degToRad(lon).toFixed(10);
-    } else {
-      latStr = lat.toFixed(8);
-      lonStr = lon.toFixed(8);
-    }
-
-    this.coordsBadge.textContent =
-      this.currentOrder === 'EN'
-        ? `Lon: ${lonStr}  Lat: ${latStr}`
-        : `Lat: ${latStr}  Lon: ${lonStr}`;
+    const pair = formatCoordinatePair(lat, lon, this.currentAngularUnit, this.currentOrder, true);
+    this.coordsBadge.textContent = `${pair.label1}: ${pair.col1}  ${pair.label2}: ${pair.col2}`;
   }
 
   private renderControlsDock(): void {
@@ -1126,7 +1103,7 @@ export class MapView {
     return true;
   }
 
-  public zoomToPoint(lat: number, lon: number, zoom: number = 14): boolean {
+  public zoomToPoint(lat: number, lon: number, zoom: number = APP_CONFIG.pointZoomLevel): boolean {
     if (!this.map) return false;
     this.map.setView([lat, lon], zoom, { animate: true });
     return true;
@@ -1239,7 +1216,7 @@ export class MapView {
     for (const pt of points) {
       if (isNaN(pt.lat) || isNaN(pt.lon)) continue;
 
-      const isOutOfGrid = pt.warning === 'Out of grid';
+      const isOutOfGrid = isOutOfGridWarning(pt.warning);
       const marker = L.circleMarker([pt.lat, pt.lon], {
         radius: 6,
         fillColor: isOutOfGrid ? '#ef4444' : fillColor,
@@ -1297,22 +1274,12 @@ export class MapView {
     warning?: string | null;
     angularUnit?: AngularUnitType;
   }): string {
-    const isOutOfGrid = !!data.warning && data.warning.toLowerCase().includes('grid');
+    const isOutOfGrid = isOutOfGridWarning(data.warning);
     const statusVal = isOutOfGrid ? t('quality.outsideGrid') : t('quality.inGrid');
 
     const unit = data.angularUnit || this.currentAngularUnit;
-    let latStr: string;
-    let lonStr: string;
-    if (unit === 'dms') {
-      latStr = formatDegToDMS(data.lat);
-      lonStr = formatDegToDMS(data.lon);
-    } else if (unit === 'radians') {
-      latStr = degToRad(data.lat).toFixed(10);
-      lonStr = degToRad(data.lon).toFixed(10);
-    } else {
-      latStr = data.lat.toFixed(8);
-      lonStr = data.lon.toFixed(8);
-    }
+    const latStr = formatAngularCoordinate(data.lat, unit);
+    const lonStr = formatAngularCoordinate(data.lon, unit);
 
     const copyPairs: string[] = [
       `${t('map.pointNameNumber')}: ${data.id}`,
@@ -1334,8 +1301,9 @@ export class MapView {
     if (data.ellipsoidalHeight !== undefined) {
       copyPairs.push(`${t('map.height')}: ${data.ellipsoidalHeight.toFixed(3)}`);
     }
-    if (data.zeta !== undefined && data.zeta !== null) {
-      copyPairs.push(`${t('map.quasigeoidHeight')}: ${data.zeta.toFixed(3)}`);
+    const zetaStr = data.zeta !== undefined && data.zeta !== null ? formatQuasigeoidZeta(data.zeta) : null;
+    if (zetaStr !== null) {
+      copyPairs.push(`${t('map.quasigeoidHeight')}: ${zetaStr}`);
     }
     copyPairs.push(`${t('map.gridCoverage')}: ${statusVal}`);
 
@@ -1389,11 +1357,11 @@ export class MapView {
             <td class="val">${data.ellipsoidalHeight !== undefined ? data.ellipsoidalHeight.toFixed(3) : '—'}</td>
           </tr>
           ${
-            data.zeta !== undefined && data.zeta !== null
+            zetaStr !== null
               ? `
             <tr class="metric">
               <td class="label">${t('map.quasigeoidHeight')}</td>
-              <td class="val">${data.zeta.toFixed(3)}</td>
+              <td class="val">${zetaStr}</td>
             </tr>
           `
               : ''
@@ -1446,12 +1414,12 @@ export class MapView {
     if (validPts.length === 0) return false;
 
     if (validPts.length === 1) {
-      return this.zoomToPoint(validPts[0].lat, validPts[0].lon, 14);
+      return this.zoomToPoint(validPts[0].lat, validPts[0].lon, APP_CONFIG.pointZoomLevel);
     }
 
     const bounds = L.latLngBounds(validPts.map((p) => [p.lat, p.lon] as [number, number]));
     if (bounds.isValid()) {
-      this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: APP_CONFIG.pointZoomLevel });
       return true;
     }
     return false;

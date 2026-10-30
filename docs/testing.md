@@ -90,21 +90,23 @@ The API layer is thoroughly tested using `pytest` and `starlette.testclient.Test
 | :--- | :--- | :--- |
 | **`tests/test_trans_ro.py`** | 54 | Core 2D/3D transformations, round-trip accuracy, 6-point extended dual-CRS bounding boxes, `OutOfGrid2DErr` vs `OutOfGrid1DErr`, pole singularity/periodic aliasing guards, 4-stage `transform_batch` fault isolation, sequence length/finite number validation (`InvalidCoordinateErr`, `WrongDimensionErr`), and strict DMS parsing. |
 | **`tests/test_api_modern.py`** | 36 | Point (`/api/v1/transform/point`), Option B fault-isolated batch (`/transform/batch`), file streaming (`/transform/file`), `No data on grid` / `OutOfGrid1DErr` / curved-border wedge / northern bulge warnings, 3-token `-Inf`/`Inf`/`NaN` file guards, HTTP `413` size & row truncation limits, grid metadata (`/grid/info`, `/grid/metadata`, `/grid/comparison`), seeded SQLite telemetry (`/telemetry/stats`, `/telemetry/timeline`, `/telemetry/spatial-matrix`), health (`/health` healthy/degraded), and structured validation errors (`ErrorResponse`). |
-| **`tests/test_api_legacy.py`** | 42 | Full local and live differential parity suite for `/transdatonline/cooOpService` and `/cooOpService` across `GET` & `POST`, `Stereo70ToETRS89` & `ETRS89ToStereo70`, `2D` & `3D`, `Out of grid` (2D/1D/wedge), `No data on grid`, `Invalid coordinate data`, `Wrong dimension`, string-encoded numbers in `POST`, obsolete `Stereo30*`, `multipart/form-data`, and live comparison against `https://www.geo-spatial.org/transdatonline/cooOpService` ($5\text{ mm}$ planar / $1.0\text{ m}$ vertical tolerance) with automatic decommissioning skip (`@pytest.mark.legacy_live`). |
-| **`tests/test_api_rate_limiter.py`** | 5 | Sliding-window in-memory rate limiting enforcement (60/min point, 10/min batch shared across `/batch`, `/file`, and legacy `POST`), per-IP `X-Forwarded-For` isolation, unmetered route pass-through, `Retry-After` headers, and window expiration recovery. |
-| **`tests/test_config.py`** | 8 | Centralized `Settings` resolution, environment variable overrides (`.env`), `webapp_dist_dir` default and relative override anchoring, CORS parsing, and `dictConfig` logging dictionary generation. |
+| **`tests/test_api_legacy.py`** | 42 | Full local and live differential parity suite for `/transdatonline/cooOpService` across `GET` & `POST`, `Stereo70ToETRS89` & `ETRS89ToStereo70`, `2D` & `3D`, `Out of grid` (2D/1D/wedge), `No data on grid`, `Invalid coordinate data`, `Wrong dimension`, string-encoded numbers in `POST`, obsolete `Stereo30*`, `multipart/form-data`, and live comparison against `https://www.geo-spatial.org/transdatonline/cooOpService` ($5\text{ mm}$ planar / $1.0\text{ m}$ vertical tolerance) with automatic decommissioning skip (`@pytest.mark.legacy_live`). |
+| **`tests/test_logging.py`** | 17 | Structured application logging, rotating file handlers, console formatters, and correlation ID tracking. |
+| **`tests/test_api_legacy_stats.py`** | 14 | Legacy TransdatOnline database queries, historical volume timelines (2011–2026), and spatial aggregation. |
+| **`tests/test_config.py`** | 9 | Centralized `Settings` resolution, log dir atomic relocation, environment variable overrides (`.env`), `webapp_dist_dir` default and relative override anchoring, CORS parsing, and `dictConfig` logging dictionary generation. |
 | **`tests/test_feedback.py`** | 7 | User feedback submission (`/api/v1/feedback`), honeypot bot misdirection, schema validation, file persistence (`feedback.jsonl`), mocked SMTP TLS/auth delivery, and SMTP failure fallback. |
 | **`tests/test_telemetry.py`** | 6 | Asynchronous background SQLite WAL logging, transaction queues, rolling dynamic window retention, and quadrant coordinate aggregation. |
+| **`tests/test_api_rate_limiter.py`** | 5 | Sliding-window in-memory rate limiting enforcement (60/min point, 10/min batch shared across `/batch`, `/file`, and legacy `POST`), per-IP `X-Forwarded-For` isolation, unmetered route pass-through, `Retry-After` headers, and window expiration recovery. |
 
 **Execution Commands**:
 ```powershell
 # Run full test suite (including live legacy differential parity if reachable)
-D:\anaconda3\envs\pytransdat\python.exe -m pytest -q
+python -m pytest -q
 
 # Run offline only (explicitly skipping live legacy server tests)
-D:\anaconda3\envs\pytransdat\python.exe -m pytest -m "not legacy_live" -q
+python -m pytest -m "not legacy_live" -q
 ```
-*(Runs all 158 Python unit, integration, contract, and live differential parity tests. Live legacy tests automatically skip via `pytest.skip` if `PYTRANSDAT_LEGACY_LIVE_ENABLED=0` or once the legacy server is decommissioned).*
+*(Runs all 189 Python unit, integration, contract, and live differential parity tests. Live legacy tests automatically skip via `pytest.skip` if `PYTRANSDAT_LEGACY_LIVE_ENABLED=0` or once the legacy server is decommissioned).*
 
 ---
 
@@ -114,11 +116,16 @@ Client-side parsing, serialization, and UI factory helpers are tested with **Vit
 
 | Test File | Tests | Coverage Scope |
 | :--- | :--- | :--- |
-| **`src/utils/dmsParser.test.ts`** | 13 | Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), edge cases, whitespace tolerance, sexagesimal to decimal conversions. |
-| **`src/utils/pointParser.test.ts`** | 28 | Auto-delimiter detection (tab, space, comma, semicolon), Point ID extraction, 2D vs 3D tuples, coordinate ordering (`NE(H)` vs `EN(H)`). |
+| **`src/utils/pointParser.test.ts`** | 32 | Auto-delimiter detection (tab, space, comma, semicolon), Point ID extraction, 2D vs 3D tuples, coordinate ordering (`NE(H)` vs `EN(H)`). |
+| **`src/utils/numberFormat.test.ts`** | 15 | Romanian and international number formatting, metric prefixes, telemetry percent and compact formatting. |
+| **`src/utils/dmsParser.test.ts`** | 14 | Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), edge cases, whitespace tolerance, sexagesimal to decimal conversions. |
+| **`src/utils/coordinateFormat.test.ts`** | 11 | Canonical angular, planar, and coordinate pair formatting with ordering and quasigeoid undulation ($\zeta = h - H$). |
 | **`src/utils/gridBounds.test.ts`** | 10 | Romania national bounding envelope checks, coordinate bounds validation, out-of-grid pre-flight filters. |
 | **`src/utils/exporters.test.ts`** | 9 | Pure client-side export generation for CSV, GeoJSON, and AutoCAD DXF R12 ASCII formats (including out-of-grid and no-data warnings). |
-| **`src/ui/ui.test.ts`** | 6 | Accessible UI factory helpers (`renderDropdownMenu`, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`). |
+| **`src/utils/dateUtils.test.ts`** | 9 | Telemetry date range presets ('7d', '30d', 'ytd', '12m', 'all') and localized date formatting. |
+| **`src/ui/ui.test.ts`** | 9 | Accessible UI factory helpers (`renderDropdownMenu`, `renderSegmentedControl`, `renderSelect`, `renderCopyBadge`, `renderCopyButton`). |
+| **`src/ui/chartCore.test.ts`** | 8 | SVG cubic Bézier smooth path calculation, nearest data point search, and timeline X coordinate geometry. |
+| **`src/i18n/i18n.test.ts`** | 6 | Translation dictionary key and variable placeholder parity between Romanian (`ro`) and English (`en`), fallback resolution. |
 
 **Execution Commands**:
 ```powershell
@@ -128,7 +135,7 @@ npm --prefix webapp test
 # Run Vitest in interactive watch mode
 npm --prefix webapp run test:watch
 ```
-*(Runs all 80 TypeScript unit tests in $< 350\text{ ms}$).*
+*(Runs all 123 TypeScript unit tests in $< 500\text{ ms}$).*
 
 ---
 
@@ -137,7 +144,7 @@ npm --prefix webapp run test:watch
 Coordinate transformations must maintain 100% byte-for-byte fidelity against ANCPI benchmark reference sets:
 
 ```powershell
-D:\anaconda3\envs\pytransdat\python.exe tools/generate_ancpi_comparison_reports.py
+python tools/generate_ancpi_comparison_reports.py
 ```
 
 - **Reference Dataset**: 9,046 national geodetic control points across Romania.

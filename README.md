@@ -94,7 +94,7 @@ The service exposes modern JSON, streaming, and backward-compatible endpoints:
 | `/api/v1/telemetry/timeline` | `GET` | Queryable time series analytics filtered by client source and date window. |
 | `/api/v1/telemetry/spatial-matrix` | `GET` | Macroscopic 0.1° density matrix and quadrant distribution. |
 | `/health` | `GET` | Service liveness, readiness, and grid verification. |
-| `/transdatonline/cooOpService`<br/>`/cooOpService` | `GET`/`POST` | **Legacy TransDatOnline compatibility** (100% byte-for-byte emulation for GIS plugins and scripts). |
+| `/transdatonline/cooOpService` | `GET`/`POST` | **Legacy TransDatOnline compatibility** (100% byte-for-byte emulation for GIS plugins and scripts). |
 
 ---
 
@@ -110,10 +110,10 @@ pip install -e .[api,dev]
 
 ### 2. Run Test Suites
 ```bash
-# Run all 98 Python unit, API, and telemetry tests
+# Run all 189 Python unit, API, and telemetry tests
 python -m pytest -q
 
-# Run all 65 Frontend Vitest unit tests
+# Run all 123 Frontend Vitest unit tests
 npm --prefix webapp test
 ```
 
@@ -160,7 +160,7 @@ PyTransDatRO/
 │   ├── src/ui/               # Accessible TypeScript UI factory helpers
 │   ├── src/style/            # Pure Vanilla Modular CSS (layout, forms, buttons, badges, menus, telemetry)
 │   └── src/utils/            # Client parsers (DMS, delimiters), exporters (CSV, GeoJSON, DXF), bounds
-├── tests/                    # Pytest test suite (98 tests) & reference datasets
+├── tests/                    # Pytest test suite (189 tests) & reference datasets
 ├── tools/                    # Benchmarking, metadata extraction, and ANCPI comparison reports
 ├── docs/                     # Living technical architecture, API, and testing documentation
 ├── .env.example              # Documented configuration template

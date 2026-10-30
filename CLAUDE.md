@@ -20,7 +20,7 @@ The single most important invariant in this repo is **layer discipline**. Change
 
 - **Zero numerical regression**: coordinate results must stay byte-for-byte identical to ANCPI benchmarks (< 10⁻⁹ tolerance). Verify with the ANCPI comparison tool after any math change.
 - **Do not modify** the loading structure or content of binary grid files in `pytransdatro/grids/`.
-- **Legacy endpoints** (`/transdatonline/cooOpService`, `/cooOpService`) are 100% byte-for-byte emulations of TransDatOnline for GIS plugins — preserve exact output format.
+- **Legacy endpoint** (`/transdatonline/cooOpService`) is a 100% byte-for-byte emulation of TransDatOnline for GIS plugins — preserve exact output format.
 - **Configuration hierarchy**: geodetic invariants → `pytransdatro/constants.py` (never in `.env`); grid params → `.spg` binary header (dynamic); server/throttling ops → `api/config.py` + `.env` (prefix `PYTRANSDAT_`); web client → `webapp/src/config.ts` (prefix `VITE_`). Never hardcode ports, caps, timeouts, or paths in business logic.
 - **No silent failures**: never `except:` or `except Exception: pass`. Catch specific exceptions and log via `logging.getLogger(__name__)` (not `print`).
 
@@ -56,7 +56,7 @@ python -m uvicorn api.main:app --reload --port 8000   # API only
 
 # Local dev loop (two servers with hot reload)
 ./dev.sh                            # macOS/Linux launcher: API (:8000, --reload) + Vite (:5173); Ctrl+C stops both
-dev.ps1                             # Windows/PowerShell equivalent (hardcoded conda path; not portable)
+dev.ps1                             # Windows/PowerShell equivalent with portable Python auto-detection
 ```
 
 > **Dev launchers**: `dev.sh` (macOS/Linux) and `dev.ps1` (Windows) start the two-process dev loop — uvicorn with `--reload` plus the Vite dev server, which proxies `/api`, `/health`, `/docs`, `/openapi.json` to the API (see `webapp/vite.config.ts`). Use this for live editing. For a one-process run, build the frontend (`npm --prefix webapp run build`) and start the API alone — it mounts `webapp/dist` as static files and serves web + API + `/docs` on `:8000`.

@@ -121,7 +121,7 @@ class Helmert2D:
 
         n_out: list[float] = []
         e_out: list[float] = []
-        for n_val, e_val in zip(n, e):
+        for n_val, e_val in zip(n, e, strict=True):
             n_out.append(n_val * cosr_scale + e_val * sinr_scale_sign + tn_sign)
             e_out.append(e_val * cosr_scale - n_val * sinr_scale_sign + te_sign)
         return n_out, e_out

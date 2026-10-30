@@ -1,12 +1,21 @@
 import { t, onLanguageChange } from '../i18n';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
 import { parseInputLines, detectDelimiter, type CoordinateOrder } from '../utils/pointParser';
-import { formatDegToDMS, degToRad } from '../utils/dmsParser';
+import { type AngularUnit } from '../utils/dmsParser';
+import {
+  formatCoordinatePair,
+  computeQuasigeoidZeta,
+} from '../utils/coordinateFormat';
+import {
+  WARNING_NO_DATA,
+  isUntransformableWarning,
+} from '../utils/gridBounds';
+import { APP_CONFIG } from '../config';
 import { exportToCSV, exportToGeoJSON, exportToDXF, type ExportPointItem } from '../utils/exporters';
 import { showToast } from '../utils/toast';
 import { renderCopyButton } from '../ui';
 
-export type AngularUnitType = 'degrees' | 'dms' | 'radians';
+export type AngularUnitType = AngularUnit;
 
 export interface BatchReportData {
   total: number;
@@ -177,6 +186,13 @@ export class BatchConverter {
         throw new Error('No valid coordinate rows could be parsed');
       }
 
+      if (validRows.length > APP_CONFIG.maxBatchPoints) {
+        showToast(`Batch limit exceeded: ${validRows.length} points (max: ${APP_CONFIG.maxBatchPoints})`, 'danger');
+        this.isProcessing = false;
+        this.render();
+        return;
+      }
+
       let batchResults: any[] = [];
       if (validRows.length > 0) {
         const payloadPoints = validRows.map((r) => r.coords);
@@ -227,11 +243,10 @@ export class BatchConverter {
         const pointLabel = row.pointId || `Point ${pointIndex}`;
         const apiRes = batchResults[validRowIndex++];
         const isGeoOutput = this.op === 'Stereo70ToETRS89';
-        const isUntransformable =
-          apiRes.warning === 'Out of grid' || apiRes.warning === 'No data on grid';
+        const isUntransformable = isUntransformableWarning(apiRes.warning);
 
         if (isUntransformable) {
-          if (apiRes.warning === 'No data on grid') {
+          if (apiRes.warning === WARNING_NO_DATA) {
             noDataCount++;
           } else {
             outOfGridCount++;
@@ -270,24 +285,8 @@ export class BatchConverter {
           const lon = apiRes.coos[1];
           const elev = apiRes.coos[2];
 
-          let latStr: string;
-          let lonStr: string;
-          if (this.angularUnit === 'dms') {
-            latStr = formatDegToDMS(lat);
-            lonStr = formatDegToDMS(lon);
-          } else if (this.angularUnit === 'radians') {
-            latStr = degToRad(lat).toFixed(10);
-            lonStr = degToRad(lon).toFixed(10);
-          } else {
-            latStr = lat.toFixed(8);
-            lonStr = lon.toFixed(8);
-          }
-
-          if (this.order === 'EN') {
-            parts.push(lonStr, latStr);
-          } else {
-            parts.push(latStr, lonStr);
-          }
+          const pair = formatCoordinatePair(lat, lon, this.angularUnit, this.order, true);
+          parts.push(pair.col1, pair.col2);
 
           if (elev !== undefined) parts.push(elev.toFixed(3));
 
@@ -295,7 +294,7 @@ export class BatchConverter {
           const stereoE = this.order === 'EN' ? row.coords[0] : row.coords[1];
           const alt = row.coords[2];
           const h = elev;
-          const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+          const zeta = computeQuasigeoidZeta(h, alt) ?? undefined;
           mapPoints.push({
             id: pointLabel,
             lat,
@@ -314,11 +313,8 @@ export class BatchConverter {
           const e = apiRes.coos[1];
           const z = apiRes.coos[2];
 
-          if (this.order === 'EN') {
-            parts.push(e.toFixed(3), n.toFixed(3));
-          } else {
-            parts.push(n.toFixed(3), e.toFixed(3));
-          }
+          const pair = formatCoordinatePair(n, e, this.angularUnit, this.order, false);
+          parts.push(pair.col1, pair.col2);
 
           if (z !== undefined) parts.push(z.toFixed(3));
 
@@ -326,7 +322,7 @@ export class BatchConverter {
           const origLon = row.coords[1];
           const h = row.coords[2];
           const alt = z;
-          const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+          const zeta = computeQuasigeoidZeta(h, alt) ?? undefined;
           mapPoints.push({
             id: pointLabel,
             lat: origLat,

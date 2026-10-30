@@ -86,17 +86,17 @@ webapp/
     │   ├── BatchConverter.ts  # Multi-line text conversion workbench
     │   ├── FileUpload.ts      # Drag-and-drop file processor with streaming progress
     │   ├── MapView.ts         # Leaflet map, 3 independent layer groups, dual map navigation
-    │   ├── StatsView.ts       # Active grid metadata and operational status modal
-    │   ├── TelemetryDashboard.ts # Full-page usage telemetry dashboard (Computation & Spatial views)
+    │   ├── TelemetryDashboard.ts # Full-page usage telemetry dashboard (Computation, Spatial, Legacy views)
     │   ├── TimelineChart.ts   # Interactive SVG dual-metric timeline chart with dynamic source curves
+    │   ├── LegacyTimelineChart.ts # Interactive historical TransdatOnline archive timeline chart
     │   ├── SpatialMatrixChart.ts # 0.1° punchcard canvas matrix with quadrant lines and ghost cells
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
-    │   ├── ReportModal.ts     # Diagnostic calculation details modal
     │   └── FeedbackPanel.ts   # Non-modal draggable, resizable feedback & discrepancy panel
     ├── i18n/               # Internationalization system
     │   ├── index.ts        # Reactive translation store & persistent state
     │   ├── ro.ts           # Romanian translation dictionary (default)
-    └── en.ts               # English translation dictionary
+    │   ├── en.ts           # English translation dictionary
+    │   └── i18n.test.ts    # Parity verification tests between RO and EN dictionaries
     ├── style/              # Design system & styles (Pure Vanilla Modular CSS)
     │   ├── variables.css   # GitHub Primer Dark/Light palette & Subtle Surface + Border (#8) primary button tokens
     │   ├── base.css        # CSS reset, body defaults, custom scrollbars
@@ -115,10 +115,13 @@ webapp/
     │   ├── radioGroup.ts   # renderRadioGroup for single-choice option cards (Archetype 2.5)
     │   ├── copyBadge.ts    # renderCopyBadge for interactive copyable chips
     │   ├── copyButton.ts   # renderCopyButton with animated checkmark feedback
+    │   ├── chartCore.ts    # SVG Bézier smoothing, nearest point search, and timeline geometry
     │   ├── index.ts        # Unified re-export entrypoint
     │   └── ui.test.ts      # Unit tests for UI factory helpers & dual-theme brand logo
     └── utils/              # Client-side geodetic & formatting helpers
         ├── apiClient.ts    # Type-safe REST client (passes X-Client-Source: web_app)
+        ├── coordinateFormat.ts # Canonical coordinate & quasigeoid zeta formatting
+        ├── dateUtils.ts    # Canonical date range presets for telemetry & analytics
         ├── dmsParser.ts    # Unspaced DMS <-> Decimal Degrees converter
         ├── pointParser.ts  # Auto-delimiter detector & strict coordinate validator
         ├── exporters.ts    # Client-side CSV, GeoJSON, and AutoCAD DXF generator

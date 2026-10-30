@@ -3,6 +3,9 @@ import { formatTelemetryDecimal } from '../utils/numberFormat';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
 import { type CoordinateOrder, extractPointIdAndCoords, detectDelimiter } from '../utils/pointParser';
 import { parseAngleToDeg } from '../utils/dmsParser';
+import { computeQuasigeoidZeta } from '../utils/coordinateFormat';
+import { isUntransformableWarning } from '../utils/gridBounds';
+import { APP_CONFIG } from '../config';
 import { showToast } from '../utils/toast';
 import { type MapPointItem } from './MapView';
 
@@ -118,7 +121,7 @@ export class FileUpload {
     let addedCount = 0;
 
     for (const file of fileArray) {
-      if (file.size > 20 * 1024 * 1024) {
+      if (file.size > APP_CONFIG.maxFileSizeMb * 1024 * 1024) {
         showToast(t('file.errSizeLimit', { name: file.name }), 'danger');
         continue;
       }
@@ -220,7 +223,7 @@ export class FileUpload {
           const outH = outParsed.tokens[2] ? parseFloat(outParsed.tokens[2]) : inElev;
           const alt = inElev;
           const h = outH;
-          const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+          const zeta = computeQuasigeoidZeta(h, alt) ?? undefined;
 
           points.push({
             id: pointId,
@@ -261,7 +264,7 @@ export class FileUpload {
 
         const alt = outElev;
         const h = inH;
-        const zeta = (h !== undefined && alt !== undefined) ? (h - alt) : undefined;
+        const zeta = computeQuasigeoidZeta(h, alt) ?? undefined;
 
         points.push({
           id: pointId,
@@ -326,7 +329,7 @@ export class FileUpload {
         let errCount = 0;
         for (const line of lines) {
           if (line.startsWith('#')) continue;
-          if (line.includes('# Out of grid') || line.includes('Out of grid') || line.includes('No data on grid')) {
+          if (isUntransformableWarning(line)) {
             outGridCount++;
           } else if (
             line.includes('# Wrong dimension') ||

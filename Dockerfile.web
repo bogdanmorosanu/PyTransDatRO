@@ -7,8 +7,19 @@ WORKDIR /build
 # Build arguments for customizable branding & API routing
 ARG VITE_APP_NAME
 ARG VITE_API_BASE_URL
+ARG VITE_REPO_URL
+ARG VITE_BATCH_WARNING_THRESHOLD
+ARG VITE_DEFAULT_MAP_LAT
+ARG VITE_DEFAULT_MAP_LON
+ARG VITE_DEFAULT_MAP_ZOOM
+
 ENV VITE_APP_NAME=$VITE_APP_NAME \
-    VITE_API_BASE_URL=$VITE_API_BASE_URL
+    VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_REPO_URL=$VITE_REPO_URL \
+    VITE_BATCH_WARNING_THRESHOLD=$VITE_BATCH_WARNING_THRESHOLD \
+    VITE_DEFAULT_MAP_LAT=$VITE_DEFAULT_MAP_LAT \
+    VITE_DEFAULT_MAP_LON=$VITE_DEFAULT_MAP_LON \
+    VITE_DEFAULT_MAP_ZOOM=$VITE_DEFAULT_MAP_ZOOM
 
 # Install dependencies with lockfile consistency
 COPY webapp/package.json webapp/package-lock.json ./
@@ -29,7 +40,9 @@ RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
 # Copy compiled frontend from Stage 1
 COPY --from=builder /build/dist /usr/share/nginx/html
 
-# Copy custom Nginx configuration
+# Environment variable substitution for Nginx template
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+COPY nginx.conf.template /etc/nginx/templates/nginx.conf.template
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Expose HTTP port

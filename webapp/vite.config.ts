@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
 
 export default defineConfig({
+  envDir: '..',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -25,7 +26,15 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
+      '/redoc': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
       '/openapi.json': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/transdatonline': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },

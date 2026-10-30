@@ -52,8 +52,10 @@ pip install -r requirements-api.txt
 ### Running the Service
 
 #### Development Mode (with auto-reload):
-```powershell
-D:\anaconda3\envs\pytransdat\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+```bash
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+# Or on Windows using dev.ps1:
+.\dev.ps1
 ```
 
 #### Production Mode (multi-worker):

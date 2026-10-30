@@ -2,6 +2,7 @@ import { t, getLanguage, setLanguage, onLanguageChange } from '../i18n';
 import { getLogoInlineSvg, syncFaviconWithTheme } from '../assets/logos';
 import { renderDropdownMenu } from '../ui';
 import { APP_CONFIG } from '../config';
+import { apiClient } from '../utils/apiClient';
 
 export interface HeaderCallbacks {
   onNavigate: (page: 'studio' | 'telemetry') => void;
@@ -28,9 +29,12 @@ export class Header {
 
     onLanguageChange(() => this.render());
 
-    // Initial check and periodic background health poll (every 30 seconds)
+    // Initial check and periodic background health poll
     this.checkApiHealth();
-    this.healthCheckInterval = window.setInterval(() => this.checkApiHealth(), 30000);
+    this.healthCheckInterval = window.setInterval(
+      () => this.checkApiHealth(),
+      APP_CONFIG.healthPollIntervalMs
+    );
 
     // Global listener for closing dropdowns on click outside or escape key
     document.addEventListener('click', (e) => {
@@ -74,8 +78,8 @@ export class Header {
 
   private async checkApiHealth(): Promise<void> {
     try {
-      const res = await fetch('/health', { method: 'GET', cache: 'no-cache' });
-      const online = res.ok && res.status === 200;
+      const data = await apiClient.checkHealth();
+      const online = data.status === 'healthy';
       if (this.isApiOnline !== online) {
         this.isApiOnline = online;
         this.callbacks.onApiHealthChanged?.(this.isApiOnline);
@@ -236,7 +240,7 @@ export class Header {
         {
           type: 'link',
           label: t('header.apiDocs'),
-          href: '/docs',
+          href: `${APP_CONFIG.apiBaseUrl}/docs`,
           isExternal: true,
         },
         { type: 'divider' },

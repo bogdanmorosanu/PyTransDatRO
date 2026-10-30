@@ -22,13 +22,13 @@ export class VolumeWarningModal {
           <button class="btn-icon modal-close-btn" id="vw-close-icon" title="${t('common.close') || 'Close'}">✕</button>
         </div>
         <div class="modal-body">
-          <div class="callout-box fhp-callout-box accent-warning" style="margin-bottom: 14px;">
+          <div class="callout-box fhp-callout-box accent-warning vw-callout">
             <span class="callout-title fhp-callout-title">${t('volumeWarning.calloutTitle')}</span>
             <p class="callout-body fhp-callout-body">
               ${t('volumeWarning.message', { count: count.toLocaleString() })}
             </p>
           </div>
-          <label class="form-label" style="margin-bottom: 8px;">${t('volumeWarning.promptLabel')}</label>
+          <label class="form-label vw-prompt-label">${t('volumeWarning.promptLabel')}</label>
           <div id="vw-radio-slot"></div>
         </div>
         <div class="modal-footer">
