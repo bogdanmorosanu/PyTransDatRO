@@ -313,8 +313,9 @@ test('volume warning modal appears when transforming > 2,000 points and handles 
   await expect(modal).toBeVisible();
   await expect(modal.locator('.modal-title')).toContainText('High Volume Point Warning');
 
-  // Click Sample Preview button
-  await modal.locator('#vw-sample-btn').click();
+  // Select Sample option and confirm
+  await modal.locator('label[for="vw-opt-sample"]').click();
+  await modal.locator('#vw-confirm-btn').click();
   await expect(modal).not.toBeVisible();
 
   // Status completed

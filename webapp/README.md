@@ -112,6 +112,7 @@ webapp/
     │   ├── menu.ts         # renderDropdownMenu with nav-menu-trigger, active checkmarks, and full ARIA
     │   ├── segmentedControl.ts # renderSegmentedControl with arrow-key keyboard navigation
     │   ├── selectControl.ts # renderSelect for uniform dropdown lists
+    │   ├── radioGroup.ts   # renderRadioGroup for single-choice option cards (Archetype 2.5)
     │   ├── copyBadge.ts    # renderCopyBadge for interactive copyable chips
     │   ├── copyButton.ts   # renderCopyButton with animated checkmark feedback
     │   ├── index.ts        # Unified re-export entrypoint

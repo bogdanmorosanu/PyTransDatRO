@@ -1,6 +1,6 @@
 # PyTransDatRO Web Application — Component Archetypes & Consistency Catalog
 
-This catalog defines the **27 multi-instance UI element archetypes across 9 functional categories** in the PyTransDatRO web application. Elements within the same archetype share the same geometry, typography, active/hover transitions, and styling rules.
+This catalog defines the **28 multi-instance UI element archetypes across 9 functional categories** in the PyTransDatRO web application. Elements within the same archetype share the same geometry, typography, active/hover transitions, and styling rules.
 
 > [!NOTE]
 > Global color tokens and layout invariants are defined in [`design_system.md`](./design_system.md). Operational behaviors and automated test mappings are documented in [`actionable_inventory.md`](./actionable_inventory.md).
@@ -72,6 +72,12 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
 - **Styling Standard**: Semantic checkbox hidden with `.toggle-switch-input`, styled via `.toggle-switch-track` (30×17px, border radius 9px, `--bg-surface-elevated`) and sliding `.toggle-switch-thumb` (12×12px circular nub, transitions 12px rightward to `--color-primary` when `:checked`), accompanied by `.toggle-switch-label` (11.5px, medium weight).
 - **Member Instances**:
   - `Ignore Header / First Line Switch (#file-skip-header-toggle)` (Files Input Card) — *Toggles ignoring the header row in uploaded bulk files.*
+
+### Archetype 2.5: Radio Box / Selection Card Group (Single-Choice Radio Cards)
+*Accessible, keyboard-navigable single-choice radio option cards for modal dialogs and configuration options.*
+- **Styling Standard**: Stacked interactive cards (`.radio-group`, `.radio-card`) with custom circular indicator (`.radio-circle`, 16×16px outer ring, 8×8px inner dot in `--color-primary-light` when checked), prominent title (`12.5px`, `600` weight, `--text-main`), subtitle description (`11.5px`, `--text-muted`), and optional monospace count badge (`.radio-badge`). Active state features elevated surface, accent border (`--btn-primary-border`), and box-shadow highlight (`0 0 0 1px var(--btn-primary-border)`). Supports ArrowUp/ArrowDown and ArrowLeft/ArrowRight keyboard navigation with native ARIA `radiogroup` semantics.
+- **Member Instances**:
+  - `High Volume Map Rendering Options (#vw-opt-all, #vw-opt-sample, #vw-opt-skip)` (Volume Warning Modal) — *`Render all points`, `Render sample`, `Skip map display`*
 
 
 ---
@@ -232,7 +238,7 @@ This catalog defines the **27 multi-instance UI element archetypes across 9 func
   - `Clear Queue & Output Buttons (#file-clear-queue-btn, #file-clear-output-btn)` (Files Mode)
   - `Map Navigation Dock Buttons (#pt-center-map-btn, #batch-center-map-btn, #file-center-map-btn, #pt-zoom-extents-btn, etc.)` (Point, Text, Files)
   - `Modal Footer Buttons (#modal-close-btn, #fb-submit-btn, #fb-cancel-btn)` (Modals & Drawers)
-  - `Volume Warning Action Buttons (#vw-sample-btn, #vw-all-btn, #vw-skip-btn)` (High Volume Point Warning Modal)
+  - `Volume Warning Confirmation Button (#vw-confirm-btn)` (High Volume Point Warning Modal)
   - `Feedback Auxiliary Buttons (#fb-reset-template-btn, #fb-copy-btn, #fb-github-btn)` (Feedback Drawer)
 
 ### Archetype 6.3: Icon Action & Copy Buttons

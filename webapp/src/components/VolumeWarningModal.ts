@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { APP_CONFIG } from '../config';
+import { renderRadioGroup } from '../ui';
 
 export class VolumeWarningModal {
   private backdrop: HTMLElement | null = null;
@@ -17,23 +18,22 @@ export class VolumeWarningModal {
     this.backdrop.innerHTML = `
       <div class="modal-dialog modal-dialog-compact">
         <div class="modal-header">
-          <div class="modal-title warning">${t('volumeWarning.title')}</div>
+          <div class="modal-title">${t('volumeWarning.title')}</div>
           <button class="btn-icon modal-close-btn" id="vw-close-icon" title="${t('common.close') || 'Close'}">✕</button>
         </div>
         <div class="modal-body">
-          <p class="modal-body-text">
-            ${t('volumeWarning.message', { count: count.toLocaleString() })}
-          </p>
+          <div class="callout-box fhp-callout-box accent-warning" style="margin-bottom: 14px;">
+            <span class="callout-title fhp-callout-title">${t('volumeWarning.calloutTitle')}</span>
+            <p class="callout-body fhp-callout-body">
+              ${t('volumeWarning.message', { count: count.toLocaleString() })}
+            </p>
+          </div>
+          <label class="form-label" style="margin-bottom: 8px;">${t('volumeWarning.promptLabel')}</label>
+          <div id="vw-radio-slot"></div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline btn-sm" id="vw-skip-btn">
-            ${t('volumeWarning.btnSkip')}
-          </button>
-          <button class="btn btn-secondary btn-sm" id="vw-sample-btn">
-            ${t('volumeWarning.btnSample', { sample: APP_CONFIG.batchSampleSize.toLocaleString() })}
-          </button>
-          <button class="btn btn-primary btn-sm" id="vw-all-btn">
-            ${t('volumeWarning.btnRenderAll')}
+          <button class="btn btn-primary btn-sm" id="vw-confirm-btn">
+            ${t('volumeWarning.btnConfirm')}
           </button>
         </div>
       </div>
@@ -41,15 +41,51 @@ export class VolumeWarningModal {
 
     root.appendChild(this.backdrop);
 
+    let selectedChoice: 'all' | 'sample' | 'skip' = 'all';
+
+    const radioGroup = renderRadioGroup<'all' | 'sample' | 'skip'>({
+      name: 'vw-rendering-choice',
+      ariaLabel: t('volumeWarning.promptLabel'),
+      selectedValue: 'all',
+      options: [
+        {
+          value: 'all',
+          id: 'vw-opt-all',
+          label: t('volumeWarning.optAll'),
+          description: t('volumeWarning.optAllDesc', { count: count.toLocaleString() }),
+          badge: `${count.toLocaleString()} pts`,
+        },
+        {
+          value: 'sample',
+          id: 'vw-opt-sample',
+          label: t('volumeWarning.optSample'),
+          description: t('volumeWarning.optSampleDesc', {
+            sample: APP_CONFIG.batchSampleSize.toLocaleString(),
+          }),
+          badge: `${APP_CONFIG.batchSampleSize.toLocaleString()} pts`,
+        },
+        {
+          value: 'skip',
+          id: 'vw-opt-skip',
+          label: t('volumeWarning.optSkip'),
+          description: t('volumeWarning.optSkipDesc'),
+        },
+      ],
+      onChange: (val) => {
+        selectedChoice = val;
+      },
+    });
+
+    const slot = this.backdrop.querySelector('#vw-radio-slot');
+    slot?.appendChild(radioGroup);
+
     const handleAction = (choice: 'all' | 'sample' | 'skip') => {
       this.close();
       onConfirm(choice);
     };
 
     this.backdrop.querySelector('#vw-close-icon')?.addEventListener('click', () => handleAction('skip'));
-    this.backdrop.querySelector('#vw-skip-btn')?.addEventListener('click', () => handleAction('skip'));
-    this.backdrop.querySelector('#vw-sample-btn')?.addEventListener('click', () => handleAction('sample'));
-    this.backdrop.querySelector('#vw-all-btn')?.addEventListener('click', () => handleAction('all'));
+    this.backdrop.querySelector('#vw-confirm-btn')?.addEventListener('click', () => handleAction(selectedChoice));
 
     this.backdrop.addEventListener('click', (e) => {
       if (e.target === this.backdrop) {

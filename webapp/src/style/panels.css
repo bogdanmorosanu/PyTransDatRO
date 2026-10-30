@@ -527,6 +527,10 @@
   border-left: 3px solid var(--color-primary);
 }
 
+.callout-box.accent-warning {
+  border-left: 3px solid var(--color-warning);
+}
+
 .callout-title,
 .fhp-callout-title {
   font-size: 11.5px;

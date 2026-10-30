@@ -460,3 +460,126 @@ textarea.form-input {
   justify-content: flex-end;
 }
 
+/* Radio Card / Selection Group (Archetype 2.5) */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.radio-card:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-medium);
+}
+
+.radio-card.active,
+.radio-card:has(.radio-input:checked) {
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--btn-primary-border);
+  box-shadow: 0 0 0 1px var(--btn-primary-border);
+}
+
+.radio-input {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+}
+
+.radio-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-medium);
+  background-color: var(--bg-surface-input);
+  margin-top: 2px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.radio-circle::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-primary-light);
+  transform: scale(0);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.radio-input:checked + .radio-circle,
+.radio-card.active .radio-circle {
+  border-color: var(--color-primary-light);
+}
+
+.radio-input:checked + .radio-circle::after,
+.radio-card.active .radio-circle::after {
+  transform: scale(1);
+}
+
+.radio-input:focus-visible + .radio-circle {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.radio-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.radio-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.radio-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.radio-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  background-color: var(--bg-surface-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+}
+

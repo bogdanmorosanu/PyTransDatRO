@@ -3,6 +3,7 @@ import {
   renderDropdownMenu,
   renderSegmentedControl,
   renderSelect,
+  renderRadioGroup,
   renderCopyBadge,
   renderCopyButton,
 } from './index';
@@ -27,6 +28,20 @@ class MockClassList {
     tokens.forEach((t) => this.classes.delete(t));
   }
 
+  toggle(token: string, force?: boolean) {
+    if (force !== undefined) {
+      if (force) this.add(token);
+      else this.remove(token);
+      return force;
+    }
+    if (this.contains(token)) {
+      this.remove(token);
+      return false;
+    }
+    this.add(token);
+    return true;
+  }
+
   contains(token: string) {
     return this.classes.has(token);
   }
@@ -43,6 +58,8 @@ class MockElement {
   public tabIndex: number = 0;
   public disabled: boolean = false;
   public selected: boolean = false;
+  public checked: boolean = false;
+  public name: string = '';
   public value: string = '';
   public open: boolean = false;
   public type: string = '';
@@ -279,6 +296,46 @@ describe('UI Factory: renderSegmentedControl', () => {
     expect(onChange).toHaveBeenCalledWith('EN');
     expect(btn2.classList.contains('active')).toBe(true);
     expect(btn1.classList.contains('active')).toBe(false);
+  });
+});
+
+describe('UI Factory: renderRadioGroup', () => {
+  it('renders radio group with options, badges, and sets initial selected value', () => {
+    const onChange = vi.fn();
+    const group = renderRadioGroup({
+      name: 'test-choice',
+      ariaLabel: 'Rendering Options',
+      selectedValue: 'all',
+      options: [
+        { value: 'all', label: 'All Points', description: 'Plot all points', badge: '100 pts', id: 'opt-all' },
+        { value: 'sample', label: 'Sample', description: 'Plot sample points', badge: '50 pts', id: 'opt-sample' },
+        { value: 'skip', label: 'Skip', description: 'Skip display', id: 'opt-skip' },
+      ],
+      onChange,
+    }) as any;
+
+    expect(group.getAttribute('role')).toBe('radiogroup');
+    expect(group.getAttribute('aria-label')).toBe('Rendering Options');
+    expect(group.children.length).toBe(3);
+
+    const [card1, card2, card3] = group.children;
+    expect(card1.classList.contains('active')).toBe(true);
+    expect(card2.classList.contains('active')).toBe(false);
+    expect(card3.classList.contains('active')).toBe(false);
+
+    // Verify first card's radio input
+    const input1 = card1.children[0];
+    expect(input1.checked).toBe(true);
+    expect(input1.getAttribute('aria-checked')).toBe('true');
+
+    // Simulate change on card2 radio input
+    const input2 = card2.children[0];
+    input2.checked = true;
+    input2.dispatchEvent({ type: 'change' });
+
+    expect(onChange).toHaveBeenCalledWith('sample');
+    expect(card2.classList.contains('active')).toBe(true);
+    expect(card1.classList.contains('active')).toBe(false);
   });
 });
 
