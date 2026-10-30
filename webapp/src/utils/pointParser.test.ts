@@ -4,6 +4,9 @@ import {
   parseStrictDecimal,
   detectDelimiter,
   parseInputLines,
+  hasDmsSymbols,
+  isPotentialAngle,
+  extractPointIdAndCoords,
 } from './pointParser';
 
 describe('pointParser', () => {
@@ -260,6 +263,56 @@ describe('pointParser', () => {
         expect(rows[1].lineIndex).toBe(1);
         expect(rows[2].lineIndex).toBe(2);
         expect(rows[3].lineIndex).toBe(3);
+      });
+    });
+
+    describe('centralized point ID and coordinate token extraction (Issue #4)', () => {
+      it('correctly identifies Romanian city names containing d, m, s as point IDs', () => {
+        const cityLines = [
+          'Bucuresti,325824.54,587904.09',
+          'Cluj,586651.37,395015.47',
+          'Iasi,632037.41,697337.94',
+          'Timisoara,479134.11,205238.72',
+          'Constanta,302089.31,790822.87',
+        ];
+
+        for (const line of cityLines) {
+          const tokens = line.split(',');
+          const extracted = extractPointIdAndCoords(tokens, false, 'NE');
+          expect(extracted.pointId).toBe(tokens[0]);
+          expect(extracted.coordTokens).toEqual([tokens[1], tokens[2]]);
+        }
+      });
+
+      it('correctly distinguishes true DMS symbols from place names in hasDmsSymbols and isPotentialAngle', () => {
+        expect(hasDmsSymbols('45°30\'15"')).toBe(true);
+        expect(hasDmsSymbols('45d 30m 15s')).toBe(true);
+        expect(hasDmsSymbols('45d30m')).toBe(true);
+
+        expect(hasDmsSymbols('Bucuresti')).toBe(false);
+        expect(hasDmsSymbols('Timisoara')).toBe(false);
+        expect(hasDmsSymbols('Constanta')).toBe(false);
+        expect(hasDmsSymbols('Iasi')).toBe(false);
+        expect(hasDmsSymbols('Cluj')).toBe(false);
+
+        expect(isPotentialAngle('45.999718')).toBe(true);
+        expect(isPotentialAngle('45°30\'15"')).toBe(true);
+        expect(isPotentialAngle('Bucuresti')).toBe(false);
+        expect(isPotentialAngle('P1')).toBe(false);
+      });
+
+      it('extracts geodetic labels in ETRS89 mode when first column is not an angle', () => {
+        const tokens = ['Station_Alpha', '45.999718', '26.001234'];
+        const extracted = extractPointIdAndCoords(tokens, true, 'NE');
+        expect(extracted.pointId).toBe('Station_Alpha');
+        expect(extracted.coordTokens).toEqual(['45.999718', '26.001234']);
+      });
+
+      it('treats 3 numeric/angular tokens in ETRS89 mode as 3D coordinates without ID', () => {
+        const tokens = ['45°30\'00"', '26°00\'00"', '150.5'];
+        const extracted = extractPointIdAndCoords(tokens, true, 'NE');
+        expect(extracted.pointId).toBeNull();
+        expect(extracted.coordTokens).toEqual(tokens);
       });
     });
   });

@@ -280,6 +280,7 @@ async def transform_file(
                     for raw_line in lines:
                         line = raw_line.strip()
                         if not line:
+                            yield b"\n"
                             continue
                         if line.startswith("#"):
                             yield (line + "\n").encode("utf-8")

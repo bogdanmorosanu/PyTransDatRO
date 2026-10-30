@@ -146,7 +146,7 @@ Elevated above all tabs, governing `Point`, `Text`, and `Files` globally:
 - **Staged Workflow**: Supports staging multiple files, transforming them, changing global transformation settings (e.g. coordinate order or direction), staging additional files, and transforming the untransformed files using the updated app settings.
 - **Cumulative Map Visualization**: Map displays markers and clusters cumulatively from all processed files in the queue.
 - **Two-Section Quality Report**: Cumulative post-transformation summary divided into `Coordinates` (`Total: [N]`, `2D: [N]`, `3D: [N]`) and `Transformation` (`Valid ([N])`, `Outside Grid ([N])`, `Invalid Input ([N])`) with batch `Download All` trigger.
-- **Line Streaming Robustness**: Auto-detects Point ID column (3 vs 4 tokens), parses DMS angles with sexagesimal radian conversion, outputs unspaced DMS, and handles Windows-1252 / Latin-1 degree symbol fallback decoding.
+- **Line Streaming Robustness & 1-to-1 Parity**: Enforces strict 1-to-1 row correspondence during streaming file transformations. Automatically extracts Point ID columns and coordinates via the centralized `extractPointIdAndCoords` utility (`pointParser.ts`), ensuring place names containing `d`, `m`, or `s` (e.g. *Bucuresti*, *Timisoara*, *Constanta*, *Iasi*) are correctly recognized as point IDs rather than confused for DMS angle units.
 - **Downloads**: Individual transformed file downloads plus batch `Download All`.
 
 ### E. Interactive Web GIS Map & Responsive Viewport Topology (`MapView.ts`)

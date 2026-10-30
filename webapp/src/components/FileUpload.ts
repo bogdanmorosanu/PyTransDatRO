@@ -1,7 +1,7 @@
 import { t, onLanguageChange } from '../i18n';
 import { formatTelemetryDecimal } from '../utils/numberFormat';
 import { apiClient, type TransformationOp } from '../utils/apiClient';
-import { type CoordinateOrder } from '../utils/pointParser';
+import { type CoordinateOrder, extractPointIdAndCoords, detectDelimiter } from '../utils/pointParser';
 import { parseAngleToDeg } from '../utils/dmsParser';
 import { showToast } from '../utils/toast';
 import { type MapPointItem } from './MapView';
@@ -166,27 +166,17 @@ export class FileUpload {
     const points: MapPointItem[] = [];
     const maxRows = Math.min(inLines.length, outLines.length);
 
-    const parseLineTokens = (raw: string): { pointId: string | null; tokens: string[] } => {
+    const isSourceGeo = this.op === 'ETRS89ToStereo70';
+    const inDelimiter = detectDelimiter(inLines);
+    const inSplitRegex = inDelimiter === ' ' ? /\s+/ : new RegExp(inDelimiter === ';' ? ';+' : inDelimiter === ',' ? ',+' : '\\t+');
+
+    const tokenizeLine = (raw: string, isGeo: boolean): { pointId: string | null; tokens: string[] } => {
       const clean = raw.split('#')[0].trim();
       if (!clean) return { pointId: null, tokens: [] };
-      const delim = clean.includes('\t') ? '\t' : clean.includes(';') ? ';' : clean.includes(',') ? ',' : /\s+/;
-      const allTokens = clean.split(delim).map((t) => t.trim()).filter(Boolean);
-      if (allTokens.length < 2) return { pointId: null, tokens: [] };
-
-      if (allTokens.length >= 4) {
-        return { pointId: allTokens[0], tokens: allTokens.slice(1, 4) };
-      } else if (allTokens.length === 3) {
-        const t0 = allTokens[0];
-        const t1 = allTokens[1];
-        const t2 = allTokens[2];
-        const hasAngle = (s: string) => /[°'"dms]/i.test(s);
-        if (hasAngle(t1) || (!hasAngle(t0) && isNaN(Number(t0)))) {
-          return { pointId: t0, tokens: [t1, t2] };
-        } else if (parseFloat(t0) < 50000 && parseFloat(t1) > 50000) {
-          return { pointId: t0, tokens: [t1, t2] };
-        }
-      }
-      return { pointId: null, tokens: allTokens };
+      const rawTokens = clean.split(inSplitRegex).map((t) => t.trim()).filter(Boolean);
+      if (rawTokens.length < 2) return { pointId: null, tokens: [] };
+      const { pointId, coordTokens } = extractPointIdAndCoords(rawTokens, isGeo, this.order);
+      return { pointId, tokens: coordTokens };
     };
 
     let headerBypassed = false;
@@ -201,8 +191,8 @@ export class FileUpload {
       }
       rowIdx++;
 
-      const inParsed = parseLineTokens(inRaw);
-      const outParsed = parseLineTokens(outRaw || '');
+      const inParsed = tokenizeLine(inRaw, isSourceGeo);
+      const outParsed = tokenizeLine(outRaw || '', !isSourceGeo);
       if (inParsed.tokens.length < 2) continue;
 
       const pointId = inParsed.pointId || outParsed.pointId || `Point ${rowIdx}`;

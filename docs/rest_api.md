@@ -143,7 +143,7 @@ Streams transformations of an uploaded `.csv` or `.txt` file (up to `settings.ma
   - `skip_header`: `true` or `false` (boolean form field, default: `false`). When `true`, passes the first non-comment data line verbatim to the output stream without transforming it or appending error/warning comments. Delimiter auto-detection is performed on the header row if `delimiter="auto"`.
 * **Behavior**:
   - Automatically detects delimiter from first non-comment row when `auto` is set.
-  - Strips empty lines and preserves `#` comment rows.
+  - Strictly enforces 1-to-1 line correspondence: empty lines and `#` comment rows are preserved verbatim in the streamed output at their exact line positions, ensuring input row $N$ corresponds strictly to output row $N$.
   - Strictly enforces 2–3 coordinate columns (or 3–4 columns when prefixed by a Point ID); rows with $< 2$ or $> 4$ columns are emitted with ` # Wrong dimension` appended, and rows with empty intermediate coordinate columns (e.g. `P1,500000,,100`) or non-finite values (`NaN`, `Inf`, `-Inf`) are emitted with ` # Invalid coordinate data` appended.
   - Strips balanced outer CSV quotes via `_strip_balanced_quotes()` while preserving trailing `"` arcsecond symbols on unquoted DMS coordinates, and validates DMS strings against strict sexagesimal bounds ($0 \le m < 60, 0 \le s < 60$, no conflicting signs/cardinals, no fractional degrees/minutes when sub-units exist) via `pytransdatro.utils.sexa_dms_chars_to_rad`.
   - Returns streaming file attachment (`transformed_coordinates.csv`).

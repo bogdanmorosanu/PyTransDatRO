@@ -19,6 +19,112 @@ export function isValidDecimal(s: string): boolean {
   return /^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(trimmed) && !isNaN(Number(trimmed));
 }
 
+/**
+ * Checks if a token contains explicit DMS or sexagesimal symbols.
+ * Distinguishes true angular markers (degree/minute/second symbols or digits followed by d/m/s)
+ * from arbitrary alphabetical words/place names like 'Bucuresti' or 'Timisoara'.
+ */
+export function hasDmsSymbols(s: string): boolean {
+  return /[°'"\u2018\u2019\u201C\u201D`]|(?:\d\s*[dms])/i.test(s);
+}
+
+/**
+ * Checks whether a token can realistically represent an angle (either decimal, DMS with symbols, or signed compass heading).
+ */
+export function isPotentialAngle(s: string): boolean {
+  const trimmed = s.trim();
+  if (!trimmed) return false;
+  if (isValidDecimal(trimmed)) return true;
+  if (hasDmsSymbols(trimmed)) {
+    try {
+      const val = parseAngleToDeg(trimmed);
+      return !isNaN(val);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export interface ExtractedPointTokens {
+  pointId: string | null;
+  coordTokens: string[];
+}
+
+/**
+ * Centralized extractor that analyzes delimited tokens to determine whether
+ * the first column represents a Point ID or the start of coordinate values.
+ * Shared across Text (batch) parsing and File upload mapping.
+ */
+export function extractPointIdAndCoords(
+  tokens: string[],
+  isSourceGeo: boolean,
+  order: CoordinateOrder = 'NE'
+): ExtractedPointTokens {
+  if (tokens.length === 0) {
+    return { pointId: null, coordTokens: [] };
+  }
+  if (tokens.length === 1) {
+    return { pointId: null, coordTokens: tokens };
+  }
+  if (tokens.length === 2) {
+    return { pointId: null, coordTokens: tokens };
+  }
+  if (tokens.length >= 4) {
+    return { pointId: tokens[0], coordTokens: tokens.slice(1, 4) };
+  }
+
+  // Exactly 3 tokens: [t0, t1, t2]
+  const [t0, t1, t2] = tokens;
+
+  if (isSourceGeo) {
+    const hasAngleSymbol0 = hasDmsSymbols(t0);
+    const pot0 = isPotentialAngle(t0);
+    const pot1 = isPotentialAngle(t1);
+    const pot2 = isPotentialAngle(t2);
+
+    let t0Deg = NaN;
+    try {
+      t0Deg = parseAngleToDeg(t0);
+    } catch {}
+
+    // Case 1: t0 is non-numeric string label (e.g. "P1", "Station_A")
+    // or numeric ID > 90 (which cannot be Latitude in NE order), while t1 and t2 can be angles:
+    if (!hasAngleSymbol0 && pot1 && pot2 && (!pot0 || (order === 'NE' && !isNaN(t0Deg) && Math.abs(t0Deg) > 90))) {
+      return { pointId: t0, coordTokens: [t1, t2] };
+    }
+
+    // Case 2: All 3 tokens are numbers/angles -> treat as 3D (Lat, Lon, Height)
+    return { pointId: null, coordTokens: tokens };
+  } else {
+    // Stereo 70 (metric coordinates)
+    const t0Num = isValidDecimal(t0) ? Number(t0) : null;
+    const t1Num = isValidDecimal(t1) ? Number(t1) : null;
+    const t2Num = isValidDecimal(t2) ? Number(t2) : null;
+
+    if (t1Num !== null && t1Num > 50000) {
+      if (t2Num !== null && t2Num > 50000) {
+        // Both t1 and t2 are planimetric coordinates -> t0 is Point ID
+        return { pointId: t0, coordTokens: [t1, t2] };
+      } else {
+        // t2 is elevation or other -> 3D coordinates without ID
+        return { pointId: null, coordTokens: tokens };
+      }
+    } else if (t0Num !== null && t0Num > 50000) {
+      // t0 is already a planimetric coordinate -> 3D coordinates without ID
+      return { pointId: null, coordTokens: tokens };
+    } else if (t0Num !== null && t1Num !== null && t2Num !== null) {
+      // All 3 are numbers -> 3D coordinates
+      return { pointId: null, coordTokens: tokens };
+    } else if (!isValidDecimal(t0) && isValidDecimal(t1) && isValidDecimal(t2)) {
+      // t0 is string label (e.g. "Bucuresti", "P1"), t1 and t2 are coordinates
+      return { pointId: t0, coordTokens: [t1, t2] };
+    } else {
+      return { pointId: null, coordTokens: tokens };
+    }
+  }
+}
+
 export function parseStrictDecimal(s: string): number {
   const trimmed = s.trim();
   if (!isValidDecimal(trimmed)) {
@@ -98,80 +204,7 @@ export function parseInputLines(
       continue;
     }
 
-    let pointId: string | null = null;
-    let coordTokens: string[] = [];
-
-    // Check if first column is Point ID:
-    if (tokens.length === 4) {
-      pointId = tokens[0];
-      coordTokens = tokens.slice(1);
-    } else if (tokens.length === 3) {
-      const [t0, t1, t2] = tokens;
-      if (isSourceGeo) {
-        const hasAngleSymbol0 = /[°'"`]|(?:\d\s*[dms])/i.test(t0);
-        let a0 = false;
-        let a1 = false;
-        let a2 = false;
-        try {
-          a0 = !isNaN(parseAngleToDeg(t0));
-        } catch {}
-        try {
-          a1 = !isNaN(parseAngleToDeg(t1));
-        } catch {}
-        try {
-          a2 = !isNaN(parseAngleToDeg(t2));
-        } catch {}
-
-        let t0Deg = NaN;
-        try {
-          t0Deg = parseAngleToDeg(t0);
-        } catch {}
-
-        if (!hasAngleSymbol0 && a1 && a2 && (!a0 || (order === 'NE' && t0Deg > 90))) {
-          // t0 is a label (e.g. "P1" or numeric ID > 90) -> (PointId, Lat, Lon)
-          pointId = t0;
-          coordTokens = [t1, t2];
-        } else {
-          // 3D coordinates (Lat, Lon, Elevation)
-          coordTokens = tokens;
-        }
-      } else {
-        // Stereo 70
-        const t0Num = isValidDecimal(t0) ? Number(t0) : null;
-        const t1Num = isValidDecimal(t1) ? Number(t1) : null;
-        const t2Num = isValidDecimal(t2) ? Number(t2) : null;
-
-        if (t1Num !== null && t1Num > 50000) {
-          if (t2Num !== null && t2Num > 50000) {
-            // Both t1 and t2 are planimetric coordinates -> t0 is Point ID
-            pointId = t0;
-            coordTokens = [t1, t2];
-          } else {
-            // t2 is elevation or typo -> 3D coordinates
-            coordTokens = tokens;
-          }
-        } else if (t0Num !== null && t0Num > 50000) {
-          // t0 is planimetric coordinate -> 3D coordinates
-          coordTokens = tokens;
-        } else if (t0Num !== null && t1Num !== null && t2Num !== null) {
-          // All 3 are numbers (e.g. 5.0, 1.0, 0.0) -> 3D coordinates
-          coordTokens = tokens;
-        } else if (!isValidDecimal(t0) && isValidDecimal(t1) && isValidDecimal(t2)) {
-          // t0 is string label (e.g. "P1"), t1 and t2 are coordinates
-          pointId = t0;
-          coordTokens = [t1, t2];
-        } else {
-          coordTokens = tokens;
-        }
-      }
-    } else if (tokens.length === 2) {
-      // 2 tokens -> 2D coordinates (X, Y)
-      coordTokens = tokens;
-    } else {
-      // More than 4 tokens
-      pointId = tokens[0];
-      coordTokens = tokens.slice(1);
-    }
+    const { pointId, coordTokens } = extractPointIdAndCoords(tokens, isSourceGeo, order);
 
     if (coordTokens.length < 2 || coordTokens.length > 3) {
       rows.push({

@@ -96,11 +96,37 @@ def test_modern_file_streaming_csv(client):
     assert res.status_code == 200
     assert "attachment; filename=" in res.headers.get("content-disposition", "")
 
-    lines = res.text.strip().splitlines()
-    assert len(lines) == 4
+    lines = res.text.splitlines()
+    assert len(lines) == 5
     assert lines[0] == "# Topo test points"
-    assert "45.999" in lines[1]
-    assert "Out of grid" in lines[3]
+    assert lines[1] == ""  # Blank line preserved to maintain 1-to-1 line parity
+    assert "45.999" in lines[2]
+    assert "Out of grid" in lines[4]
+
+
+def test_modern_file_streaming_preserves_blank_lines_and_alignment(client):
+    """Verifies that empty lines and comments maintain exact 1-to-1 correspondence with input rows."""
+    input_text = (
+        "P1,500000.0,500000.0\n"
+        "\n"
+        "P2,505000.0,505000.0\n"
+        "# Just a comment\n"
+        "\n"
+        "P3,500000.0,500000.0\n"
+    )
+    files = {"file": ("points.csv", io.BytesIO(input_text.encode("utf-8")), "text/csv")}
+    data = {"op": "Stereo70ToETRS89", "unit": "degrees", "delimiter": "comma"}
+
+    res = client.post("/api/v1/transform/file", files=files, data=data)
+    assert res.status_code == 200
+    out_lines = res.text.splitlines()
+    assert len(out_lines) == 6
+    assert out_lines[0].startswith("P1,")
+    assert out_lines[1] == ""
+    assert out_lines[2].startswith("P2,")
+    assert out_lines[3] == "# Just a comment"
+    assert out_lines[4] == ""
+    assert out_lines[5].startswith("P3,")
 
 
 def test_modern_file_streaming_semicolon_auto_detect(client):
