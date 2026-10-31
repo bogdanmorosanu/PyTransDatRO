@@ -5,6 +5,7 @@ import { apiClient, type GridComparisonResponse } from '../utils/apiClient';
 export class GeodeticHelpPanel {
   private element: HTMLElement | null = null;
   private comparisonData: GridComparisonResponse | null = null;
+  private activeGridFile: string | null = null;
   private isLoadingComparison: boolean = false;
   private isMinimized: boolean = false;
 
@@ -56,7 +57,14 @@ export class GeodeticHelpPanel {
     this.updateBenchmarkCard();
 
     try {
-      this.comparisonData = await apiClient.getGridComparison();
+      const [comp, info] = await Promise.all([
+        apiClient.getGridComparison(),
+        apiClient.getGridInfo().catch(() => null),
+      ]);
+      this.comparisonData = comp;
+      if (info && info.grid_file) {
+        this.activeGridFile = info.grid_file;
+      }
     } catch (err) {
       console.warn('Could not load dynamic grid comparison data:', err);
     } finally {
@@ -256,11 +264,31 @@ export class GeodeticHelpPanel {
     const st70Status = st70ToEtrs?.status || 'PASS';
     const etrsStatus = etrsToSt70?.status || 'PASS';
 
+    const benchmarkGrid = this.comparisonData?.grid_file;
+    const hasMismatch = this.activeGridFile && benchmarkGrid && this.activeGridFile !== benchmarkGrid;
+    const mismatchNotice = hasMismatch
+      ? `
+        <div class="callout-box fhp-callout-box" style="border-left: 3px solid var(--color-warning, #f59e0b); margin-bottom: 0.75rem;">
+          <span class="callout-title fhp-callout-title" style="color: var(--color-warning, #f59e0b);">${t('geodeticHelp.benchmarkMismatchTitle')}</span>
+          <p class="callout-body fhp-callout-body">${t('geodeticHelp.benchmarkMismatchDesc')
+            .replace('{active}', this.activeGridFile || '')
+            .replace('{baseline}', benchmarkGrid)}</p>
+        </div>
+      `
+      : '';
+
+    const gridChip = benchmarkGrid
+      ? `<div style="margin-top: 0.35rem;"><span class="fhp-metric-chip mono" style="font-size: 0.72rem; padding: 2px 6px;">${t('geodeticHelp.baselineGridLabel')}: ${benchmarkGrid}</span></div>`
+      : '';
+
     return `
       <div class="content-card-header fhp-card-header">
         <div class="content-card-title fhp-card-title">${title}</div>
         <div class="content-card-subtitle fhp-card-subtitle">${subtitle}</div>
+        ${gridChip}
       </div>
+
+      ${mismatchNotice}
 
       <table class="fhp-benchmark-table">
         <thead>

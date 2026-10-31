@@ -28,8 +28,8 @@
 3. **2D Grid Transformation**: Applies `geodetic_shifts` planar distortion shifts (addition).
 4. **Height Correction (Optional)**: Subtracts height correction via the 1D geoid layer: $H = h - N$.
 
-## Grid Management
-The system automatically discovers and loads the single `.spg` grid located in `pytransdatro/grids/`. If multiple grids or no grids are found, explicit descriptive exceptions (`AmbiguousGridError`, `MissingGridError`) are raised to prevent transformation ambiguity. Legacy binary `.grd` files have been retired.
+## Grid Management & Lifecycle
+The system automatically discovers and loads the single `.spg` grid located in `pytransdatro/grids/`. If multiple grids or no grids are found, explicit descriptive exceptions (`AmbiguousGridError`, `MissingGridError`) are raised to prevent transformation ambiguity. The full grid lifecycle, dynamic metadata synchronization, benchmark updates, and operator workflows are orchestrated via `tools/update_grid.py`. For complete documentation, see [docs/grid_lifecycle.md](grid_lifecycle.md). Legacy binary `.grd` files have been retired.
 
 ## Geodetic Constants (`pytransdatro/constants.py`)
 All physical geodetic parameters and projection invariants are extracted into pure standard-library constants:

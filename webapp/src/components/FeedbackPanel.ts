@@ -9,7 +9,7 @@ export type FeedbackReportType = 'discrepancy' | 'grid_update' | 'bug' | 'featur
 export class FeedbackPanel {
   private element: HTMLElement | null = null;
   private currentType: FeedbackReportType = 'discrepancy';
-  private activeGridInfo: string = 'rom_grid3d_25.09.spg';
+  private activeGridInfo: string = '';
   private isMinimized: boolean = false;
   private isSubmitting: boolean = false;
   private renderTimestamp: number = 0;
@@ -109,7 +109,7 @@ export class FeedbackPanel {
     const browserEnv = `${navigator.userAgent} (Screen: ${window.screen.width}x${window.screen.height})`;
 
     return rawTemplate
-      .replace('{currentGrid}', this.activeGridInfo)
+      .replace('{currentGrid}', this.activeGridInfo || 'rom_grid3d (loading...)')
       .replace('{timestamp}', nowIso)
       .replace('{clientUrl}', clientUrl)
       .replace('{browserEnv}', browserEnv);
@@ -203,7 +203,7 @@ export class FeedbackPanel {
         description,
         client_timestamp: new Date().toISOString(),
         app_version: `v${APP_CONFIG.appVersion.replace(/^v/, '')}`,
-        active_grid: this.activeGridInfo,
+        active_grid: this.activeGridInfo || 'unknown',
         honeypot,
       });
 

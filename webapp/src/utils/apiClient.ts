@@ -123,6 +123,9 @@ export interface DirectionComparisonSummary {
 export interface GridComparisonResponse {
   total_points: number;
   overall_status: string;
+  grid_file?: string;
+  grid_version?: string;
+  grid_sha256?: string;
   etrs89_to_st70: DirectionComparisonSummary;
   st70_to_etrs89: DirectionComparisonSummary;
 }

@@ -218,6 +218,9 @@ export const ro = {
     criteriaLabel: 'Criterii de Acceptare',
     benchmarkCriteriaNote: 'O transformare este considerată PASS dacă erorile planimetrice nu depășesc 0.003 m (sau 0.00003") și cele altimetrice nu depășesc 0.003 m pe toate punctele de test.',
     loadingBenchmark: 'Se încarcă rezultatele comparative...',
+    baselineGridLabel: 'Grilă de Referință',
+    benchmarkMismatchTitle: 'Notă Grilă de Referință',
+    benchmarkMismatchDesc: 'Grila activă în sistem ({active}) diferă de grila de referință a benchmark-ului ({baseline}). Actualizarea rezultatelor comparative necesită un nou set de date oficial ANCPI.',
     
     // Card 3: Reference Systems
     datumsTitle: 'Sisteme de Referință & Datumuri',

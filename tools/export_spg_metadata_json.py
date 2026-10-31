@@ -314,8 +314,14 @@ def main():
         spg_file = Path(sys.argv[1])
     elif len(spg_candidates) == 1:
         spg_file = spg_candidates[0]
+    elif len(spg_candidates) > 1:
+        candidate_names = [f.name for f in spg_candidates]
+        raise ValueError(
+            f"Multiple .spg grid files found in {grids_dir}: {candidate_names}. "
+            "Please specify which grid to export or ensure only one active grid is in grids/."
+        )
     else:
-        spg_file = grids_dir / "rom_grid3d_25.09.spg"
+        raise FileNotFoundError(f"No .spg grid file found in {grids_dir}.")
 
     default_output = grids_dir / "spg_metadata.json"
     output_file = Path(sys.argv[2]) if len(sys.argv) > 2 else default_output

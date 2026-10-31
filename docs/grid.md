@@ -3,7 +3,9 @@
 This document provides a comprehensive technical specification of the unified 3D binary grid format (`.spg`) utilized by `pytransdatro` (and the official Romgeo application) for 2D and 3D coordinate transformations between **Stereo 70** (oblique stereographic projection / Krasovsky 1940 ellipsoid / Black Sea 1975 normal heights) and **ETRS89** (GRS80 ellipsoid / ellipsoidal heights).
 
 > [!NOTE]
-> As of the 2025.09 release, `pytransdatro` uses a single unified grid file `rom_grid3d_25.09.spg`. Legacy grid files (`.GRD`) have been retired. See [grids_obsolete.md](grids_obsolete.md) for details on the older binary formats.
+> As of the 2025.09 release, `pytransdatro` uses a single unified grid file `rom_grid3d_25.09.spg`. Legacy grid files (`.GRD`) have been retired. See [archive/grids_obsolete.md](archive/grids_obsolete.md) for details on older binary formats.
+>
+> For operations, code mechanics, and guidelines on adding or updating to a new official grid file, see the [Official Grid Lifecycle & Update Guide](grid_lifecycle.md).
 
 ---
 

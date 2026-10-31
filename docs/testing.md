@@ -144,8 +144,15 @@ npm --prefix webapp run test:watch
 Coordinate transformations must maintain 100% byte-for-byte fidelity against ANCPI benchmark reference sets:
 
 ```powershell
+# Unified orchestration tool (preferred):
+python tools/update_grid.py benchmark
+
+# Or standalone report generator:
 python tools/generate_ancpi_comparison_reports.py
 ```
+
+> [!IMPORTANT]
+> When updating the grid file, official ANCPI expected reference datasets in `tests/data/*_expected.csv` must be updated using official ANCPI desktop software. See [docs/grid_lifecycle.md](grid_lifecycle.md) for full details.
 
 - **Reference Dataset**: 9,046 national geodetic control points across Romania.
 - **Criteria for Success**:

@@ -171,6 +171,9 @@ class DirectionComparisonSummary(BaseModel):
 class GridComparisonResponse(BaseModel):
     total_points: int
     overall_status: str
+    grid_file: Optional[str] = None
+    grid_version: Optional[str] = None
+    grid_sha256: Optional[str] = None
     etrs89_to_st70: DirectionComparisonSummary
     st70_to_etrs89: DirectionComparisonSummary
     model_config = {"extra": "allow"}

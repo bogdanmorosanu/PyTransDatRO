@@ -218,6 +218,9 @@ export const en = {
     criteriaLabel: 'Acceptance Criteria',
     benchmarkCriteriaNote: 'A transformation is evaluated as PASS when planimetric residuals do not exceed 0.003 m (or 0.00003") and elevation residuals do not exceed 0.003 m across all test stations.',
     loadingBenchmark: 'Loading comparison benchmarks...',
+    baselineGridLabel: 'Baseline Grid',
+    benchmarkMismatchTitle: 'Grid Baseline Notice',
+    benchmarkMismatchDesc: 'Current active grid ({active}) differs from benchmark baseline ({baseline}). Benchmark refresh pending official ANCPI reference dataset.',
     
     // Card 3: Reference Systems
     datumsTitle: 'Reference Systems & Datums',

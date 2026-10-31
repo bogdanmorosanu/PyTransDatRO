@@ -160,9 +160,9 @@ PyTransDatRO/
 │   ├── src/ui/               # Accessible TypeScript UI factory helpers
 │   ├── src/style/            # Pure Vanilla Modular CSS (layout, forms, buttons, badges, menus, telemetry)
 │   └── src/utils/            # Client parsers (DMS, delimiters), exporters (CSV, GeoJSON, DXF), bounds
-├── tests/                    # Pytest test suite (189 tests) & reference datasets
-├── tools/                    # Benchmarking, metadata extraction, and ANCPI comparison reports
-├── docs/                     # Living technical architecture, API, and testing documentation
+├── tests/                    # Pytest test suite (207 tests) & reference datasets
+├── tools/                    # Grid lifecycle CLI (update_grid.py), benchmarking, and metadata extraction
+├── docs/                     # Living technical architecture, grid lifecycle, API, and testing documentation
 ├── .env.example              # Documented configuration template
 ├── pyproject.toml            # Project build metadata and Ruff linting rules
 ├── Dockerfile                # Multi-stage production container build

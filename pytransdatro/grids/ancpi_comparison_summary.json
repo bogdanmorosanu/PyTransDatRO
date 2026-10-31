@@ -1,6 +1,9 @@
 {
   "_generator": "tools/generate_ancpi_comparison_reports.py",
-  "_generated_at": "2026-10-30T23:06:36.440311+00:00",
+  "_generated_at": "2026-10-31T00:20:38.474894+00:00",
+  "grid_file": "rom_grid3d_25.09.spg",
+  "grid_version": "25.09",
+  "grid_sha256": "8b8d2e6631eee008c74eeadd4214073d5f8d030ef314a6fa7d91df98112db0d4",
   "total_points": 9046,
   "overall_status": "PASS",
   "etrs89_to_st70": {

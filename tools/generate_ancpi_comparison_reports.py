@@ -14,6 +14,7 @@ Generates:
 
 import csv
 import datetime
+import hashlib
 import json
 import math
 import os
@@ -194,7 +195,21 @@ def write_html_map(filepath, points, direction):
         f.write(html)
 
 
-def export_comparison_json(output_path: Path, etrs_summary: dict, st70_summary: dict):
+def compute_file_sha256(file_path: Path) -> str:
+    """Computes SHA-256 checksum of a file."""
+    h = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def export_comparison_json(
+    output_path: Path,
+    etrs_summary: dict,
+    st70_summary: dict,
+    grid_info: dict = None,
+):
     """Exports structured summary JSON for consumption by web app help modal."""
     total_tested = max(etrs_summary.get("total_points", 0), st70_summary.get("total_points", 0))
     overall_status = (
@@ -206,6 +221,9 @@ def export_comparison_json(output_path: Path, etrs_summary: dict, st70_summary: 
     summary_data = {
         "_generator": "tools/generate_ancpi_comparison_reports.py",
         "_generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "grid_file": grid_info.get("name") if grid_info else None,
+        "grid_version": grid_info.get("version") if grid_info else None,
+        "grid_sha256": grid_info.get("sha256") if grid_info else None,
         "total_points": total_tested,
         "overall_status": overall_status,
         "etrs89_to_st70": etrs_summary,
@@ -541,8 +559,21 @@ def generate_reports():
         write_html_map(reports_dir / "st70_to_etrs89_map.html", map_points, "Stereo70 to ETRS89")
         print("Done Stereo70 to ETRS89.")
 
+    # Extract active grid identity for benchmark traceability
+    from pytransdatro.spg_reader import SpgReader
+
+    spg_reader = SpgReader()
+    grid_path = Path(spg_reader.grid_path)
+    grid_info = {
+        "name": spg_reader.grid_filename,
+        "version": str(spg_reader.params.get("version", "")),
+        "sha256": compute_file_sha256(grid_path) if grid_path.exists() else None,
+    }
+
     # Export machine-readable JSON once directly to pytransdatro/grids/
-    export_comparison_json(json_output_path, etrs_to_st70_result, st70_to_etrs_result)
+    export_comparison_json(
+        json_output_path, etrs_to_st70_result, st70_to_etrs_result, grid_info=grid_info
+    )
     print("\nAll comparison reports and dynamic JSON summary generated successfully.")
 
 

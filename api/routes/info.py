@@ -81,21 +81,24 @@ def _get_granularity_expression(granularity: str, col: str = "period_start") -> 
 
 def _load_comparison_summary() -> dict:
     """Loads ANCPI replication benchmark JSON from pytransdatro/grids/ancpi_comparison_summary.json."""
-    json_path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "pytransdatro"
-        / "grids"
-        / "ancpi_comparison_summary.json"
-    )
+    grids_dir = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids"
+    json_path = grids_dir / "ancpi_comparison_summary.json"
     if json_path.exists():
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError) as e:
             logger.warning("Failed to load ANCPI comparison summary from %s: %s", json_path, e)
+
+    spg_files = list(grids_dir.glob("*.spg"))
+    active_grid_name = spg_files[0].name if len(spg_files) == 1 else "rom_grid3d_25.09.spg"
+
     return {
         "total_points": 9046,
         "overall_status": "PASS",
+        "grid_file": active_grid_name,
+        "grid_version": None,
+        "grid_sha256": None,
         "etrs89_to_st70": {
             "direction": "ETRS89 to Stereo70",
             "total_points": 9046,
@@ -133,25 +136,47 @@ def _load_comparison_summary() -> dict:
 
 def _load_or_extract_metadata() -> dict:
     """Loads metadata JSON from pytransdatro/grids/spg_metadata.json or extracts it dynamically."""
-    json_path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "pytransdatro"
-        / "grids"
-        / "spg_metadata.json"
-    )
+    grids_dir = Path(__file__).resolve().parent.parent.parent / "pytransdatro" / "grids"
+    json_path = grids_dir / "spg_metadata.json"
+
+    # Check for active SPG grid on disk
+    spg_files = list(grids_dir.glob("*.spg"))
+    active_spg = spg_files[0] if len(spg_files) == 1 else None
+
     if json_path.exists():
         try:
             with open(json_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                # Verify that cached metadata matches the active SPG file on disk
+                if active_spg is None or data.get("file_info", {}).get("name") == active_spg.name:
+                    return data
+                logger.info(
+                    "Cached spg_metadata.json (%s) does not match active grid (%s). Re-extracting...",
+                    data.get("file_info", {}).get("name"),
+                    active_spg.name,
+                )
         except (json.JSONDecodeError, OSError) as e:
             logger.warning("Failed to load SPG grid metadata from %s: %s", json_path, e)
 
-    # Fallback to default dictionary if precompiled JSON not found
+    # Dynamic extraction fallback if active_spg exists
+    if active_spg is not None and active_spg.is_file():
+        try:
+            from tools.export_spg_metadata_json import export_spg_metadata
+
+            export_spg_metadata(active_spg, json_path)
+            with open(json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning("Dynamic extraction of SPG metadata failed: %s", e)
+
+    # Resilient fallback without hardcoded version strings
+    file_name = active_spg.name if active_spg else "unknown.spg"
+    size_bytes = active_spg.stat().st_size if active_spg and active_spg.exists() else 0
     return {
         "file_info": {
-            "name": "rom_grid3d_25.09.spg",
-            "size_bytes": 0,
-            "size_formatted": "0 B",
+            "name": file_name,
+            "size_bytes": size_bytes,
+            "size_formatted": f"{size_bytes} B",
             "sha256": "",
         },
         "metadata": {},

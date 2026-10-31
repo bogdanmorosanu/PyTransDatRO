@@ -58,7 +58,7 @@ webapp/
 ├── playwright.config.ts    # Chromium Playwright E2E test runner configuration & webServer orchestration
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build options and dev server API proxy
-├── e2e/                    # Playwright end-to-end browser test suite (70 tests across 12 specs)
+├── e2e/                    # Playwright end-to-end browser test suite (71 tests across 12 specs)
 │   ├── fixtures.ts         # Offline tile & font stubs and page helpers
 │   ├── helpers/            # Shared locator and assertion helpers
 │   ├── smoke.spec.ts       # Critical DOM shell and initial layout smoke tests
@@ -91,7 +91,7 @@ webapp/
     │   ├── LegacyTimelineChart.ts # Interactive historical TransdatOnline archive timeline chart
     │   ├── SpatialMatrixChart.ts # 0.1° punchcard canvas matrix with quadrant lines and ghost cells
     │   ├── VolumeWarningModal.ts # Guardrail prompt for transforms > 2,000 points
-    │   └── FeedbackPanel.ts   # Non-modal draggable, resizable feedback & discrepancy panel
+    │   └── FeedbackPanel.ts   # Non-modal draggable, resizable feedback & discrepancy panel with dynamic active grid hydration
     ├── i18n/               # Internationalization system
     │   ├── index.ts        # Reactive translation store & persistent state
     │   ├── ro.ts           # Romanian translation dictionary (default)
@@ -233,7 +233,7 @@ npm run build
 ```
 
 ### Unit Tests (Vitest)
-The unit test suite executes 80 tests in $< 400\text{ ms}$ covering:
+The unit test suite executes 123 tests across 10 test files in $< 600\text{ ms}$ covering:
 - **`dmsParser.test.ts`**: Unspaced DMS parsing (`DD°MM'SS.SSSSS"`), whitespace handling, degree symbol variations, sexagesimal conversion.
 - **`pointParser.test.ts`**: Delimiter detection (tabs, spaces, commas, semicolons), point IDs, coordinate ordering (`NE(H)` vs `EN(H)`).
 - **`numberFormat.test.ts`**: Romanian comma `,` decimal formatting across telemetry and UI display surfaces while strictly preserving dot-decimal notation for CAD/GIS coordinate outputs.
@@ -242,7 +242,7 @@ The unit test suite executes 80 tests in $< 400\text{ ms}$ covering:
 - **`ui.test.ts`**: Accessible UI factory helper functions (`renderDropdownMenu` with active checkmarks, `renderSegmentedControl`, etc.) and the dual-theme `Map Projection Graticule` brand logo (`getLogoInlineSvg`, `getLogoStandaloneSvg`).
 
 ### End-to-End Browser Tests (Playwright)
-The Playwright suite executes 70 browser specs across 12 test suites against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
+The Playwright suite executes 71 browser specs across 12 test suites against an isolated FastAPI backend (`http://127.0.0.1:8100`) and compiled bundle (`dist-e2e/`), with offline network stubs for map tiles and fonts:
 - **`smoke.spec.ts`**: DOM shell, layout containers, and initial component mounting.
 - **`point.spec.ts`**: Single-point coordinate conversions, direction toggling, angular units, copy buttons, map pin popups, untransformable map click coordinate erasing, and layer color preservation with pulse animation.
 - **`batch.spec.ts`**: Delimiter detection, coordinate swapping, comment/blank line preservation, error row formatting (`PointId, # [reason]`), textarea vertical height persistence, scrollbar hover cursor, and export triggers.
