@@ -110,10 +110,10 @@ pip install -e .[api,dev]
 
 ### 2. Run Test Suites
 ```bash
-# Run all 189 Python unit, API, and telemetry tests
+# Run Python unit, API, and telemetry tests
 python -m pytest -q
 
-# Run all 123 Frontend Vitest unit tests
+# Run frontend Vitest unit tests
 npm --prefix webapp test
 ```
 
@@ -129,7 +129,7 @@ npm --prefix webapp run build
 
 ### 4. Run ANCPI Benchmark Verification
 ```bash
-# Validate zero-regression (< 10^-9 tolerance) across 9,046 national control points
+# Validate zero-regression (< 10^-9 tolerance) against official ANCPI national control points
 python tools/generate_ancpi_comparison_reports.py
 ```
 
@@ -160,7 +160,7 @@ PyTransDatRO/
 │   ├── src/ui/               # Accessible TypeScript UI factory helpers
 │   ├── src/style/            # Pure Vanilla Modular CSS (layout, forms, buttons, badges, menus, telemetry)
 │   └── src/utils/            # Client parsers (DMS, delimiters), exporters (CSV, GeoJSON, DXF), bounds
-├── tests/                    # Pytest test suite (207 tests) & reference datasets
+├── tests/                    # Pytest test suite & reference datasets
 ├── tools/                    # Grid lifecycle CLI (update_grid.py), benchmarking, and metadata extraction
 ├── docs/                     # Living technical architecture, grid lifecycle, API, and testing documentation
 ├── .env.example              # Documented configuration template
@@ -172,14 +172,16 @@ PyTransDatRO/
 
 ---
 
-## Upcoming / Roadmap (v1.0.0 Release)
+## Documentation & Technical Reference
 
-The following sections will be finalized for the public v1.0.0 release:
+For comprehensive technical specifications, algorithms, and deployment guides, consult the project documentation:
 
-- [ ] **PyPI Package Distribution** (`pip install pytransdatro`)
-- [ ] **ANCPI Official Benchmark & Accuracy Validation Report** (millimeter-level validation dataset results)
-- [ ] **Pre-built Container Registry Images** (`ghcr.io/bogdanmorosanu/pytransdatro`)
-- [ ] **QGIS Plugin Integration Guide**
+- **[Core Geodetic Mathematical Model](docs/core_engine.md)**: Detailed equations and processing pipelines for bidirectional transformations (**Stereo 70 $\longleftrightarrow$ ETRS89**), Krasovsky 1940 / GRS80 ellipsoids, Oblique Stereographic projection, 2D Helmert transformation, 16-node bicubic spline interpolation, 1D quasigeoid undulation elevation handling ($H_{\text{MN75}} \longleftrightarrow h_{\text{ETRS89}}$), and conformal curvature boundary envelopes.
+- **[System Architecture](docs/architecture.md)**: Overview of the decoupled three-tier architecture (pure Python core geodetic library, FastAPI service layer, TypeScript/Leaflet web client).
+- **[REST API Specification](docs/rest_api.md)**: Interactive and programmatic API endpoint specifications, JSON schemas, CSV streaming, and legacy TransDatOnline emulation.
+- **[Grid Lifecycle & Management](docs/grid_lifecycle.md)**: Technical guide on official ANCPI `.spg` binary grids, automated discovery, metadata extraction, and safe archival procedures.
+- **[Testing & Numerical Verification](docs/testing.md)**: Quality gates, automated test framework, and ground-truth validation against official RomGEO control points.
+- **[Web Application Guide](docs/webapp/README.md)**: Architecture, design system, component inventory, and UI factories of the client workbench.
 
 ---
 
