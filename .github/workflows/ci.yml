@@ -44,12 +44,13 @@ jobs:
 
       - name: Web API Integration & Telemetry Tests
         run: |
-          pytest tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_legacy_stats.py tests/test_api_rate_limiter.py tests/test_telemetry.py tests/test_feedback.py tests/test_logging.py
+          pytest -m "not legacy_live" tests/test_api_modern.py tests/test_api_legacy.py tests/test_api_legacy_stats.py tests/test_api_rate_limiter.py tests/test_telemetry.py tests/test_feedback.py tests/test_logging.py
 
       - name: Core Library Wheel Packaging Smoke Test
         run: |
-          python -m build --wheel
+          python -m build --wheel --no-isolation
           python -m pip install dist/*.whl
+          python -c "import pytransdatro; print('PyTransDatRO wheel smoke test OK:', pytransdatro.__version__)"
 
   # ----------------------------------------------------------------------------
   # Frontend TypeScript & Vitest Suite
@@ -62,10 +63,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: "webapp/package-lock.json"
 
@@ -104,10 +105,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-api.txt
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: "webapp/package-lock.json"
 

@@ -36,7 +36,7 @@ export function renderCopyBadge(props: CopyBadgeProps): HTMLElement {
     }
 
     // Clipboard write
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(valToCopy).catch(() => {});
     }
 

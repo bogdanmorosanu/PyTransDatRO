@@ -46,7 +46,7 @@ export function renderCopyButton(props: CopyButtonProps): HTMLButtonElement {
     const textToCopy = props.getCopyText();
     if (!textToCopy) return;
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(textToCopy).catch(() => {});
     }
 

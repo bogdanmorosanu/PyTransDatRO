@@ -179,16 +179,20 @@ beforeEach(() => {
     createElement: (tag: string) => new MockElement(tag),
   };
   (globalThis as any).document = mockDoc;
+  if (typeof (globalThis as any).navigator === 'undefined') {
+    (globalThis as any).navigator = {};
+  }
+  const mockClipboard = {
+    writeText: vi.fn().mockResolvedValue(undefined),
+  };
   try {
     Object.defineProperty(globalThis.navigator, 'clipboard', {
-      value: {
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
+      value: mockClipboard,
       configurable: true,
       writable: true,
     });
   } catch {
-    // fallback if navigator is plain object
+    (globalThis as any).navigator.clipboard = mockClipboard;
   }
   (globalThis as any).window = {
     setTimeout: (fn: Function) => {
